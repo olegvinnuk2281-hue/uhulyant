@@ -84,6 +84,31 @@ setInterval(flush, 3000).unref();
 ['SIGTERM', 'SIGINT'].forEach(s => process.on(s, async () => { await flush(); process.exit(0); }));
 
 const sha = s => crypto.createHash('sha256').update(s).digest('hex');
+const passwordHash = (password, salt) => crypto.scryptSync(String(password), salt, 64).toString('hex');
+const cleanLogin = v => String(v || '').trim().toLowerCase();
+const validLogin = v => /^[a-z0-9_.-]{3,20}$/.test(v);
+const validPassword = v => typeof v === 'string' && v.length >= 8 && v.length <= 128;
+const safeEqual = (a, b) => { try { const x=Buffer.from(String(a),'hex'), y=Buffer.from(String(b),'hex'); return x.length===y.length && x.length>0 && crypto.timingSafeEqual(x,y); } catch (_) { return false; } };
+const publicNews = [];
+function publishNews(item) {
+  const event = Object.assign({ id: crypto.randomUUID(), t: Date.now() }, item);
+  publicNews.unshift(event); if (publicNews.length > 100) publicNews.length = 100;
+  // Дублюємо стрічку в дані гравців, щоб вона переживала перезапуск без окремої таблиці Supabase.
+  for (const p of Object.values(DB.players)) {
+    p.news = [event, ...(p.news || []).filter(x => x.id !== event.id)].slice(0, 100);
+    dirtyPlayerIds.add(p.id);
+  }
+  return event;
+}
+function createPlayer(name, loginData = {}) {
+  const id = newId(), t = Date.now();
+  DB.players[id] = { id, keyHash: sha(crypto.randomBytes(32).toString('hex')), name: cleanName(name), created: t, lastSave: t, seen: t, save: null, friends: [], reqIn: [], reqOut: [], events: [], news: [], goldBank: 30, goldSpent: 0, hits: [], bud: { e: 250, t }, evClaim: {}, fdmg: 0, ...loginData };
+  // Секрет для API — окремий від хешу пароля.
+  const key = crypto.randomBytes(32).toString('hex');
+  DB.players[id].keyHash = sha(key);
+  dirtyPlayerIds.add(id);
+  return { id, key };
+}
 const newId = () => { for (;;) { let s = ''; for (let i = 0; i < 8; i++) s += ALPHA[crypto.randomInt(ALPHA.length)]; if (!DB.players[s]) return s; } };
 const cleanName = n => String(n || 'Ухилянт').replace(/[<>&"'`]/g, '').trim().slice(0, 16) || 'Ухилянт';
 const num = (v, d = 0) => (Number.isFinite(+v) ? +v : d);
@@ -283,6 +308,44 @@ const pub = p => ({ id: p.id, name: p.name, level: p.save ? p.save.level : 1, b:
 async function api(req, res, route) {
   const ip = clientIp(req);
   if (route === 'ping') return send(res, 200, { ok: 1 });
+  if (route === 'leaderboard') {
+    const list = Object.values(DB.players).map(pub).sort((a,b) => b.level-a.level || b.b-a.b || a.name.localeCompare(b.name,'uk')).slice(0,100);
+    return send(res, 200, { ok: true, list });
+  }
+  if (route === 'news') {
+    const stored = Object.values(DB.players).flatMap(x => x.news || []);
+    const unique = new Map(); stored.forEach(x => unique.set(x.id, x));
+    const list = [...unique.values()].sort((a,b) => b.t-a.t).slice(0,100);
+    return send(res, 200, { ok: true, list });
+  }
+  if (route === 'admin/news/donation') {
+    const secret=String(req.headers['x-admin-secret']||'');
+    if (!process.env.ADMIN_EVENT_SECRET || !safeEqual(sha(secret),sha(process.env.ADMIN_EVENT_SECRET))) return send(res,403,{ok:false,err:'forbidden'});
+    const b=await body(req); if(!b) return send(res,400,{ok:false});
+    const amount=Number(b.amount), name=cleanName(b.name || 'Гравець');
+    if (!Number.isFinite(amount) || amount<=0 || amount>1e9) return send(res,400,{ok:false,err:'Некоректна сума'});
+    const item=publishNews({type:'donation',name,amount,text:`${name} підтримав гру на ₴${Math.round(amount).toLocaleString('uk-UA')}`});
+    return send(res,200,{ok:true,event:item});
+  }
+  if (route === 'account/register') {
+    if (limited('areg' + ip, 5, 36e5)) return send(res, 429, { ok:false, err:'Забагато спроб реєстрації' });
+    const b = await body(req); if (!b) return send(res,400,{ok:false});
+    const username = cleanLogin(b.username), password = b.password;
+    if (!validLogin(username)) return send(res,400,{ok:false,err:'Логін: 3–20 символів, латиниця, цифри, . _ -'});
+    if (!validPassword(password)) return send(res,400,{ok:false,err:'Пароль має містити 8–128 символів'});
+    if (Object.values(DB.players).some(x => x.username === username)) return send(res,409,{ok:false,err:'Такий логін уже зайнятий'});
+    const salt = crypto.randomBytes(16).toString('hex'), authData = { username, passSalt:salt, passHash:passwordHash(password,salt) };
+    const a = createPlayer(b.name || username, authData);
+    return send(res,200,{ok:true,...a,fresh:true});
+  }
+  if (route === 'account/login') {
+    if (limited('alog' + ip, 12, 15*MIN)) return send(res,429,{ok:false,err:'Забагато спроб входу. Спробуй пізніше.'});
+    const b = await body(req); if (!b) return send(res,400,{ok:false});
+    const username = cleanLogin(b.username), p = Object.values(DB.players).find(x => x.username === username);
+    if (!p || !p.passSalt || !safeEqual(passwordHash(b.password || '',p.passSalt),p.passHash)) return send(res,401,{ok:false,err:'Неправильний логін або пароль'});
+    const key = crypto.randomBytes(32).toString('hex'); p.keyHash = sha(key); p.seen = Date.now(); dirtyPlayerIds.add(p.id);
+    return send(res,200,{ok:true,id:p.id,key,save:p.save,name:p.name});
+  }
   if (route === 'register') {
     if (limited('reg' + ip, 5, 36e5)) return send(res, 429, { ok: false, err: 'Забагато реєстрацій' });
     const b = await body(req); if (!b) return send(res, 400, { ok: false });
@@ -295,6 +358,59 @@ async function api(req, res, route) {
   if (!p) return send(res, 401, { ok: false, err: 'auth' });
   p.seen = Date.now();
   if (limited('p' + p.id, 120, 6e4)) return send(res, 429, { ok: false, err: 'Забагато запитів' });
+  if (route === 'account/claim') {
+    const b = await body(req); if (!b) return send(res,400,{ok:false});
+    const username=cleanLogin(b.username), password=b.password;
+    if (!validLogin(username)) return send(res,400,{ok:false,err:'Логін: 3–20 символів, латиниця, цифри, . _ -'});
+    if (!validPassword(password)) return send(res,400,{ok:false,err:'Пароль має містити 8–128 символів'});
+    if (p.username && p.passHash) return send(res,409,{ok:false,err:'До цього акаунта вже привʼязаний логін'});
+    if (Object.values(DB.players).some(x => x.username === username)) return send(res,409,{ok:false,err:'Такий логін уже зайнятий'});
+    p.username=username; p.passSalt=crypto.randomBytes(16).toString('hex'); p.passHash=passwordHash(password,p.passSalt); dirtyPlayerIds.add(p.id);
+    return send(res,200,{ok:true,username});
+  }
+  if (route === 'account/status') return send(res,200,{ok:true,username:p.username || null});
+  if (route === 'career') {
+    if (req.method === 'GET') return send(res,200,{ok:true,career:p.career || {status:'reserve',trainingAt:0,crateClaimed:false,dutyAt:0,coins:0}});
+    const b=await body(req); if(!b) return send(res,400,{ok:false});
+    const c=p.career || {status:'reserve',trainingAt:0,crateClaimed:false,dutyAt:0,coins:0}, t=Date.now();
+    if (b.action==='enroll') { if(c.trainingAt && t-c.trainingAt<52*MIN) return send(res,200,{ok:false,err:'Навчання ще триває'}); c.trainingAt=t; c.crateClaimed=false; c.status='training'; }
+    else if (b.action==='crate') { if(!c.trainingAt || t-c.trainingAt<52*MIN || c.crateClaimed) return send(res,200,{ok:false,err:'Ящик ще недоступний'}); c.crateClaimed=true; c.status='reserve'; c.coins=(c.coins||0)+100; }
+    else if (b.action==='duty') { if(t-(c.dutyAt||0)<10*MIN) return send(res,200,{ok:false,err:'Наряд уже відпрацьовано'}); c.dutyAt=t; c.coins=(c.coins||0)+25; }
+    else return send(res,400,{ok:false,err:'Невідома дія'});
+    p.career=c; dirtyPlayerIds.add(p.id); return send(res,200,{ok:true,career:c});
+  }
+  if (route === 'world') {
+    const w=p.world || (p.world={cash:500,xp:0,items:[],equipped:{},lastDaily:0,lastWork:0,brigade:null,look:{hair:'short',beard:'stubble',skin:'medium'}});
+    const bosses=[{id:'zh',name:'Жадовський',hp:30000},{id:'my',name:'Миколаївський',hp:60000},{id:'ce',name:'Центровий',hp:100000}];
+    const gear={tracksuit:{name:'Олімпійка',slot:'body',stealth:2},uniform:{name:'Польова форма',slot:'body',energy:5},bat:{name:'Біта',slot:'weapon',attack:8},knife:{name:'Ніж (ігровий)',slot:'weapon',attack:12},chain:{name:'Ланцюг',slot:'weapon',attack:15},vest:{name:'Бронежилет',slot:'body',energy:10},shadow:{name:'Тіньова куртка',slot:'body',stealth:12},storm:{name:'Штормова форма',slot:'body',energy:20},legend:{name:'Легендарна біта',slot:'weapon',attack:40}};
+    const get=()=>{if(w.brigade&&typeof w.brigade==='object')return w.brigade;const g=Object.values(DB.players).find(x=>x.world&&x.world.brigade&&typeof x.world.brigade==='object'&&x.world.brigade.id===w.brigade);return g&&g.world.brigade};
+    const state=()=>{const br=get();return {ok:true,world:w,gear,bosses,brigade:br?{...br,members:br.members.map(id=>({id,name:DB.players[id]?.name||id}))}:null}};
+    if(req.method==='GET')return send(res,200,state());
+    const b=await body(req);if(!b||typeof b.action!=='string')return send(res,400,{ok:false,err:'Некоректна дія'});
+    const t=Date.now(), fail=err=>send(res,200,{ok:false,err});
+    if(b.action==='daily'){
+      if(t-w.lastDaily<DAY)return fail('Бонус раз на 24 години');
+      const prizes=[{cash:100},{cash:250},{cash:500},{xp:60},{item:'tracksuit'},{item:'uniform'},{item:'bat'}];const prize=prizes[crypto.randomInt(prizes.length)];w.lastDaily=t;w.cash+=prize.cash||0;w.xp+=prize.xp||0;if(prize.item)w.items.push(prize.item);w.message='Рулетка: '+JSON.stringify(prize);
+    } else if(b.action==='work'){
+      if(t-w.lastWork<5*MIN)return fail('Робота доступна раз на 5 хвилин');
+      const jobs={courier:{cash:90,xp:20,drop:'tracksuit'},guard:{cash:120,xp:35,drop:'bat'},warehouse:{cash:110,xp:30,drop:'chain'},patrol:{cash:130,xp:40,drop:'uniform'},workshop:{cash:100,xp:25,drop:'knife'}};
+      const j=jobs[b.job];if(!j)return fail('Немає такої роботи');w.lastWork=t;w.cash+=j.cash;w.xp+=j.xp;const found=crypto.randomInt(100)<15;if(found)w.items.push(j.drop);w.message=`Робота: +${j.cash} ₴, +${j.xp} XP`+(found?', знайдено '+gear[j.drop].name:'');
+    } else if(b.action==='casino'){
+      const bet=Number(b.bet);if(!Number.isSafeInteger(bet)||bet<10||bet>1000||bet>w.cash)return fail('Ставка 10–1000 ігрових ₴');
+      const win=crypto.randomInt(100)<45;w.cash+=win?bet:-bet;w.message=win?`Виграш +${bet} ₴`:`Програш -${bet} ₴`;
+    } else if(b.action==='equip'){
+      if(!w.items.includes(b.item)||!gear[b.item])return fail('Речі немає в інвентарі');w.equipped[gear[b.item].slot]=b.item;w.message='Одягнуто: '+gear[b.item].name;
+    } else if(b.action==='look'){
+      const allowed={hair:['short','buzz','long'],beard:['none','stubble','full'],skin:['light','medium','dark']};for(const k of Object.keys(allowed))if(b[k]!==undefined){if(!allowed[k].includes(b[k]))return fail('Некоректний вигляд');w.look[k]=b[k]}w.message='Зовнішність збережено';
+    } else if(b.action==='create'){
+      if(w.brigade)return fail('Ви вже у бригаді');const name=String(b.name||'').trim();if(name.length<3||name.length>24||/[<>]/.test(name))return fail('Назва 3–24 символи');const id=crypto.randomBytes(4).toString('hex').toUpperCase();w.brigade={id,name,owner:p.id,members:[p.id],fight:null};w.message='Бригаду створено, код '+id;
+    } else if(b.action==='join'){
+      if(w.brigade)return fail('Ви вже у бригаді');const id=String(b.id||'').trim().toUpperCase();const target=Object.values(DB.players).map(x=>x.world?.brigade).find(x=>x&&x.id===id);if(!target)return fail('Бригаду не знайдено');if(target.members.length>=8)return fail('У бригаді максимум 8 гравців');target.members.push(p.id);dirtyPlayerIds.add(target.owner);w.brigade=id;w.message='Ви вступили в '+target.name;
+    } else if(b.action==='fight'){
+      const br=get();if(!br||!br.members.includes(p.id))return fail('Потрібна бригада');const boss=bosses.find(x=>x.id===b.boss);if(!boss)return fail('Немає боса');if(!br.fight||br.fight.hp<=0){if(br.fight&&t-br.fight.finishedAt<10*MIN)return fail('Новий рейд через 10 хвилин');br.fight={boss:boss.id,hp:boss.hp,maxHp:boss.hp,hits:{},finishedAt:0}}if(br.fight.boss!==boss.id)return fail('Спочатку завершіть поточного боса');if(t-(br.fight.hits[p.id]||0)<30*1000)return fail('Атака раз на 30 секунд');br.fight.hits[p.id]=t;const weapon=gear[w.equipped.weapon];const dmg=200+Math.min(300,Math.floor(w.xp/10))+(weapon?.attack||0)*20; br.fight.hp=Math.max(0,br.fight.hp-dmg);w.message=`Удар по ${boss.name}: ${dmg} шкоди`;if(!br.fight.hp){br.fight.finishedAt=t;for(const id of br.members){const m=DB.players[id];if(!m)continue;const mw=m.world||(m.world={cash:0,xp:0,items:[],equipped:{}});mw.xp+=boss.hp/30;mw.cash+=boss.hp/60;const loot=boss.id==='ce'?'legend':boss.id==='my'?'storm':'shadow';if(crypto.randomInt(100)<35)mw.items.push(loot);dirtyPlayerIds.add(id)}publishNews({type:'brigade',text:`Бригада ${br.name} перемогла боса ${boss.name}!`})}
+    } else return fail('Невідома дія');
+    dirtyPlayerIds.add(p.id);return send(res,200,state());
+  }
   if (route === 'me') return send(res, 200, { ok: true, id: p.id, name: p.name, save: p.save });
   if (route === 'save') {
     const b = await body(req); if (!b) return send(res, 400, { ok: false });
@@ -345,6 +461,8 @@ async function api(req, res, route) {
     const t = Date.now(); p.hits = p.hits.filter(x => t - x < 3 * HOUR);
     if (d <= 0 || d > cap || p.hits.length >= 30) return send(res, 200, { ok: false, err: 'відхилено' });
     p.hits.push(t);
+    const previousMax = num(p.maxDamage, 0);
+    if (d > previousMax) { p.maxDamage=d; publishNews({type:'damage',name:p.name,playerId:p.id,value:d,text:`${p.name} встановив рекорд удару: ${d.toLocaleString('uk-UA')} шкоди`}); }
     p.friends.forEach(id => {
       const o = DB.players[id]; if (!o) return;
       o.events.push({ name: p.name, dmg: d, t }); if (o.events.length > 50) o.events.shift();
@@ -362,12 +480,50 @@ async function api(req, res, route) {
 const server = http.createServer(async (req, res) => {
   try {
     const u = new URL(req.url, 'http://x');
+    if (u.pathname === '/uhylyant-3d.js') { res.writeHead(200, {'content-type':'application/javascript; charset=utf-8','cache-control':'no-cache'}); return fs.createReadStream(path.join(__dirname,'uhylyant-3d.js')).pipe(res); }
     if (u.pathname === '/healthz') { res.writeHead(200); return res.end('ok'); }
     if (u.pathname.startsWith('/api/')) return await api(req, res, u.pathname.slice(5));
-    const s = fs.createReadStream(path.join(__dirname, 'uhylyant.html'));
-    s.on('error', () => { if (!res.headersSent) res.writeHead(500, { 'content-type': 'text/plain; charset=utf-8' }); res.end('Немає файлу uhylyant.html поруч із server.js'); });
-    s.on('open', () => res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer', 'x-frame-options': 'SAMEORIGIN', 'cache-control': 'no-cache' }));
-    s.pipe(res);
+    const primaryHtml = path.join(__dirname, 'uhylyant.html');
+    const htmlPath = fs.existsSync(primaryHtml) ? primaryHtml : path.join(__dirname, 'uhylyant (1).html');
+    fs.readFile(htmlPath, 'utf8', (err, html) => {
+      if (err) { if (!res.headersSent) res.writeHead(500, { 'content-type': 'text/plain; charset=utf-8' }); return res.end('Немає файлу uhylyant.html поруч із server.js'); }
+      const addon = `
+<style>
+#socialDock{display:flex;gap:5px;flex-wrap:wrap;justify-content:center;padding:5px 0 8px;background:#251f19;border-top:1px solid #66533a}
+#socialDock button{border:1px solid #8c7047;border-radius:9px;background:#3d342a;color:#f3e9d2;padding:7px 10px;font-weight:700;font-size:12px;cursor:pointer}
+#socialDock button:active{transform:translateY(1px)}
+#socialPanel{position:fixed;inset:0;z-index:9999;background:#090b0eeF;display:none;align-items:center;justify-content:center;padding:16px;font:14px system-ui;color:#f3e9d2}
+#socialPanel .spbox{width:min(520px,100%);max-height:90vh;overflow:auto;background:#2d2720;border:2px solid #8c7047;border-radius:18px;padding:18px;box-shadow:0 12px 50px #000}
+#socialPanel h2{font-size:23px;margin:0 0 12px}#socialPanel input{display:block;width:100%;padding:12px;margin:7px 0;border-radius:9px;border:1px solid #776448;background:#14100c;color:#fff;box-sizing:border-box}
+#socialPanel button{border:1px solid #9a7134;border-radius:9px;background:#f2a931;color:#211600;padding:10px 13px;font-weight:700;cursor:pointer;margin:4px 4px 4px 0}
+#socialPanel button.alt{background:#3d342a;color:#f3e9d2;border-color:#776448}#socialPanel .spitem{padding:10px 0;border-bottom:1px solid #5b4d3b}#socialPanel .muted{color:#b9ab8f;font-size:12px}#socialPanel .spclose{float:right}
+</style>
+<div id="socialPanel"><div class="spbox"><button class="alt spclose" id="spClose">Закрити</button><div id="spBody"></div></div></div>
+<script>
+(()=>{'use strict';const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let token=(()=>{try{return JSON.parse(localStorage.getItem('vt_net')||'null')}catch(e){return null}})()||{};let panel=$('#socialPanel'),body=$('#spBody'),active='';
+const api=async(path,data,auth=true)=>{try{const r=await fetch('/api/'+path,{method:data?'POST':'GET',headers:{'content-type':'application/json',...(auth?{'x-id':token.id||'','x-key':token.key||''}:{})},body:data?JSON.stringify(data):undefined});return await r.json()}catch(e){return {ok:false,err:'Немає зв’язку із сервером'}}};
+function open(){panel.style.display='flex'}function close(){panel.style.display='none'}$('#spClose').onclick=close;panel.addEventListener('click',e=>{if(e.target===panel)close()});
+function dock(){let nav=$('#tabs');if(!nav||$('#socialDock'))return;let d=document.createElement('div');d.id='socialDock';d.innerHTML='<button data-sp="account">👤 Акаунт</button><button data-sp="leaderboard">🏆 Топ-100</button><button data-sp="friends">👥 Друзі</button><button data-sp="news">📰 Новини</button><button data-sp="career">🎖 Кар’єра / резерв</button><button data-sp="world">🎰 Шмот / бригада</button>';nav.appendChild(d);d.addEventListener('click',e=>{let b=e.target.closest('[data-sp]');if(b)show(b.dataset.sp)});}
+async function show(which){active=which;open();body.innerHTML='<h2>Завантаження…</h2>';
+ if(which==='account'){const st=token.id?await api('account/status',null,true):{username:null};body.innerHTML='<h2>Обліковий запис</h2><p class="muted">'+(st.username?'Логін прив’язаний: '+esc(st.username):token.id?'До поточного ігрового профілю можна прив’язати логін і пароль.':'Увійди або створи новий акаунт.')+'</p><input id="spUser" placeholder="Логін" minlength="3" maxlength="20" autocomplete="username"><input id="spPass" type="password" placeholder="Пароль (мінімум 8 символів)" autocomplete="current-password"><div><button id="spLogin">Увійти</button><button id="spRegister">Реєстрація</button>'+(token.id&&!st.username?'<button class="alt" id="spClaim">Прив’язати до цього профілю</button>':'')+'</div><p id="spMsg" class="muted"></p>';
+ const credentials=()=>({username:$('#spUser').value.trim(),password:$('#spPass').value});
+ async function submit(path){let r=await api(path,credentials(),false);if(r.ok){token={id:r.id,key:r.key};localStorage.setItem('vt_net',JSON.stringify(token));$('#spMsg').textContent='Готово. Перезавантажую гру…';location.reload()}else $('#spMsg').textContent=r.err||'Помилка'}
+ $('#spLogin').onclick=()=>submit('account/login');$('#spRegister').onclick=()=>submit('account/register');if($('#spClaim'))$('#spClaim').onclick=async()=>{let r=await api('account/claim',credentials());$('#spMsg').textContent=r.ok?'Логін прив’язано.':r.err||'Помилка'};return;}
+ if(which==='leaderboard'){let r=await api('leaderboard',null,false);body.innerHTML='<h2>Топ-100 гравців</h2>'+(r.list||[]).map((p,i)=>'<div class="spitem"><b>#'+(i+1)+' '+esc(p.name)+'</b><div class="muted">Рівень '+p.level+' · перемоги над босами '+p.b+' · '+(p.on?'онлайн':'офлайн')+'</div></div>').join('')||'<p>Поки немає гравців.</p>';return;}
+ if(which==='friends'){if(!token.id){body.innerHTML='<h2>Друзі</h2><p>Спочатку увійди в акаунт.</p>';return}let r=await api('friends');body.innerHTML='<h2>Друзі</h2><input id="spFriend" placeholder="ID гравця"><button id="spAdd">Додати друга</button>'+(r.incoming||[]).map(f=>'<div class="spitem">Запит: '+esc(f.name)+' · '+esc(f.id)+' <button data-accept="'+esc(f.id)+'">Прийняти</button></div>').join('')+(r.friends||[]).map(f=>'<div class="spitem">'+esc(f.name)+' · рівень '+f.level+' · '+(f.on?'онлайн':'офлайн')+'</div>').join('');$('#spAdd').onclick=async()=>{let x=await api('friend/add',{id:$('#spFriend').value});alert(x.ok?'Запит надіслано':x.err||'Помилка');show('friends')};body.querySelectorAll('[data-accept]').forEach(b=>b.onclick=async()=>{await api('friend/add',{id:b.dataset.accept});show('friends')});return;}
+ if(which==='news'){let r=await api('news',null,false);body.innerHTML='<h2>Новини сервера</h2>'+(r.list||[]).map(x=>'<div class="spitem"><b>'+ (x.type==='donation'?'💰 Донат':x.type==='damage'?'⚔ Рекорд шкоди':'📣 Подія')+'</b><div>'+esc(x.text||x.name)+'</div><div class="muted">'+new Date(x.t).toLocaleString()+'</div></div>').join('')||'<p>Гучних подій поки немає.</p>';return;}
+ if(which==='world'){if(!token.id){body.innerHTML='<h2>Спочатку увійди в акаунт</h2>';return}const r=await api('world'),w=r.world||{},gear=r.gear||{},br=r.brigade;const btn=(label,action,extra='')=>'<button data-action="'+action+'" '+extra+'>'+label+'</button>';body.innerHTML='<h2>🎰 Вулиця: шмот і бригада</h2><div class="spitem">💵 '+(w.cash||0)+' ігрових ₴ · ⭐ '+(w.xp||0)+' XP</div><p>'+esc(w.message||'')+'</p><h3>Щоденна рулетка</h3>'+btn('Крутити (раз на 24 години)','daily')+'<h3>Роботи · раз на 5 хв</h3>'+[['courier','Кур’єр'],['guard','Охоронець'],['warehouse','Склад'],['patrol','Патруль'],['workshop','Майстерня']].map(([id,n])=>btn(n,'work','data-job="'+id+'"')).join('')+'<h3>Казино · лише ігрові гроші</h3><input id="spBet" type="number" min="10" max="1000" value="50">'+btn('Ставка (45% шанс)','casino')+'<h3>Інвентар та екіпірування</h3>'+(w.items||[]).map((id,i)=>'<div class="spitem">'+esc(gear[id]?.name||id)+' '+btn('Одягнути','equip','data-item="'+esc(id)+'"')+'</div>').join('')+'<p>Екіпіровано: '+Object.entries(w.equipped||{}).map(([slot,id])=>esc(gear[id]?.name||id)).join(', ')+'</p><h3>Зовнішність</h3><select id="spHair"><option value="short">Коротка стрижка</option><option value="buzz">Під машинку</option><option value="long">Довге волосся</option></select><select id="spBeard"><option value="none">Без бороди</option><option value="stubble">Щетина</option><option value="full">Борода</option></select><select id="spSkin"><option value="light">Світлий тон</option><option value="medium">Середній тон</option><option value="dark">Темний тон</option></select>'+btn('Зберегти вигляд','look')+'<h3>Бригада (до 8 кентів)</h3>'+(br?'<p>'+esc(br.name)+' · код '+esc(br.id)+' · '+br.members.map(x=>esc(x.name)).join(', ')+'</p><p>Рейд: '+esc(br.fight?.boss||'немає')+' · HP '+(br.fight?.hp??'—')+'</p>'+(r.bosses||[]).map(x=>btn(x.name+' · '+x.hp+' HP','fight','data-boss="'+x.id+'"')).join(''):'<input id="spBrigade" placeholder="Назва бригади або код">'+btn('Створити','create')+btn('Вступити за кодом','join'));for(const [key,id] of [['hair','spHair'],['beard','spBeard'],['skin','spSkin']])$('#'+id).value=w.look?.[key]||$('#'+id).value;body.querySelectorAll('[data-action]').forEach(el=>el.onclick=async()=>{const action=el.dataset.action;const payload={action};if(action==='work')payload.job=el.dataset.job;if(action==='casino')payload.bet=Number($('#spBet').value);if(action==='equip')payload.item=el.dataset.item;if(action==='look'){payload.hair=$('#spHair').value;payload.beard=$('#spBeard').value;payload.skin=$('#spSkin').value}if(action==='create')payload.name=$('#spBrigade').value;if(action==='join')payload.id=$('#spBrigade').value;if(action==='fight')payload.boss=el.dataset.boss;const result=await api('world',payload);if(!result.ok)alert(result.err||'Помилка');show('world')});return;}
+ if(which==='career'){if(!token.id){body.innerHTML='<h2>Кар’єра та резерв</h2><p>Увійди в акаунт, щоб зберігати кар’єрний прогрес.</p>';return}let r=await api('career');let c=r.career||{},elapsed=c.trainingAt?Math.max(0,Date.now()-c.trainingAt):0,remaining=Math.max(0,52*60000-elapsed),ready=!!c.trainingAt&&remaining===0&&!c.crateClaimed;body.innerHTML='<h2>Кар’єра та резерв</h2><div class="spitem">Статус: <b>'+esc(c.status||'reserve')+'</b></div><div class="spitem">Навчальний центр: '+(c.trainingAt?(remaining?'триває · залишилось '+Math.ceil(remaining/60000)+' хв':'52/52 ігрових днів завершено'):'не проходив')+'</div><div class="spitem">Ігровий баланс кар’єри: '+(c.coins||0)+' жетонів</div><button id="spEnroll">Почати навчання (52 хвилини)</button><button id="spCrate" '+(ready?'':'disabled')+'>Відкрити ящик навчального центру (+100 жетонів)</button><button id="spDuty">Вийти в наряд (+25 жетонів)</button><p class="muted">Один ігровий день дорівнює одній хвилині. Це окрема ігрова система, не юридичний статус.</p>';$('#spEnroll').onclick=async()=>{let x=await api('career',{action:'enroll'});if(!x.ok)alert(x.err);show('career')};$('#spCrate').onclick=async()=>{let x=await api('career',{action:'crate'});if(!x.ok)alert(x.err);show('career')};$('#spDuty').onclick=async()=>{let x=await api('career',{action:'duty'});if(!x.ok)alert(x.err);show('career')};return;}
+}
+const observer=new MutationObserver(dock);observer.observe($('#tabs'),{childList:true});dock();
+})();
+</script>`;
+      const extra = addon + '<script defer src="/uhylyant-3d.js"></script>';
+      const out = html.includes('</body>') ? html.replace('</body>', extra + '</body>') : html + extra;
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer', 'x-frame-options': 'SAMEORIGIN', 'cache-control': 'no-cache' });
+      res.end(out);
+    });
   } catch (e) { console.error(e); try { send(res, 500, { ok: false }); } catch (_) {} }
 });
 process.on('uncaughtException', e => console.error('uncaught', e));
