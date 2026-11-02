@@ -63,5 +63,5 @@ function frame(t){requestAnimationFrame(frame);if(!renderer||document.hidden)ret
 // Sync optional cosmetic equipment from the existing authenticated world endpoint.
 async function refreshOnline(){try{const a=JSON.parse(localStorage.getItem('vt_net')||'null');if(!a?.id||!a?.key)return;const r=await fetch('/api/world',{headers:{'x-id':a.id,'x-key':a.key}});const d=await r.json();if(d.ok){window.__uh3Look=d.world?.look;window.__uh3Weapon=d.world?.equipped?.weapon;updateModel()}}catch(_){}}
 setInterval(refreshOnline,30000);setInterval(()=>{lastSig='';updateModel()},5000);
-const script=document.createElement('script');script.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.1/three.min.js';script.onload=()=>{init();refreshOnline()};script.onerror=fail;document.head.appendChild(script);
+const script=document.createElement('script');script.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/0.149.0/three.min.js';script.onload=()=>{init();refreshOnline()};script.onerror=fail;document.head.appendChild(script);
 })();
