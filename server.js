@@ -55,6 +55,8 @@ async function loadDB() {
     if (!error && data) {
       data.forEach(row => { DB.players[row.id] = row.data; });
       console.log(`Завантажено ${data.length} гравців із Supabase`);
+    } else if (error) {
+      console.error('❌ Помилка завантаження бази з Supabase:', error.message);
     }
   } catch (e) { console.error('Помилка завантаження бази:', e); }
 }
@@ -164,6 +166,8 @@ function validate(p, nx) {
 
   const bs = nx.bs && typeof nx.bs === 'object' ? nx.bs : {}, pb = pv.bs || {};
   const bb = num(bs.b, -1), r = num(bs.r, -1), w = num(bs.w, -1), me = num(bs.me, -1);
+  const kmax = 6 + 6 * r; // Оголошено тут, щоб уникнути ReferenceError
+  
   if (!isInt(bb, 0, 5) || !isInt(r, 0, 300) || !isInt(w, 0, 1e9) || !isInt(me, 0, 1e5) || me < num(pb.me)) return bad('бій');
   const pbb = num(pb.b), pr = num(pb.r), pw = num(pb.w);
   const dW = w - pw, dNb = (bb + 6 * r) - (pbb + 6 * pr);
