@@ -5,5 +5,8 @@
   "description": "Ухилянт — гра з онлайн-друзями",
   "main": "server.js",
   "scripts": { "start": "node server.js" },
-  "engines": { "node": ">=18" }
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  }
 }
