@@ -76,21 +76,25 @@ body.querySelector('#pfForgot').onclick=()=>showGate('forgot');
 body.querySelector('#pfLogout').onclick=()=>{localStorage.removeItem('vt_net');location.reload()};
 }
 function nav(){
-const original=document.querySelector('#tabs'),dock=document.querySelector('#socialDock');
-if(!original||!dock||dock.dataset.unified)return;
+const dock=document.querySelector('#socialDock');
+if(!dock||dock.dataset.unified)return;
+const original=document.querySelector('#tabs')||document.querySelector('.tabs');
+const originalTabs=original?[...original.querySelectorAll('.tab')]:[];
+const originalButtons=[...dock.querySelectorAll('[data-sp]')];
+if(!originalTabs.length&&!originalButtons.length)return;
 dock.dataset.unified='1';
-const originalTabs=[...original.querySelectorAll(':scope > .tab')];
-const extra=[...dock.querySelectorAll('[data-sp]')].map(b=>({label:b.textContent,action:()=>b.click(),key:b.dataset.sp}));
+const entries=[...originalTabs.map((b,i)=>({label:b.textContent.trim()||'Розділ '+(i+1),key:'tab'+i,action:()=>b.click()})),...originalButtons.map(b=>({label:b.textContent.trim(),key:b.dataset.sp,action:()=>b.click()}))];
 const menu=document.createElement('div');menu.id='uhyMore';menu.hidden=true;document.body.append(menu);
-const entries=originalTabs.map((b,i)=>({label:b.textContent.trim()||'Розділ '+(i+1),action:()=>b.click(),key:'tab'+i})).concat(extra);
-const find=(needle)=>entries.find(x=>x.key===needle)||entries.find(x=>x.label.toLowerCase().includes(needle));
-const primary=[find('tab0'),find('tab1'),find('world'),find('casino')].filter(Boolean);
-dock.replaceChildren();
-const make=(parent,label,action)=>{const b=document.createElement('button');b.textContent=label;b.onclick=()=>{menu.hidden=true;action()};parent.append(b);return b};
-primary.forEach(x=>make(dock,x.label,x.action));
-const more=make(dock,'☰ Меню',()=>{menu.hidden=!menu.hidden});
-more.onclick=()=>{menu.hidden=!menu.hidden};
-entries.filter(x=>!primary.includes(x)).forEach(x=>make(menu,x.label,x.action));
+const byKey=(k)=>entries.find(e=>e.key===k);
+const home=byKey('tab0')||entries[0],fight=byKey('tab1')||entries[1],street=byKey('world'),casino=byKey('casino');
+const primary=[home,fight,street,casino].filter((e,i,a)=>e&&a.indexOf(e)===i);
+// Detach the dock from the game grid, so fixed positioning is relative to viewport.
+document.body.append(dock);dock.replaceChildren();
+function btn(parent,label,action){const b=document.createElement('button');b.type='button';b.textContent=label;b.addEventListener('click',()=>{menu.hidden=true;action()});parent.append(b);return b}
+primary.forEach(e=>btn(dock,e.label,e.action));
+const more=btn(dock,'☰ Меню',()=>{});more.onclick=()=>{menu.hidden=!menu.hidden};
+entries.filter(e=>!primary.includes(e)).forEach(e=>btn(menu,e.label,e.action));
+document.addEventListener('click',e=>{if(!menu.hidden&&!menu.contains(e.target)&&e.target!==more)menu.hidden=true});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')menu.hidden=true});
 }
 window.UHYACCOUNT={render:renderAccount};
@@ -104,4 +108,5 @@ if(!r.ok){showGate('login');return}
 if(r.legacy){showGate('claim');return}
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+setTimeout(nav,300);setTimeout(nav,1100);
 })();

@@ -2,10 +2,10 @@
 const css=`
 @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&display=swap');
 :root{--noir-ink:#181411;--noir-paper:#d8b98b;--noir-gold:#f7b83d;--noir-edge:#97714d}
-html{background:#15120f!important}
-body{background:repeating-linear-gradient(95deg,#1d1915 0 2px,#171411 2px 39px)!important;color:#f1dfc4!important;min-height:100dvh}
-body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.18;background:repeating-linear-gradient(0deg,transparent 0 3px,#050403 4px 5px);mix-blend-mode:multiply}
-body>*{position:relative}
+html{background:#15120f!important} .hud,.card,.paper,.scene{background-image:none!important} #uhyComicScene .land{background-image:initial} #uhyComicScene .day{background-image:url('/assets/noir-courtyard-day.webp')} #uhyComicScene .night{background-image:url('/assets/noir-courtyard-night.webp')}
+body{background:#171411!important;color:#f1dfc4!important;min-height:100dvh}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.045;background:repeating-linear-gradient(0deg,transparent 0 3px,#050403 4px 5px);mix-blend-mode:multiply}
+body>*{position:relative}#uhyComicScene{z-index:0} .wrap,.container,main{min-width:0}
 h1,h2,h3,.title,.section-title{font-family:Oswald,Impact,'Arial Narrow',sans-serif!important;letter-spacing:.035em;text-shadow:2px 2px #100c09}
 h1{color:var(--noir-gold)!important}
 button{transition:transform .15s ease,filter .15s ease,box-shadow .2s ease}
@@ -19,12 +19,12 @@ button:not(:disabled):hover{filter:brightness(1.11)}
 #socialPanel .spitem{background:#30271f;border:1px solid #705438;border-radius:6px;padding:12px!important;margin:8px 0}
 #socialPanel button:not(.alt){background:linear-gradient(#ffd36c,#d99121)!important;border:2px solid #3d2514!important;border-radius:5px!important;box-shadow:inset 0 2px #ffe4a0,2px 3px #0d0a07!important;color:#261a10!important;font-family:Oswald,Impact,sans-serif!important;letter-spacing:.025em}
 #socialPanel input,#socialPanel select{background:#14110e!important;border:2px solid #87613d!important;color:#f3e7d1!important;border-radius:5px!important;min-height:42px}
-#socialDock{background:linear-gradient(#332820,#1a1512)!important;border:3px solid #9b7448!important;border-bottom:0!important;border-radius:9px 9px 0 0!important;box-shadow:0 -6px 22px #0009!important}
-#socialDock>button{font-family:Oswald,Impact,sans-serif!important;text-transform:uppercase!important;letter-spacing:.035em!important;background:#33291e!important;border:1px solid #6e5035!important;color:#f4dfbf!important}
+#socialDock{max-height:78px!important;overflow:hidden!important;display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;z-index:9000!important;background:linear-gradient(#332820,#1a1512)!important;border:3px solid #9b7448!important;border-bottom:0!important;border-radius:9px 9px 0 0!important;box-shadow:0 -6px 22px #0009!important}
+#socialDock>button{min-width:0!important;white-space:normal!important;overflow:hidden!important;text-overflow:ellipsis!important;font-family:Oswald,Impact,sans-serif!important;text-transform:uppercase!important;letter-spacing:.035em!important;background:#33291e!important;border:1px solid #6e5035!important;color:#f4dfbf!important}
 #socialDock>button:hover,#socialDock>button.nav-on{background:linear-gradient(#ffc653,#cf7c17)!important;color:#24150b!important}
-#uhyMore{background:#241b16!important;border:3px solid #a47b4c!important}
+#uhyMore{z-index:8999!important;background:#241b16!important;border:3px solid #a47b4c!important}
 #uhyMore button{font-family:Oswald,Impact,sans-serif!important;font-size:16px!important}
-#uhyComicScene{position:relative;isolation:isolate;margin:12px auto 18px;width:min(1250px,calc(100% - 24px));height:clamp(180px,30vw,390px);overflow:hidden;border:4px solid #ae8454;border-radius:7px;box-shadow:0 0 0 3px #15100b,0 15px 32px #000b;background:#181411}
+#uhyComicScene{position:relative;isolation:isolate;margin:12px auto 18px;width:calc(100% - 20px);max-width:1250px;min-width:0;grid-column:1/-1!important;grid-row:auto!important;height:clamp(200px,27vw,340px);overflow:hidden;border:4px solid #ae8454;border-radius:7px;box-shadow:0 0 0 3px #15100b,0 15px 32px #000b;background:#181411}
 #uhyComicScene .land{position:absolute;inset:-2%;background-position:center 47%;background-size:cover;transition:opacity 1.8s ease;transform:scale(1.04);animation:uhyBreath 15s ease-in-out infinite alternate}
 #uhyComicScene .day{background-image:url('/assets/noir-courtyard-day.webp')}
 #uhyComicScene .night{background-image:url('/assets/noir-courtyard-night.webp');opacity:0}
@@ -42,17 +42,20 @@ button:not(:disabled):hover{filter:brightness(1.11)}
 @keyframes uhyFog{to{transform:translate(160px,-20px);opacity:.08}}
 @keyframes uhyFlicker{0%,85%,91%,100%{opacity:.9}87%,90%,93%{opacity:.18}}
 @keyframes uhySpark{to{transform:translateY(-110px) rotate(30deg);opacity:0}}
-@media(max-width:700px){#uhyComicScene{height:220px;margin:5px auto 12px;width:calc(100% - 12px);border-width:2px}#uhyComicScene .sceneSub{top:56px;max-width:53%}#uhyComicScene .sceneTip{bottom:7px}#uhyComicScene .interact{font-size:11px}#socialPanel .spbox{max-height:calc(100dvh - 14px)!important}}
+@media(max-width:700px){#socialDock{grid-template-columns:repeat(5,minmax(0,1fr))!important;max-height:82px!important}#uhyComicScene{height:220px;margin:5px auto 12px;width:calc(100% - 12px);border-width:2px}#uhyComicScene .sceneSub{top:56px;max-width:53%}#uhyComicScene .sceneTip{bottom:7px}#uhyComicScene .interact{font-size:11px}#socialPanel .spbox{max-height:calc(100dvh - 14px)!important}}
 @media(prefers-reduced-motion:reduce){#uhyComicScene *,button{animation:none!important;transition:none!important}}
 `;
 const style=document.createElement('style');style.textContent=css;document.head.append(style);
 function time(){const d=new Date(Date.now()+2*3600000);return {hour:d.getUTCHours(),clock:String(d.getUTCHours()).padStart(2,'0')+':'+String(d.getUTCMinutes()).padStart(2,'0')}}
 function create(){
 if(document.querySelector('#uhyComicScene'))return;
-const target=document.querySelector('#tabs')||document.querySelector('main')||document.body.firstElementChild;
+const target=document.querySelector('.hud')||document.querySelector('#tabs')||document.querySelector('.tabs')||document.querySelector('main')||document.body.firstElementChild;
 const box=document.createElement('section');box.id='uhyComicScene';box.setAttribute('aria-label','Ілюстроване місто, час гри');
 box.innerHTML=`<div class="land day"></div><div class="land night"></div><div class="fog"></div><div class="neon"></div><div class="sceneShade"></div><div class="sceneTitle">УХИЛЯНТ</div><div class="sceneSub">ВУЛИЧНИЙ СИМУЛЯТОР</div><div class="clock" id="uhyClock"></div><div class="sceneTip"><span id="uhySceneCaption">Місто живе своїм життям</span><button type="button" class="interact" id="uhySceneAction">🐈 Погладити кота</button></div>`;
-if(target?.parentNode)target.parentNode.insertBefore(box,target);else document.body.prepend(box);
+// Put scene in the main page flow, never inside a grid column or an existing panel.
+const main=target?.closest('.wrap,.container,#app,main') || target?.parentElement;
+if(main && main!==document.body){main.insertBefore(box,main.firstElementChild);}else{document.body.insertBefore(box,document.body.firstElementChild)}
+
 const refresh=()=>{const t=time(),night=t.hour<6||t.hour>=20;box.dataset.night=String(night);box.querySelector('#uhyClock').textContent=(night?'☾ НІЧ':'☀ ДЕНЬ')+' · '+t.clock+' UTC+2';};
 refresh();setInterval(refresh,30000);
 const tips=['Кіт задоволено муркоче.','Кіт перевернувся на інший бік.','Кіт ліниво потягнувся.','Кіт знову заснув.'];
