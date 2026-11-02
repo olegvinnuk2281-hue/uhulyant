@@ -1,27 +1,23 @@
-// Ухилянт — сервер (без залежностей). Запуск: node server.js   (потрібен Node 18+)
-// Віддає гру (uhylyant.html з тієї ж папки), веде акаунти, друзів за ID й перевіряє прогрес.
-//
-// Змінні середовища:
-//   PORT         порт (хмарні хостинги задають самі)
-//   DATA_DIR     папка для data.json (на хостингу — підключений постійний диск!)
-//   TRUST_PROXY  =1, якщо сервер стоїть за проксі хостингу (Render, Railway, Fly…): тоді IP береться з x-forwarded-for
 'use strict';
 const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto');
+const { createClient } = require('@supabase/supabase-js');
+
 const PORT = process.env.PORT || 3000;
-const DIR = process.env.DATA_DIR || __dirname;
-const FILE = path.join(DIR, 'data.json');
 const TRUST_PROXY = process.env.TRUST_PROXY === '1';
 const ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
+// Підключення до Supabase через змінні середовища Render
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const supabase = (SUPABASE_URL && SUPABASE_KEY) ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
 /* ====================================================================
    ПРАВИЛА ГРИ, ЯКІ СЕРВЕР МАЄ ЗНАТИ (дзеркало клієнта).
-   Якщо міняєш баланс у uhylyant.html — міняй і тут, інакше чесні гравці
-   отримуватимуть «відкат» прогресу.
    ==================================================================== */
 const TIER_LVL = [1, 10, 40, 150, 500, 1500, 3500, 5500], MAXLVL = 6000;
 const MIN = 6e4, HOUR = 36e5, DAY = 864e5;
 const REGEN = 5 * MIN;            // +1 енергії за 5 хв
-const FOOD_CD = 30e3, FOOD_EN = 20; // «Борщ»: +20 енергії раз на 30 с  (← найшвидше джерело енергії; кулдаун змінюєш і в клієнті, і тут)
+const FOOD_CD = 30e3, FOOD_EN = 20; // «Борщ»: +20 енергії раз на 30 с
 const E_RATE = 1 / REGEN + FOOD_EN / FOOD_CD; // максимум енергії за мілісекунду
 const SKEW = 1.15;                // запас на неточність годинників
 const BOSS_HP = [1000, 2500, 6000, 14000, 32000, 70000], BOSS_ROUND = 125500, GROW = 1.45;
@@ -32,7 +28,7 @@ const EU_COST = { lang: [0, 200, 500, 1200, 2500, 5000], job: [0, 400, 900, 1800
 const tierOf = l => { let t = 0; TIER_LVL.forEach((x, i) => { if (l >= x) t = i; }); return t; };
 const basePay = t => Math.round(40 * Math.pow(4, t));
 const xpNeed = l => 20 + l;
-const XP_K = 900;                 // темп прокачки (має збігатися з XP_K у uhylyant.html): увесь досвід ділиться на 1 + XP_K·рівень/6000
+const XP_K = 900;                 // темп прокачки
 const xpDiv = l => 1 + XP_K * l / MAXLVL;
 const totalXP = (L, x) => 20 * (L - 1) + (L - 1) * L / 2 + x;
 const UAB = basePay(7);
@@ -40,25 +36,45 @@ const UA_COST = { pos: [0, 6, 14, 30, 60, 120].map(x => x * UAB), biz: [0, 10, 2
 const BIZ_RATE = [0, .5, 1.5, 4, 10, 25];
 const hpOf = (b, r) => Math.round(BOSS_HP[b] * Math.pow(GROW, r));
 const cum = (arr, n) => { let s = 0; for (let i = 1; i <= n; i++) s += arr[i] || 0; return s; };
-// скільки сумарно шкоди по босах «вкладено» (повні кола + пройдені боси + зняте HP поточного)
 const dealt = (b, r, hp) => {
   const g = Math.pow(GROW, r); let s = BOSS_ROUND * (g - 1) / (GROW - 1);
   for (let i = 0; i < b; i++) s += BOSS_HP[i] * g;
   return s + BOSS_HP[b] * g - hp;
 };
-// верхня межа множника шкоди: одяг (≤ 25·тір + 2,34 за ★) і рівень (до 300)
 const bMultMax = (L, tg, sUp) => (1 + .015 * (25 * tg + 2.34 * sUp)) * (1 + .02 * Math.min(L, 300));
-// поля збереження, які сервер зберігає; решта відкидається. Додаєш нове поле в клієнті — додай і сюди.
 const KEYS = ['v', 'started', 'name', 'look', 'ng', 'level', 'xp', 'uah', 'gold', 'energy', 'eAt', 'eq', 'inv', 'bronUntil', 'fakeUntil', 'wantedUntil',
   'job', 'offers', 'offersAt', 'tcc', 'foodAt', 'dailyAt', 'end', 'eu', 'ua', 'st', 'say', 'seenEnd', 'askedEnd', 'bs', 'up'];
 
-/* ---------- сховище ---------- */
+/* ---------- сховище (Supabase) ---------- */
 let DB = { players: {} };
-try { DB = JSON.parse(fs.readFileSync(FILE, 'utf8')); } catch (e) {}
-let dirty = false;
-function flush() { if (!dirty) return; dirty = false; try { fs.writeFileSync(FILE + '.tmp', JSON.stringify(DB)); fs.renameSync(FILE + '.tmp', FILE); } catch (e) { console.error(e); } }
+
+async function loadDB() {
+  if (!supabase) return;
+  try {
+    const { data, error } = await supabase.from('players').select('*');
+    if (!error && data) {
+      data.forEach(row => { DB.players[row.id] = row.data; });
+      console.log(`Завантажено ${data.length} гравців із Supabase`);
+    }
+  } catch (e) { console.error('Помилка завантаження бази:', e); }
+}
+loadDB();
+
+let dirtyPlayerIds = new Set();
+async function flush() {
+  if (!supabase || dirtyPlayerIds.size === 0) return;
+  const idsToSave = Array.from(dirtyPlayerIds);
+  dirtyPlayerIds.clear();
+
+  for (const id of idsToSave) {
+    const playerData = DB.players[id];
+    if (playerData) {
+      await supabase.from('players').upsert({ id, data: playerData });
+    }
+  }
+}
 setInterval(flush, 3000).unref();
-['SIGTERM', 'SIGINT'].forEach(s => process.on(s, () => { flush(); process.exit(0); }));
+['SIGTERM', 'SIGINT'].forEach(s => process.on(s, async () => { await flush(); process.exit(0); }));
 
 const sha = s => crypto.createHash('sha256').update(s).digest('hex');
 const newId = () => { for (;;) { let s = ''; for (let i = 0; i < 8; i++) s += ALPHA[crypto.randomInt(ALPHA.length)]; if (!DB.players[s]) return s; } };
@@ -67,20 +83,10 @@ const num = (v, d = 0) => (Number.isFinite(+v) ? +v : d);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const sumUp = up => Object.values(up || {}).reduce((a, b) => a + Math.max(0, num(b)), 0);
 
-const rate = new Map();                                                   // простий ліміт запитів
+const rate = new Map();                                                   
 function limited(key, max, win) { const t = Date.now(), a = (rate.get(key) || []).filter(x => t - x < win); a.push(t); rate.set(key, a); return a.length > max; }
 setInterval(() => { const t = Date.now(); for (const [k, a] of rate) if (!a.some(x => t - x < 36e5)) rate.delete(k); }, 6e4).unref();
 
-/* ====================================================================
-   ПЕРЕВІРКА ПРОГРЕСУ — головне проти накрутки.
-   Принципи:
-   • «Бюджет енергії» накопичується з часом (і не видається заново на кожен запит) —
-     весь отриманий досвід, гроші й урон по босах «оплачуються» з нього.
-   • Усе рахується на чернетці. Стан сервера (бюджет, золото, кулдауни) змінюється
-     лише коли ВСІ перевірки пройдено, тож відхилене збереження ні на що не впливає.
-   • Витрати перевіряються за законом збереження: гривні не можуть зрости більше,
-     ніж зароблено (st.earned) мінус мінімальна ціна куплених ★, предметів і кроків.
-   ==================================================================== */
 function fresh() {
   return { level: 1, xp: 0, uah: 150, gold: 0, ng: 0, inv: ['head0', 'body0', 'legs0', 'shoes0', 'acc0'], up: {}, st: { earned: 0, escaped: 0, caught: 0 }, bs: { me: 0, wp: [], r: 0, b: 0, w: 0 }, dailyAt: 0, end: null, seenEnd: false };
 }
@@ -94,14 +100,12 @@ function validate(p, nx) {
   for (const k of Object.keys(nx)) if (!KEYS.includes(k)) delete nx[k];
   nx.name = cleanName(nx.name); nx.say = String(nx.say || '').slice(0, 300);
 
-  /* --- базові поля --- */
   const L = num(nx.level, 0), xp = num(nx.xp, -1), ng = num(nx.ng, 0), uah = num(nx.uah, -1), gold = num(nx.gold, -1);
   if (!isInt(L, 1, 1e7) || !(xp >= 0) || xp > xpNeed(L) + 1e-6) return bad('рівень');
   if (!isInt(ng, 0, 1e4)) return bad('нове життя');
   if (!(uah >= 0) || !(gold >= 0) || uah > 1e18 || gold > 1e9) return bad('баланс');
   nx.level = L; nx.xp = xp; nx.ng = ng; nx.uah = uah; nx.gold = gold;
 
-  /* --- інвентар, екіпіровка, ★ --- */
   const inv = Array.isArray(nx.inv) ? nx.inv : null;
   if (!inv || inv.length > 40 || new Set(inv).size !== inv.length) return bad('інвентар');
   let maxT = 0;
@@ -114,7 +118,6 @@ function validate(p, nx) {
   for (const id of Object.keys(up)) { if (!inv.includes(id) || !isInt(up[id], 0, 1e5)) return bad('★'); sUp += up[id]; }
   nx.up = up;
 
-  /* --- «Нове життя»: усе скидається, тож жодних поблажок --- */
   if (ng !== num(pv.ng)) {
     const b = nx.bs || {};
     const ok = ng === num(pv.ng) + 1 && pv.end && pv.seenEnd && num(pv.level) >= MAXLVL && !nx.end;
@@ -124,11 +127,10 @@ function validate(p, nx) {
   }
 
   const pL = Math.max(1, num(pv.level, 1)), tr = tierOf(L), tg = Math.max(tr, maxT), bp = basePay(tr);
-  const div = xpDiv(pL);           // на початку проміжку дільник найменший, тож чесних гравців не відхилимо
+  const div = xpDiv(pL);           
   const dXP = totalXP(L, xp) - totalXP(pL, num(pv.xp));
   if (dXP < -1e-6) return bad('рівень');
 
-  /* --- шлях (Європа / Україна) і фінал --- */
   const nend = nx.end || null, pend = pv.end || null;
   if (nend !== pend && (pend || !['eu', 'ua'].includes(nend) || L < MAXLVL)) return bad('шлях');
   if (nx.seenEnd && !pv.seenEnd) {
@@ -155,7 +157,6 @@ function validate(p, nx) {
     E_eu = dEur / (14 * (1 + num(e.job) * 0.9) * (1 + num(e.lang) * 0.15) * 1.25 * (1 + 0.25 * ng) / 10);
   } else if (nx.eu) return bad('Європа');
 
-  /* --- бої --- */
   const bs = nx.bs && typeof nx.bs === 'object' ? nx.bs : {}, pb = pv.bs || {};
   const bb = num(bs.b, -1), r = num(bs.r, -1), w = num(bs.w, -1), me = num(bs.me, -1);
   if (!isInt(bb, 0, 5) || !isInt(r, 0, 300) || !isInt(w, 0, 1e9) || !isInt(me, 0, 1e5) || me < num(pb.me)) return bad('бій');
@@ -170,23 +171,19 @@ function validate(p, nx) {
   if (!wp || wp.length > 4 || new Set(wp).size !== wp.length) return bad('зброя');
   let wpGold = 0;
   for (const x of wp) { if (x === 'mace') { if (w < 4) return bad('зброя'); } else if (WEAPON_GOLD[x]) wpGold += WEAPON_GOLD[x]; else return bad('зброя'); }
-  const kmax = 6 + 6 * r;
 
-  /* --- бюджет енергії (накопичується з часом) --- */
   const b0 = p.bud || { e: 250, t: p.lastSave || p.created || t };
   const dt = clamp(t - b0.t, 0, 3 * DAY);
   const maxE = 50 + 10 * me + 3 * (15 * tg + Math.floor(sUp / 3));
   let E = Math.min(b0.e + dt * E_RATE * SKEW, maxE + E_RATE * 10 * MIN);
 
-  /* --- золото: джерело лише серверний «банк» ≈ 30 на добу --- */
   let bank = Math.min(60, num(p.goldBank, 30) + dt / DAY * 30), spent = num(p.goldSpent, 0), spentNow = 0;
   const dg = gold - num(pv.gold);
   if (dg > 1e-6) { if (dg > bank + 1e-6) return bad('золото'); bank -= dg; }
-  else if (dg < -1e-6) { spentNow = -dg; spent += spentNow; E += Math.floor(spentNow / 15) * maxE; } // «повна енергія» = 15 золота
+  else if (dg < -1e-6) { spentNow = -dg; spent += spentNow; E += Math.floor(spentNow / 15) * maxE; } 
   const needGold = amount => { const n = amount - spent; if (n > 1e-6) { if (n > bank + 1e-6) return false; bank -= n; spent += n; } return true; };
   if (!needGold(30 * me + wpGold)) return bad('золото');
 
-  /* --- нагороди івентів: раз на ~добу на кожну (облік на сервері) --- */
   const ev = bs.ev || {}, pev = pb.ev || {}, claims = [];
   let claimMoney = 0, claimXP = 0, tripItem = 0;
   for (const id of Object.keys(EV)) {
@@ -197,20 +194,18 @@ function validate(p, nx) {
     }
   }
 
-  /* --- предмети: або куплені (ціна), або дроп/нагорода (обмежена кількість) --- */
   const oldInv = new Set(pv.inv || []);
   const added = inv.filter(id => !oldInv.has(id)).map(id => ({ id, t: +ID_RE.exec(id)[2] })).sort((a, c) => c.t - a.t);
   if (added.length > 12) return bad('предмети');
   let free = dW + tripItem, itemUah = 0, itemGold = 0;
   for (const it of added) {
     if (it.t === 0) continue;
-    if (free > 0) { free--; continue; }                       // найдорожчі — «дроп»
+    if (free > 0) { free--; continue; }                       
     if (L < TIER_LVL[it.t]) return bad('предмет за рівень');
     if (it.t === 6) itemGold += 150; else itemUah += 100 * Math.pow(4, it.t);
   }
-  if (itemGold) { const n = itemGold - spentNow; if (n > 1e-6) { if (n > bank + 1e-6) return bad('золото'); bank -= n; spent += n; } } // золоті речі купуються за золото
+  if (itemGold) { const n = itemGold - spentNow; if (n > 1e-6) { if (n > bank + 1e-6) return false; bank -= n; spent += n; } } 
 
-  /* --- ★: кожна нова зірка коштує не менше за мінімальну ціну --- */
   let starCost = 0, nStars = 0;
   for (const id of Object.keys(pup)) if (num(up[id]) < num(pup[id])) return bad('★');
   for (const id of Object.keys(up)) { const a = num(pup[id]); nStars += up[id] - a; if (up[id] < a) return bad('★'); }
@@ -218,14 +213,12 @@ function validate(p, nx) {
   const pbp = basePay(tierOf(pL));
   for (const id of Object.keys(up)) for (let n = num(pup[id]); n < up[id]; n++) starCost += pbp * 3 * Math.pow(1.3, n + 1) * 0.999;
 
-  /* --- досвід --- */
   const dEsc = num(nx.st && nx.st.escaped) - num(pv.st && pv.st.escaped), dCau = num(nx.st && nx.st.caught) - num(pv.st && pv.st.caught);
   if (dEsc < 0 || dCau < 0 || dEsc > dCau + 1) return bad('втечі');
   const winXP = dW * 3 * xpNeed(L) * kmax / div, escXP = dEsc * xpNeed(L) / div;
   const gigXP = Math.max(0, dXP - winXP - escXP - claimXP);
   const E_X = gigXP / (1.3 * (4 + 0.2 * L) / div);
 
-  /* --- гроші --- */
   const earned = num(nx.st && nx.st.earned), pEarned = num(pv.st && pv.st.earned), dEarn = earned - pEarned;
   if (dEarn < -1e-6) return bad('гроші');
   let daily = 0;
@@ -244,12 +237,10 @@ function validate(p, nx) {
   const spentMin = starCost + itemUah + uaCost;
   if (uah > num(pv.uah) + dEarn - spentMin + 1) return bad('гривні');
 
-  /* --- урон по босах: власна енергія + шкода від друзів --- */
   const F = Math.max(0, num(p.fdmg)), useF = Math.min(F, dD);
   const E_D = (dD - useF) / (120 * bMultMax(L, tg, sUp));
 
-  /* --- підсумок: усе «оплачується» з бюджету енергії --- */
-  const need = Math.max(E_X, E_M) + E_D + E_eu;                  // підробітки дають і досвід, і гроші одночасно
+  const need = Math.max(E_X, E_M) + E_D + E_eu;                  
   if (need > E + 10) return bad('надто швидкий прогрес');
 
   return {
@@ -288,7 +279,8 @@ async function api(req, res, route) {
     const b = await body(req); if (!b) return send(res, 400, { ok: false });
     const key = crypto.randomBytes(24).toString('hex'), id = newId();
     DB.players[id] = { id, keyHash: sha(key), name: cleanName(b.name), created: Date.now(), lastSave: Date.now(), seen: Date.now(), save: null, friends: [], reqIn: [], reqOut: [], events: [], goldBank: 30, goldSpent: 0, hits: [], bud: { e: 250, t: Date.now() }, evClaim: {}, fdmg: 0 };
-    dirty = true; return send(res, 200, { ok: true, id, key, fresh: true });
+    dirtyPlayerIds.add(id); 
+    return send(res, 200, { ok: true, id, key, fresh: true });
   }
   const p = auth(req);
   if (!p) return send(res, 401, { ok: false, err: 'auth' });
@@ -300,7 +292,8 @@ async function api(req, res, route) {
     const nx = b.save, v = validate(p, nx);
     if (!v.ok) { console.log('відхилено', p.id, v.why); return send(res, 200, { ok: false, why: v.why, save: p.save || undefined }); }
     v.commit();
-    nx.gold = Math.min(num(nx.gold), 1e9); p.save = nx; p.lastSave = Date.now(); p.name = cleanName(nx.name); dirty = true;
+    nx.gold = Math.min(num(nx.gold), 1e9); p.save = nx; p.lastSave = Date.now(); p.name = cleanName(nx.name); 
+    dirtyPlayerIds.add(p.id);
     return send(res, 200, { ok: true });
   }
   if (route === 'friends') {
@@ -314,23 +307,27 @@ async function api(req, res, route) {
     if (!o || o.id === p.id) return send(res, 200, { ok: false, err: 'Гравця з таким ID немає' });
     if (p.friends.includes(id)) return send(res, 200, { ok: true, status: 'friends' });
     if (p.friends.length >= 30) return send(res, 200, { ok: false, err: 'Максимум 30 друзів' });
-    if (p.reqIn.includes(id)) {                                            // взаємно: стаємо друзями
+    if (p.reqIn.includes(id)) {                                            
       if (o.friends.length >= 30) return send(res, 200, { ok: false, err: 'У друга вже 30 друзів' });
       p.reqIn = p.reqIn.filter(x => x !== id); o.reqOut = o.reqOut.filter(x => x !== p.id);
-      p.friends.push(id); o.friends.push(p.id); dirty = true; return send(res, 200, { ok: true, status: 'friends' });
+      p.friends.push(id); o.friends.push(p.id); 
+      dirtyPlayerIds.add(p.id); dirtyPlayerIds.add(o.id);
+      return send(res, 200, { ok: true, status: 'friends' });
     }
     if (!o.reqIn.includes(p.id)) { if (o.reqIn.length >= 50) return send(res, 200, { ok: false, err: 'У гравця забагато запитів' }); o.reqIn.push(p.id); }
     if (!p.reqOut.includes(id)) p.reqOut.push(id);
-    dirty = true; return send(res, 200, { ok: true, status: 'sent' });
+    dirtyPlayerIds.add(p.id); dirtyPlayerIds.add(o.id);
+    return send(res, 200, { ok: true, status: 'sent' });
   }
   if (route === 'friend/del') {
     const b = await body(req); if (!b) return send(res, 400, { ok: false });
     const id = String(b.id || '').toUpperCase(), o = DB.players[id], rm = (a, x) => a.filter(y => y !== x);
     p.friends = rm(p.friends, id); p.reqIn = rm(p.reqIn, id); p.reqOut = rm(p.reqOut, id);
-    if (o) { o.friends = rm(o.friends, p.id); o.reqOut = rm(o.reqOut, p.id); o.reqIn = rm(o.reqIn, p.id); }
-    dirty = true; return send(res, 200, { ok: true });
+    if (o) { o.friends = rm(o.friends, p.id); o.reqOut = rm(o.reqOut, p.id); o.reqIn = rm(o.reqIn, p.id); dirtyPlayerIds.add(o.id); }
+    dirtyPlayerIds.add(p.id);
+    return send(res, 200, { ok: true });
   }
-  if (route === 'hit') {                                                   // удар по босу → друзі теж завдають шкоди (50%)
+  if (route === 'hit') {                                                   
     const b = await body(req); if (!b) return send(res, 400, { ok: false });
     const sv = p.save, L = sv ? num(sv.level, 1) : 1, sUp = sumUp(sv && sv.up);
     const tg = Math.max(tierOf(L), ...((sv && sv.inv) || []).map(id => { const m = ID_RE.exec(String(id)); return m ? +m[2] : 0; }));
@@ -342,12 +339,14 @@ async function api(req, res, route) {
     p.friends.forEach(id => {
       const o = DB.players[id]; if (!o) return;
       o.events.push({ name: p.name, dmg: d, t }); if (o.events.length > 50) o.events.shift();
-      const rr = o.save && o.save.bs ? clamp(num(o.save.bs.r), 0, 300) : 0;     // банк шкоди від друзів обмежений
+      const rr = o.save && o.save.bs ? clamp(num(o.save.bs.r), 0, 300) : 0;     
       o.fdmg = Math.min(4 * BOSS_ROUND * Math.pow(GROW, rr) + 1e5, num(o.fdmg) + Math.round(d * .5));
+      dirtyPlayerIds.add(o.id);
     });
-    dirty = true; return send(res, 200, { ok: true });
+    dirtyPlayerIds.add(p.id); 
+    return send(res, 200, { ok: true });
   }
-  if (route === 'events') { const list = p.events; p.events = []; dirty = true; return send(res, 200, { ok: true, list }); }
+  if (route === 'events') { const list = p.events; p.events = []; dirtyPlayerIds.add(p.id); return send(res, 200, { ok: true, list }); }
   return send(res, 404, { ok: false });
 }
 
