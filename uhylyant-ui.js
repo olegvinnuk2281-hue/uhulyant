@@ -35,6 +35,7 @@ const css=`
 #socialPanel .slot-result{min-height:32px;color:#ffe4a9;font-weight:800;font-size:18px}
 @media(max-width:700px){#socialPanel .spbox{height:100dvh;width:100%!important;border-radius:0!important;border:0!important}#spBody{padding:20px 14px 110px}#socialPanel .world-grid{grid-template-columns:1fr;gap:11px}#socialPanel .world-wide{grid-column:auto}#socialPanel .world-card{padding:14px}#socialPanel .world-list{grid-template-columns:1fr 1fr}#socialPanel .world-fields{grid-template-columns:1fr}#socialPanel .spclose{right:10px;top:10px}#socialDock{border-radius:12px 12px 0 0}#socialDock button{min-width:78px;font-size:11px!important}#socialPanel .slot-reels{gap:6px;padding:7px}#socialPanel .slot-reel{height:105px}body{padding-bottom:65px!important}.tabs{padding-bottom:70px!important}}
 @media(max-width:380px){#socialPanel .world-list{grid-template-columns:1fr}#socialPanel .slot-reel{height:90px}}
+#socialPanel .night-clock{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#131c22;border:1px solid #77603a;border-radius:13px;padding:14px 16px}#socialPanel .night-clock strong{font:800 32px Impact,sans-serif;color:#edb64c;letter-spacing:.08em}#socialPanel .night-clock span{font-weight:700;color:#d9d2bf}#socialPanel .world-card:has(.night-clock){background:linear-gradient(130deg,#242e39,#171b23)}
 /* Game-wide inked noir palette, inspired by gritty comic-book illustration. */
 :root{--bg:#15191a;--panel:#242526;--panel-2:#303334;--line:#514535;--ink:#f1e6cf;--muted:#b5a68f;--paper:#d6c49e;--paper-ink:#2b2119;--amber:#e9a72f;--amber-edge:#815316;--green:#86b88c;--red:#c9543c;--red-edge:#7a271a;--blue:#7a9aaf}
 body{background:radial-gradient(circle at 25% 15%,#4b392b 0%,transparent 35%),repeating-linear-gradient(90deg,#161b1d 0 46px,#1b2022 46px 48px)!important}
@@ -92,8 +93,36 @@ body{background:radial-gradient(circle at 25% 15%,#4b392b 0%,transparent 35%),re
 @media(max-width:380px){#socialPanel .slot-reel{height:100px}#socialPanel .reel-strip span{font-size:36px}#socialPanel .slot-controls button{min-width:44px}}
 @media(prefers-reduced-motion:reduce){#socialPanel .slot-reel.spinning .reel-strip{animation-duration:.4s}}
 
+/* Inked illustrated environments and restrained motion across every screen. */
+:root{--bg:#151a1c;--panel:#2b2925;--panel-2:#3a3530;--line:#71583b;--ink:#f4e6c9;--muted:#c1ad8f;--amber:#edae3c}
+body{background-color:#151a1c!important;background-image:linear-gradient(180deg,#cba77612,#11191edb),repeating-linear-gradient(0deg,#0000 0 6px,#00000014 6px 7px),linear-gradient(115deg,#35434b 0 25%,#202b30 25% 46%,#4d4438 46% 67%,#1a2429 67%)!important;background-attachment:fixed!important;transition:background-color 1.5s,color .6s}
+html[data-game-time=day] body{background-color:#84908b!important;background-image:linear-gradient(180deg,#e7c69a55,#1a2429bd),repeating-linear-gradient(0deg,#0000 0 6px,#00000013 6px 7px),linear-gradient(115deg,#8d9e9c 0 25%,#596f73 25% 46%,#ad9375 46% 67%,#607778 67%)!important}
+html[data-game-time=night] body{background-color:#09111b!important;background-image:linear-gradient(180deg,#081526e8,#162331a8),repeating-linear-gradient(0deg,#0000 0 6px,#00000022 6px 7px),linear-gradient(115deg,#111b28 0 25%,#1b2936 25% 46%,#272c2d 46% 67%,#0c1926 67%)!important}
+#gameClockBadge{position:fixed;right:12px;top:calc(9px + env(safe-area-inset-top,0px));z-index:8000;padding:6px 11px;border:1px solid #a07a43;background:#1a1d1de8;color:#ffdb8d;border-radius:8px;box-shadow:2px 3px #090a0a;font:700 11px system-ui;letter-spacing:.05em;pointer-events:none}
+.hud,.card,.paper,#socialPanel .world-card,#socialPanel .spbox{background-image:repeating-linear-gradient(120deg,#fff2 0 1px,transparent 1px 19px),linear-gradient(145deg,#3e3529,#1b2225)!important;box-shadow:0 7px 0 #110e0b,0 15px 32px #0006!important;transition:transform .25s,box-shadow .25s,background-color 1s}
+.card,.paper,#socialPanel .world-card{animation:inkReveal .4s ease-out both}
+@keyframes inkReveal{from{opacity:.25;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes neonBreath{0%,100%{text-shadow:0 0 5px #f2b44d55}50%{text-shadow:0 0 19px #f2b44d99}}
+#socialPanel .casino-banner strong{animation:neonBreath 3s ease-in-out infinite}
+#socialPanel .world-card:hover{box-shadow:0 10px 0 #110e0b,0 22px 35px #0008!important}
+.btn,.tab,#socialPanel button{transition:filter .18s,transform .18s,background .3s!important}
+.btn:active,.tab:active,#socialPanel button:active{transform:translateY(2px) scale(.985)!important}
+#socialPanel .spbox{background-color:#211d18!important}
+#socialPanel .world-card{background-color:#27231f!important}
+#socialPanel .world-job{border:2px solid #70563b;background:linear-gradient(150deg,#38312a,#201e1b);box-shadow:inset 0 1px #ffffff13}
+#socialPanel .paytable{background-image:repeating-linear-gradient(5deg,#0000 0 9px,#3b231014 9px 10px),linear-gradient(#e8d5a7,#bda16c)!important}
+html[data-game-time=night] .scene{box-shadow:0 0 28px #e6a34a36,0 8px 0 #100d0a!important}
+html[data-game-time=day] .scene{box-shadow:0 0 22px #f8d49d52,0 8px 0 #100d0a!important}
+@media(max-width:700px){#gameClockBadge{top:auto;bottom:calc(73px + env(safe-area-inset-bottom,0px));right:8px;font-size:10px}#socialPanel .spbox{height:100dvh!important}}
+@media(prefers-reduced-motion:reduce){.card,.paper,#socialPanel .world-card,#socialPanel .casino-banner strong{animation:none!important}*{scroll-behavior:auto!important}}
+
 `;
 const style=document.createElement('style');style.textContent=css;document.head.append(style);
+// UTC+2 is deliberately fixed, independently of the visitor's device timezone.
+const GAME_OFFSET_HOURS=2;
+function gameClock(){const d=new Date(Date.now()+GAME_OFFSET_HOURS*3600000);return {hour:d.getUTCHours(),minute:d.getUTCMinutes()}}
+function syncVisualClock(){const {hour,minute}=gameClock(),night=hour>=20||hour<6;document.documentElement.dataset.gameTime=night?'night':'day';let badge=document.getElementById('gameClockBadge');if(!badge){badge=document.createElement('div');badge.id='gameClockBadge';document.body.appendChild(badge)}badge.textContent=(night?'🌙 НІЧ':'☀ ДЕНЬ')+' · '+String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0')+' · UTC+2'}
+setInterval(syncVisualClock,15000);syncVisualClock();
 const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let latest=null,busy=false;
 const sym=['🍒','🍋','⭐','🎖️','💎','7️⃣'];
@@ -115,10 +144,13 @@ const work=card('💼 Біржа праці',`<p>Вакансії змінюют
 const inventory=card('🎒 Інвентар',`<div class="world-inventory">${(w.items||[]).map(id=>btn(e(gear[id]?.name||id),'equip',`data-item="${e(id)}"`)).join('')||'<p>Поки порожньо</p>'}</div><p>Одягнуто: ${Object.values(w.equipped||{}).map(id=>e(gear[id]?.name||id)).join(', ')||'нічого'}</p>`);
 const sel=(id,opts,v)=>`<select id="${id}">${opts.map(([a,b])=>`<option value="${a}" ${a===v?'selected':''}>${b}</option>`).join('')}</select>`;
 const looks=card('👤 Зовнішність',`<div class="world-fields">${sel('spHair',[['short','Коротка'],['buzz','Під машинку'],['long','Довга']],w.look?.hair)}${sel('spBeard',[['none','Без бороди'],['stubble','Щетина'],['full','Борода']],w.look?.beard)}${sel('spSkin',[['light','Світлий'],['medium','Середній'],['dark','Темний']],w.look?.skin)}</div><div class="world-actions">${btn('Зберегти вигляд','look')}</div>`);
+const nt=latest.night||{active:false,hour:12,minute:0,tasks:[],cooldownMs:0};
+const clock=String(nt.hour).padStart(2,'0')+':'+String(nt.minute).padStart(2,'0');
+const night=card('🌙 Комендантська година · Нічні справи',`<div class="night-clock"><strong>${clock}</strong><span>${nt.active?'🌘 Нічний режим активний':'☀️ Денний режим'}</span></div><p>Ігровий час: Київ. Комендантська година у світі гри — 00:00–05:00. Нічні завдання мають менший ризик невдачі, але доступні тільки вночі.</p><div class="world-list">${(nt.tasks||[]).map(j=>`<div class="world-job"><b>${e(j.name)}</b><small>${e(j.desc)} · +${j.cash} ₴ · +${j.xp} XP</small><small>Ризик ${j.risk}% · шанс знахідки 9%</small>${btn('Виконати','nightTask',`data-task="${e(j.id)}" ${!nt.active||nt.cooldownMs>0?'disabled':''}`)}</div>`).join('')}</div><p class="world-muted">${nt.active?(nt.cooldownMs>0?'Відпочинок: ще '+Math.ceil(nt.cooldownMs/1000)+' с':'Можна виконати нічне завдання'):'Нічні справи відкриються о 00:00'} · Пауза між завданнями 4 хв.</p>`,true);
 const brigade=card('⚔ Бригада та боси',br?`<p><b>${e(br.name)}</b> · код ${e(br.id)} · ${br.members.length}/8</p><p>${br.members.map(m=>e(m.name)).join(', ')}</p><p>Бос: ${e(br.fight?.boss||'не обраний')} · HP ${br.fight?.hp??'—'}</p><div class="world-actions">${bosses.map(x=>btn(`${e(x.name)} · ${x.hp} HP`,'fight',`data-boss="${e(x.id)}"`)).join('')}</div>`:`<input id="spBrigade" placeholder="Назва бригади або код запрошення" maxlength="24"><div class="world-actions">${btn('Створити','create')}${btn('Увійти за кодом','join','class="secondary"')}</div>`);
 const daily=card('🎁 Щоденний бонус',`<p>Одна спроба кожні 24 години. Випадкова нагорода: гроші, досвід або рідкісна річ.</p><div class="world-actions">${btn('🎡 Крутити рулетку','daily')}</div>`);
-panel('🏙 Вулиця · Робота та спорядження',info+`<div class="world-grid">${work}${daily}${inventory}${looks}${brigade}</div>`)}
-async function act(el){const action=el.dataset.wact;if(action==='minus'||action==='plus'){const x=document.getElementById('slotBet');x.value=Math.max(10,Math.min(1000,(Number(x.value)||50)+(action==='plus'?10:-10)));return}if(busy)return;busy=true;try{let p={action};if(action==='apply')p.job=el.dataset.job;if(action==='equip')p.item=el.dataset.item;if(action==='fight')p.boss=el.dataset.boss;if(action==='look'){p.hair=document.getElementById('spHair').value;p.beard=document.getElementById('spBeard').value;p.skin=document.getElementById('spSkin').value}if(action==='create')p.name=document.getElementById('spBrigade').value;if(action==='join')p.id=document.getElementById('spBrigade').value;
+panel('🏙 Вулиця · Робота та спорядження',info+`<div class="world-grid">${night}${work}${daily}${inventory}${looks}${brigade}</div>`)}
+async function act(el){const action=el.dataset.wact;if(action==='minus'||action==='plus'){const x=document.getElementById('slotBet');x.value=Math.max(10,Math.min(1000,(Number(x.value)||50)+(action==='plus'?10:-10)));return}if(busy)return;busy=true;try{let p={action};if(action==='apply')p.job=el.dataset.job;if(action==='nightTask')p.task=el.dataset.task;if(action==='equip')p.item=el.dataset.item;if(action==='fight')p.boss=el.dataset.boss;if(action==='look'){p.hair=document.getElementById('spHair').value;p.beard=document.getElementById('spBeard').value;p.skin=document.getElementById('spSkin').value}if(action==='create')p.name=document.getElementById('spBrigade').value;if(action==='join')p.id=document.getElementById('spBrigade').value;
 if(action==='spin'){
 p.action='slots';p.bet=Number(document.getElementById('slotBet').value);
 const reels=[0,1,2].map(i=>document.getElementById('slot'+i));
