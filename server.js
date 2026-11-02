@@ -633,7 +633,7 @@ async function show(which){active=which;open();body.innerHTML='<h2>Завант�
 const observer=new MutationObserver(dock);observer.observe($('#tabs'),{childList:true});dock();
 })();
 </script>`;
-      const extras = '<script src="/uhylyant-ui.js"></script><script src="/uhylyant-3d.js"></script><script src="/uhylyant-account.js"></script><script src="/uhylyant-comic.js"></script>';
+      const extras = '<script src="/uhylyant-ui.js"></script><script src="/uhylyant-account.js"></script>';
       // Patch the original client's detention handler in-memory; source HTML and old saves remain compatible.
       const oldCatch = `S.tcc={stage:0,nextAt:0,busy:false};S.st.caught++;`;
       const newCatch = `S.tcc={stage:0,nextAt:0,busy:false};S.st.caught++;

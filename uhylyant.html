@@ -225,6 +225,51 @@ body{background:#1e1a15 repeating-linear-gradient(0deg,#0000 0 31px,#ffffff08 31
 .fl1,.fl2{opacity:0;animation:fl 1s steps(1) infinite}.fl2{animation-delay:.5s}@keyframes fl{0%{opacity:.26}50%{opacity:0}}
 .cloud{animation:drift 45s linear infinite}@keyframes drift{from{transform:translateX(-140px)}to{transform:translateX(440px)}}
 .rain{animation:rain .8s linear infinite}@keyframes rain{from{transform:translateY(-16px)}to{transform:translateY(190px)}}
+
+/* V7: integrated comic layout; no overlay scene and no duplicate fixed dock */
+:root{--bg:#17120f;--panel:#292018;--panel-2:#392b20;--line:#8c643b;--ink:#f5e6c9;--muted:#c5ac86;--paper:#e5cba0;--paper-ink:#2a1d11;--amber:#f4b637;--amber-edge:#925417;--red:#c44932;--green:#88c36c}
+html,body{width:100%;max-width:none;min-width:0;background:#14100d!important}
+body{padding:0 14px!important;gap:0!important;overflow:hidden!important}
+.hud{background:linear-gradient(135deg,#32251b,#1b1713)!important;border:2px solid #9a6f3d!important;border-radius:8px!important;margin:8px 0!important;padding:10px 14px!important;box-shadow:0 5px 0 #080605!important}
+.scene{background:#19130f url('/assets/noir-courtyard-day.webp') center center/cover no-repeat!important;border:3px solid #b58a53!important;border-radius:8px!important;min-height:220px;aspect-ratio:16/9!important;box-shadow:0 7px 25px #0009!important;isolation:isolate}
+.scene[data-night="true"]{background-image:url('/assets/noir-courtyard-night.webp')!important}
+.scene>svg{opacity:0!important;pointer-events:none!important}
+.scene::before{content:'УХИЛЯНТ';position:absolute;left:3%;top:6%;z-index:2;font:900 clamp(28px,4vw,68px)/1 var(--font-display);color:#ffc044;-webkit-text-stroke:1px #261409;text-shadow:3px 4px #160b06,5px 6px #000;pointer-events:none}
+.scene::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,#0c080766,transparent 55%),linear-gradient(0deg,#08060577,transparent 45%);pointer-events:none}
+.scene .bubble{z-index:3;top:auto;bottom:12px;left:12px;right:12px;background:#16100bcf;border:1px solid #a27a48;border-radius:5px;color:#ffe9bd}
+.content{min-width:0;min-height:0;overflow:auto!important;padding:10px 4px 20px!important;gap:12px!important}
+.card,.paper{border:2px solid #7d5d3a!important;background:#30251d!important;border-radius:7px!important;box-shadow:0 4px 0 #100b08!important}
+.paper{background:repeating-linear-gradient(0deg,#e9d2a8,#e9d2a8 24px,#e3c89c 25px)!important;color:#2d2115!important}
+.btn,.tab{transition:transform .15s,filter .15s,background .15s}
+.btn:hover:not(:disabled),.tab:hover{filter:brightness(1.12)}
+.tabs{background:#241a14!important;border:2px solid #946c40!important;border-radius:8px!important;min-width:0;min-height:64px;padding:5px!important;gap:4px!important;box-shadow:0 -3px 18px #0008}
+.tab{color:#d9bb8b!important;font:700 12px var(--font-display)!important;letter-spacing:.03em;min-width:0}
+.tab.on{color:#1c1209!important;background:#efb438!important}
+#socialDock{position:static!important;transform:none!important;left:auto!important;bottom:auto!important;width:100%!important;max-width:none!important;grid-column:1/-1!important;display:flex!important;flex-wrap:wrap!important;justify-content:center!important;gap:4px!important;padding:4px 0 0!important;background:transparent!important;border:0!important;box-shadow:none!important;overflow:visible!important}
+#socialDock button{flex:1 1 90px!important;min-width:0!important;padding:8px 6px!important;font:700 12px var(--font-display)!important;background:#39291e!important;border:1px solid #785633!important;border-radius:5px!important;color:#f3dfbb!important;white-space:normal!important}
+#gameClockBadge{display:none!important}
+#socialPanel .spbox{max-height:calc(100dvh - 24px)!important;overflow-y:auto!important}
+@media(min-width:900px) and (min-height:560px){
+ body{display:grid!important;grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr)!important;grid-template-rows:auto minmax(0,1fr) auto!important;gap:10px 14px!important;max-width:1500px!important;margin:auto!important;padding:0 18px!important;height:100dvh!important}
+ .hud{grid-column:1/-1!important;grid-row:1!important;margin:10px 0 0!important}
+ .scene{grid-column:1!important;grid-row:2!important;width:100%!important;align-self:stretch!important;min-height:0!important;max-height:100%!important;margin:0!important;aspect-ratio:auto!important}
+ .content{grid-column:2!important;grid-row:2!important;padding:2px 6px 8px!important;align-self:stretch!important}
+ .tabs{grid-column:1/-1!important;grid-row:3!important;display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;margin:0 0 10px!important;max-height:145px!important;overflow:auto!important}
+ #socialDock{grid-column:1/-1!important}
+}
+@media(max-width:899px), (max-height:559px){
+ body{display:flex!important;flex-direction:column!important;height:100dvh!important;padding:0 8px!important}
+ .hud{margin:5px 0!important;padding:6px 9px!important}
+ .scene{flex:none!important;min-height:0!important;height:clamp(150px,30dvh,290px)!important;aspect-ratio:auto!important}
+ .content{flex:1!important;min-height:0!important;padding:9px 2px!important}
+ .tabs{flex:none!important;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;max-height:30dvh!important;overflow-y:auto!important;margin:0 0 max(4px,env(safe-area-inset-bottom))!important}
+ #socialDock{grid-column:1/-1!important;display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important}
+ #socialDock button{font-size:10px!important;padding:7px 2px!important}
+ .tab{padding:5px 1px!important}
+ .tab svg{height:18px!important;width:18px!important}
+}
+@media(max-width:390px){.scene{height:155px!important}.scene::before{font-size:28px}.hud .chip{padding:0 5px!important;font-size:11px!important}.tabs{max-height:33dvh!important}}
+@media(prefers-reduced-motion:reduce){.btn,.tab{transition:none!important}}
 </style>
 
 <header class="hud" id="hud"></header>
@@ -689,7 +734,7 @@ function renderHUD(){
   tickCd();
 }
 function renderScene(){
-  $('#scene').innerHTML=scene(sceneKind())+'<div class="bubble" id="bubble"></div>';
+  $('#scene').dataset.night=String((new Date(Date.now()+7200000).getUTCHours()<6)||(new Date(Date.now()+7200000).getUTCHours()>=20)); $('#scene').innerHTML=scene(sceneKind())+'<div class="bubble" id="bubble"></div>';
   $('#bubble').textContent=S.say||'';
 }
 function renderTabs(){
