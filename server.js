@@ -69,7 +69,12 @@ async function flush() {
   for (const id of idsToSave) {
     const playerData = DB.players[id];
     if (playerData) {
-      await supabase.from('players').upsert({ id, data: playerData });
+      const { error } = await supabase.from('players').upsert({ id, data: playerData });
+      if (error) {
+        console.error('❌ Помилка збереження в Supabase:', error.message);
+      } else {
+        console.log(`✅ Успішно збережено гравця ${id} у Supabase`);
+      }
     }
   }
 }
