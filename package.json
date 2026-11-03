@@ -1,0 +1,18 @@
+{
+  "name": "uhylyant-telegram-miniapp",
+  "version": "14.0.0",
+  "private": true,
+  "description": "Complete Uhylyant browser game / Telegram Mini App restored for fresh GitHub deployment",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check uhylyant-account.js && node --check uhylyant-ui.js && node --check uhylyant-social.js",
+    "verify": "node scripts/verify-project.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.0"
+  }
+}
