@@ -101,6 +101,7 @@ const entries=originalTabs.map((b,i)=>({label:b.dataset.v==='street'?'Підро
 const find=(needle)=>entries.find(x=>x.key===needle)||entries.find(x=>x.label.toLowerCase().includes(needle));
 const primary=[find('tab0'),find('tab1'),find('world'),find('casino')].filter(Boolean);
 dock.replaceChildren(raw);
+entries.push({label:'📻 Події району',key:'city-events',action:()=>window.UHYCity.open()});
 entries.push({label:'🏅 Тижнева ліга',key:'weekly',action:()=>window.UHYWeekly.open()});
 const make=(parent,label,action)=>{const b=document.createElement('button');b.textContent=label;b.onclick=()=>{menu.hidden=true;const panel=document.getElementById('socialPanel');if(panel)panel.style.display='none';action()};parent.append(b);return b};
 primary.forEach(x=>make(dock,x.label,x.action));

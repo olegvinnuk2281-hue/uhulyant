@@ -1,6 +1,6 @@
 {
   "name": "uhylyant",
-  "version": "1.2.0-rc.3",
+  "version": "1.2.0-rc.5",
   "private": true,
   "description": "Ухилянт — гра з онлайн-друзями",
   "main": "server.js",

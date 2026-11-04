@@ -80,3 +80,32 @@ test('Kyiv league closes at Sunday midnight and resets Monday, including summer 
  assert.equal(a.weekClock(Date.parse('2026-11-08T22:00:00Z')).id,'2026-11-09');
  assert.equal(a.weekClock(Date.parse('2026-07-04T21:00:00Z')).active,false);
 });
+test('welcome gift grants 50 coins once and kit is consumed once across restart',async()=>{
+ const p=player();p.save.started=true;p.save.energy=10;const a=boot({PLAYER01:p});
+ assert.equal((await a.call('me')).data.save.gold,50);assert.equal((await a.call('me')).data.save.gold,50);
+ const used=await a.call('city-events',{action:'kit'});assert.equal(used.data.save.energy,30);assert.equal(used.data.kit,0);
+ const b=boot(a.stored);assert.equal((await b.call('me')).data.save.gold,50);assert.equal((await b.call('city-events',{action:'kit'})).code,409);
+});
+test('city event pays once per Kyiv day and survives reload',async()=>{
+ const p=player();p.save.started=true;const a=boot({PLAYER01:p});await a.call('me');
+ const r=await a.call('city-events',{action:'radio',choice:'safe'});assert.equal(r.data.walletCash,230);
+ const b=boot(a.stored);assert.equal((await b.call('city-events',{action:'radio',choice:'safe'})).code,409);
+ assert.equal((await b.call('me')).data.walletCash,230);
+});
+test('failed gift commit rolls back and retry grants exactly once',async()=>{
+ const p=player();p.save.started=true;const a=boot({PLAYER01:p},true);assert.equal((await a.call('me')).code,503);
+ a.breakDB(false);assert.equal((await a.call('me')).data.save.gold,50);
+});
+test('weapon stacks preserve legacy copy, max spends only affordable gold, survive reload',async()=>{
+ const p=player();p.save.started=true;p.welcomeRC4=true;p.save.gold=250;p.save.bs.wp=['bat'];
+ const a=boot({PLAYER01:p});const r=await a.call('weapon-buy',{weapon:'bat',count:'max'});
+ assert.equal(r.data.save.gold,10);assert.equal(r.data.save.bs.weaponCounts.bat,7);
+ const b=boot(a.stored);assert.equal((await b.call('me')).data.save.bs.weaponCounts.bat,7);
+ assert.equal((await b.call('weapon-buy',{weapon:'bat',count:1})).code,400);
+ assert.equal((await b.call('weapon-buy',{weapon:'toString',count:1})).code,400);
+});
+test('failed weapon purchase rolls back both charge and stack',async()=>{
+ const p=player();p.save.started=true;p.welcomeRC4=true;p.save.gold=100;p.save.bs.wp=[];
+ const a=boot({PLAYER01:p},true);assert.equal((await a.call('weapon-buy',{weapon:'bat',count:2})).code,503);
+ a.breakDB(false);const r=await a.call('weapon-buy',{weapon:'bat',count:2});assert.equal(r.data.save.gold,20);assert.equal(r.data.save.bs.weaponCounts.bat,2);
+});

@@ -1,5 +1,5 @@
 (()=>{'use strict';
-const modes={gear:'wave',shop:'play',path:'walk',street:'walk',world:'walk',office:'work',career:'work',work:'work',boss:'fight',brigade:'fight',casino:'play',market:'play',wheel:'play',friends:'wave',yard:'wave',weekly:'proud',leaderboard:'proud',roof:'proud',news:'watch',account:'idle',home:'idle',housing:'idle'};
+const modes={gear:'wave',shop:'play',path:'walk',street:'walk',world:'walk',office:'work',career:'work',work:'work',boss:'watch',brigade:'watch',casino:'play',market:'play',wheel:'play',friends:'wave',yard:'wave',weekly:'proud',leaderboard:'proud',roof:'proud',news:'watch',account:'idle',home:'idle',housing:'idle'};
 const activeTimers=new WeakMap();
 function modeFor(key){return key.startsWith('tcc')?'watch':modes[key]||'idle'}
 function decorate(el){
@@ -22,8 +22,8 @@ document.addEventListener('click',e=>{
  const mode=/fight|bhit|hit/i.test(action)?'fight':/shift|gig|workCollect|apply|search/.test(action)?'work':/spin|daily/.test(action)?'play':/tccTry|escape|bribe|rescue/.test(action)?'walk':/equip|buy|look|food/.test(action)?'wave':null;
  if(!mode)return;
  const panel=document.getElementById('socialPanel');const scene=panel?.style.display==='flex'?panel.querySelector('.uhy-modal-scene'):document.getElementById('scene');
- if(!scene)return;clearTimeout(activeTimers.get(scene));scene.dataset.motion=mode;
- activeTimers.set(scene,setTimeout(()=>{scene.dataset.motion=modeFor(scene.dataset.section||scene.dataset.kind||'home')},2200));
+ if(!scene)return;clearTimeout(activeTimers.get(scene));scene.dataset.motion=mode;scene.dataset.gesture='action';
+ activeTimers.set(scene,setTimeout(()=>{delete scene.dataset.gesture;scene.dataset.motion=modeFor(scene.dataset.section||scene.dataset.kind||'home')},2200));
 },true);
 document.addEventListener('visibilitychange',()=>document.documentElement.classList.toggle('motion-paused',document.hidden));
 })();

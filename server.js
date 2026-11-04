@@ -316,6 +316,8 @@ function validate(p, nx) {
   const dD = Math.max(0, dealt(bb, r, hp) - dealt(pbb, pr, php));
   const wp = Array.isArray(bs.wp) ? bs.wp : null;
   if (!wp || wp.length > 4 || new Set(wp).size !== wp.length) return bad('зброя');
+  // Counts can only change through the purchase endpoint, never via a client save.
+  if(JSON.stringify(bs.weaponCounts||{})!==JSON.stringify(pb.weaponCounts||{}))return bad('кількість зброї');
   let wpGold = 0;
   for (const x of wp) { if (x === 'mace') { if (w < 4) return bad('зброя'); } else if (WEAPON_GOLD[x]) wpGold += WEAPON_GOLD[x]; else return bad('зброя'); }
 
@@ -453,6 +455,7 @@ function starterTelegramSave(name) {
 }
 const pub = p => ({ id: p.id, name: p.name, level: p.save ? p.save.level : 1, b: p.save && p.save.bs ? num(p.save.bs.b) : 0, on: Date.now() - (p.seen || 0) < 90000 });
 
+function welcomeGift(p){if(p.save?.started&&!p.welcomeRC4){p.save.gold=(Number(p.save.gold)||0)+50;p.starterKit=1;p.welcomeRC4=true;}}
 function weekClock(at=Date.now()){
  const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Kyiv',year:'numeric',month:'2-digit',day:'2-digit',weekday:'short'}).formatToParts(new Date(at));
  const get=k=>parts.find(p=>p.type===k).value;const date=get('year')+'-'+get('month')+'-'+get('day');
@@ -597,6 +600,43 @@ async function api(req, res, route) {
   if (!p) return send(res, 401, { ok: false, err: 'auth' });
   p.seen = Date.now();
   if (limited('p' + p.id, 120, 6e4)) return send(res, 429, { ok: false, err: 'Забагато запитів' });
+  if(route==='weapon-buy'){
+    if(req.method!=='POST'||!p.save?.started)return send(res,400,{ok:false});
+    const b=await body(req),price=WEAPON_GOLD[b?.weapon];
+    if(!Object.hasOwn(WEAPON_GOLD,b?.weapon))return send(res,400,{ok:false,err:'Невідома зброя'});
+    const count=b.count==='max'?Math.floor(p.save.gold/price):Number(b.count);
+    if(!Number.isSafeInteger(count)||count<1||count*price>p.save.gold)return send(res,400,{ok:false,err:'Недостатньо монет або невірна кількість'});
+    const bs=p.save.bs;bs.weaponCounts=bs.weaponCounts||{};
+    bs.weaponCounts[b.weapon]=(bs.weaponCounts[b.weapon]??(bs.wp.includes(b.weapon)?1:0))+count;
+    if(!bs.wp.includes(b.weapon))bs.wp.push(b.weapon);
+    p.save.gold-=count*price;p.goldSpent=(p.goldSpent||0)+count*price;
+    dirtyPlayerIds.add(p.id);return send(res,200,{ok:true,save:p.save});
+  }
+  if(route==='city-events'){
+    if(!p.save?.started)return send(res,409,{ok:false,err:'Спочатку створи персонажа'});
+    const clock=weekClock(),day=clock.date;
+    p.cityEvents=p.cityEvents||{};
+    if(req.method==='POST'){
+      const input=await body(req);const action=input?.action;
+      if(action==='kit'){
+        if(!p.starterKit)return send(res,409,{ok:false,err:'Набір вже використано'});
+        if(p.save.energy>=50)return send(res,409,{ok:false,err:'Спочатку витрать енергію'});
+        p.starterKit=0;p.save.energy=Math.min(50,Math.max(0,Number(p.save.energy)||0)+20);
+        p.save.say='Стартовий термос: +20 енергії.';
+      }else if(['radio','courtyard'].includes(action)){
+        if(p.cityEvents[action]?.day===day)return send(res,409,{ok:false,err:'Сьогодні вже завершено'});
+        if(!['safe','risk'].includes(input.choice))return send(res,400,{ok:false});
+        const lucky=input.choice==='risk'&&crypto.randomInt(100)<45;
+        const cash=input.choice==='safe'?80:lucky?180:30;
+        p.save.uah+=cash;
+        const text=action==='radio'?(lucky?'Ти впіймав рідкісну частоту — сусіди знайшли загублений вантаж!':'Радіомайстерня знову на зв’язку. Район дякує за допомогу.'):(lucky?'Твій імпровізований концерт зібрав увесь двір!':'Теплий чай, гітара та розмови до сутінків.');
+        p.cityEvents[action]={day,text,cash};p.save.say=text+' +'+cash+' ₴';
+        logPlayer(p,'city',text);
+      }else return send(res,400,{ok:false,err:'Невідома дія'});
+      dirtyPlayerIds.add(p.id);
+    }
+    return send(res,200,{ok:true,day,kit:p.starterKit||0,events:p.cityEvents,save:p.save});
+  }
   if(route==='daily-wheel'){
     if(req.method==='GET')return send(res,200,wheelState(p));
     if(req.method!=='POST')return send(res,405,{ok:false,err:'Method not allowed'});
@@ -981,7 +1021,7 @@ async function durableApi(req,res,route){
     transactionActive=true;
     try{
       for(const p of Object.values(DB.players)){
-        if(!p.save)continue;
+        if(route!=='save')welcomeGift(p);if(!p.save)continue;
         if(!p.economyV26){
           // Preserve both legacy balances once; never award the old 500 starter again.
           p.save.uah=Math.max(0,Number(p.save.uah)||0)+Math.max(0,Number(p.world?.cash)||0);
@@ -1000,7 +1040,7 @@ async function durableApi(req,res,route){
         return send(res,code,obj);
       }
       for(const p of Object.values(DB.players)){
-        if(!p.save)continue;
+        welcomeGift(p);if(!p.save)continue;
         const base=baseline[p.id];
         if(!base?.save&&!p.economyV26){
           p.save.uah+=Math.max(0,Number(base?.world?.cash)||0);
@@ -1011,7 +1051,7 @@ async function durableApi(req,res,route){
           p.save.uah=Math.max(0,Number(p.save.uah||0)+delta);
         }
         if(p.world)p.world.cash=p.save.uah;
-        if(p.save.uah!==oldPlayers[p.id]?.save?.uah)p.walletRevision=Number(p.walletRevision||0)+1;
+        if(p.save.uah!==oldPlayers[p.id]?.save?.uah||p.save.gold!==oldPlayers[p.id]?.save?.gold)p.walletRevision=Number(p.walletRevision||0)+1;
       }
       const rows=Object.values(DB.players).filter(p=>JSON.stringify(p)!==JSON.stringify(oldPlayers[p.id])).map(p=>({id:p.id,data:p}));
       if(newsDirty)rows.push({id:NEWS_ROW_ID,data:{events:newsEvents.slice(0,200),updated:Date.now()}});
@@ -1022,7 +1062,7 @@ async function durableApi(req,res,route){
         for(const sub of newsSubscribers){try{sub.write('data: '+JSON.stringify(event)+'\n\n')}catch{newsSubscribers.delete(sub)}}
       }
       const current=auth(req)||DB.players[obj.id];
-      if(current){obj.walletRevision=Number(current.walletRevision||0);if(current.save){obj.walletCash=current.save.uah;if(obj.save&&route==='daily-wheel')obj.save.uah=current.save.uah;}}
+      if(current){obj.walletRevision=Number(current.walletRevision||0);if(current.save){obj.walletCash=current.save.uah;if(obj.save&&route==='daily-wheel')obj.save.uah=current.save.uah;if(route==='save')obj.save=current.save;}}
       return send(res,code,obj);
     }catch(e){
       DB.players=JSON.parse(before);newsEvents=JSON.parse(oldNews);
@@ -1047,7 +1087,7 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(200,{'content-type':name.endsWith('.svg')?'image/svg+xml; charset=utf-8':'image/webp','cache-control':'public, max-age=3600','x-content-type-options':'nosniff'});res.end(data)
       });
     }
-    if (u.pathname === '/uhy-polish.css' || u.pathname === '/uhy-polish.js' || u.pathname === '/uhy-live.css' || u.pathname === '/weekly.js' || u.pathname === '/motion.js') {
+    if (u.pathname === '/uhy-polish.css' || u.pathname === '/uhy-polish.js' || u.pathname === '/uhy-live.css' || u.pathname === '/weekly.js' || u.pathname === '/motion.js' || u.pathname === '/city-events.js') {
       const f=path.join(__dirname,u.pathname.slice(1));
       return fs.readFile(f,(err,data)=>{if(err){res.writeHead(404);return res.end('Not found')}
         res.writeHead(200,{'content-type':u.pathname.endsWith('.css')?'text/css; charset=utf-8':'application/javascript; charset=utf-8','cache-control':'no-cache','x-content-type-options':'nosniff'});res.end(data)});
@@ -1197,7 +1237,7 @@ async function show(which){stopNews();active=which;panel.classList.remove('uhy-v
 const observer=new MutationObserver(dock);observer.observe($('#tabs'),{childList:true});dock();
 })();
 </script>`;
-      const extras = '<script src="/uhylyant-ui.js"></script><script src="/uhylyant-account.js"></script><link rel="stylesheet" href="/uhy-live.css"><script src="/weekly.js"></script><script src="/motion.js"></script>';
+      const extras = '<script src="/uhylyant-ui.js"></script><script src="/uhylyant-account.js"></script><link rel="stylesheet" href="/uhy-live.css"><script src="/weekly.js"></script><script src="/motion.js"></script><script src="/city-events.js"></script>';
       // Patch the original client's detention handler in-memory; source HTML and old saves remain compatible.
       const oldCatch = `S.tcc={stage:0,nextAt:0,busy:false};S.st.caught++;`;
       const newCatch = `S.tcc={stage:0,nextAt:0,busy:false};S.st.caught++;

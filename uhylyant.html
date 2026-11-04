@@ -462,6 +462,10 @@ function headParts(c){
   o+=ln(`M${96+dx} ${my-6} q-1 2 0 4`,.01);
   /* підборіддя, зморшки */
   o+=ln(`M${84+dx} 54.5 q-2 -1 -5 .4`,.01)+ln(`M${123} 78 Q${126} 84 ${122} 90`,1.1,dark(sk,.6),'opacity=".5"')+ln(`M${80} 79 Q${77} 85 ${81} 90`,1.1,dark(sk,.6),'opacity=".4"');
+  /* Non-graphic damage stages for the boss face. */
+  if(c.damage>=1)o+=`<ellipse cx="${115+dx}" cy="70" rx="8" ry="5" fill="#725073" opacity=".48"/>`;
+  if(c.damage>=2)o+=`<ellipse cx="${86+dx}" cy="73" rx="7" ry="4" fill="#865075" opacity=".55"/><path d="M${123+dx} 77 l-4 5 M${120+dx} 76 l-4 5" stroke="#924e43" stroke-width="1.4"/>`;
+  if(c.damage>=3)o+=`<rect x="${91+dx}" y="82" width="18" height="6" rx="2" fill="#d7c2a0" stroke="#806b58" stroke-width="1"/><ellipse cx="${115+dx}" cy="65" rx="7" ry="4" fill="#543657" opacity=".4"/>`;
   /* синці */
   if(mood==='hurt'||c.hurt){
     o+=`<ellipse cx="${115+dx}" cy="66" rx="9" ry="6" fill="#6a2a58" opacity=".5"/><ellipse cx="${112+dx}" cy="64" rx="5" ry="3.4" fill="#2e1230" opacity=".35"/>`+ln(`M${94+dx} ${my+2} l3 3`,1.6,'#6a1a1a')+`<rect x="${91+dx}" y="${my+0.5}" width="6" height="3" rx="1.5" fill="#a02a22" opacity=".8"/>`;
@@ -1772,17 +1776,18 @@ const BOSSCFG=[
  {skin:1,hc:2,hair:0,face:2,body:2,beard:5,B:{look:'camo',col:'#75804a'},L:{look:'work',col:'#55603a'},F:{look:'boots',col:'#241a12'},H:{look:'cap',col:'#5a6a3a'}},
  {skin:1,hc:6,hair:4,face:2,body:2,beard:5,B:{look:'general',col:'#5a7230'},L:{look:'formal',col:'#2c3a1a'},F:{look:'dress',col:'#151515'},H:{look:'cap',col:'#4a5e28'}}
 ];
-function bossSVG(i){const c=Object.assign({tat:0,mood:'ok',smoke:false,A:{look:'none',col:'#000'}},BOSSCFG[i%BOSSCFG.length]);return UHART.svg(c,'0 0 200 262')}
+function bossDamage(){const ratio=(S.bs.hp??bHP())/bHP();return ratio<=.25?3:ratio<=.5?2:ratio<=.75?1:0}
+function bossSVG(i,damage=0){const c=Object.assign({tat:0,mood:'ok',smoke:false,A:{look:'none',col:'#000'}},BOSSCFG[i%BOSSCFG.length],{damage});return UHART.svg(c,'0 0 200 262')}
 function renderScene(){
   const sc=$('#scene');if(!sc)return;sc.dataset.section=ui.tab;
   const kind=sceneKind(),ph=phaseNow(),mood=S.tcc?'scared':'ok',bi=S.bs?S.bs.b:0;
-  const key=[kind,ph,ui.house,JSON.stringify(S.look),JSON.stringify(S.eq),mood,kind==='boss'?bi:''].join('|');
+  const key=[kind,ph,ui.house,JSON.stringify(S.look),JSON.stringify(S.eq),mood,kind==='boss'?bi+':'+bossDamage():''].join('|');
   if(ui.sk!==key||!sc.querySelector('.lyr')){
     ui.sk=key;
     const o=UHART.paint(kind,{phase:ph,house:ui.house||'shack',seed:7});
     const hero=UHART.svg(UHART.cfgFor(S.look,S.eq,mood),'0 0 200 262');
     sc.dataset.phase=ph;sc.dataset.kind=kind;
-    sc.innerHTML='<div class="lyr bg">'+o.bg+'</div>'+(kind==='boss'?'<div class="lyr boss" id="boss">'+bossSVG(bi)+'</div>':'')+'<div class="lyr hero" id="hero" style="--hx:'+o.hero.x+'%;--hh:'+o.hero.h+'%">'+hero+(o.hero.smoke&&mood!=='scared'?'<i class="smk"></i><i class="smk s2"></i><i class="smk s3"></i>':'')+'</div>'+(o.fg?'<div class="lyr fg">'+o.fg+'</div>':'')+'<div class="grade"></div><div class="grain"></div><div class="bubble" id="bubble"></div><div class="scene-tag">📍 '+o.name+'</div><div class="scene-btns"><button type="button" data-act="editHero">✎ Персонаж</button><button type="button" data-act="locs">📍 Локація</button></div>';
+    sc.innerHTML='<div class="lyr bg">'+o.bg+'</div>'+(kind==='boss'?'<div class="lyr boss" id="boss">'+bossSVG(bi,bossDamage())+'</div>':'')+'<div class="lyr hero" id="hero" style="--hx:'+o.hero.x+'%;--hh:'+o.hero.h+'%">'+hero+(o.hero.smoke&&mood!=='scared'?'<i class="smk"></i><i class="smk s2"></i><i class="smk s3"></i>':'')+'</div>'+(o.fg?'<div class="lyr fg">'+o.fg+'</div>':'')+'<div class="grade"></div><div class="grain"></div><div class="bubble" id="bubble"></div><div class="scene-tag">📍 '+o.name+'</div><div class="scene-btns"><button type="button" data-act="editHero">✎ Персонаж</button><button type="button" data-act="locs">📍 Локація</button></div>';
   }
   const bb=$('#bubble');if(bb)bb.textContent=S.say||'';
 }
@@ -1958,7 +1963,13 @@ function showLocs(){
   showOv('<h2>Локація</h2><p>Показується на всіх екранах, окрім затримання, боїв і фіналів. Нові відкриваються з рівнем.</p><div class="locg">'+UHART.LOCS.map(k=>{const need=UHART.LOC_LVL[k]||1,ok=S.level>=need,o=UHART.paint(k,{phase:ph,house:ui.house,thumb:1});return '<button class="loc'+(cur===k?' on':'')+(ok?'':' lock')+'" data-act="setloc" data-v="'+k+'">'+o.bg+'<span>'+o.name+(ok?'':' · 🔒 рів. '+need)+'</span></button>'}).join('')+'</div><button class="btn big" data-act="'+(S.started?'closeOv':'back')+'">Готово</button>');
 }
 // Original four-note ambient motif generated in Web Audio. Nothing plays until enabled.
-const UHY_AUDIO={ctx:null,music:false,sounds:false,timer:null,step:0};
+const UHY_AUDIO={ctx:null,music:true,sounds:true,timer:null,step:0};
+try{const pref=JSON.parse(localStorage.getItem('uhy_audio')||'null');if(pref){UHY_AUDIO.music=pref.music!==false;UHY_AUDIO.sounds=pref.sounds!==false}}catch{}
+function audioControls(){let bar=document.getElementById('audioControls');if(!bar){bar=document.createElement('div');bar.id='audioControls';document.body.append(bar)}bar.innerHTML=['sounds','music'].map(k=>'<button type="button" aria-label="'+(k==='music'?'Музика':'Звуки')+'" aria-pressed="'+UHY_AUDIO[k]+'" data-audio="'+k+'">'+(k==='music'?'♫':'🔊')+' '+(UHY_AUDIO[k]?'Увімк.':'Вимк.')+'</button>').join('');bar.querySelectorAll('button').forEach(b=>b.onclick=()=>setMusicSound(b.dataset.audio));}
+function startAudio(){if(!UHY_AUDIO.ctx){const T=window.AudioContext||window.webkitAudioContext;if(T)UHY_AUDIO.ctx=new T()}UHY_AUDIO.ctx?.resume().catch(()=>{});if(UHY_AUDIO.music&&!UHY_AUDIO.timer)UHY_AUDIO.timer=setInterval(audioMusicStep,480);}
+document.addEventListener('pointerdown',startAudio,{once:true});document.addEventListener('keydown',startAudio,{once:true});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){clearInterval(UHY_AUDIO.timer);UHY_AUDIO.timer=null;UHY_AUDIO.ctx?.suspend()}else if(UHY_AUDIO.ctx)startAudio()});
+setTimeout(audioControls,0);
 function soundTone(freq,len=.10,vol=.025,kind='triangle'){
  try{if(!UHY_AUDIO.ctx){const T=window.AudioContext||window.webkitAudioContext;if(!T)return;UHY_AUDIO.ctx=new T();}
  const ac=UHY_AUDIO.ctx,t=ac.currentTime+.012,o=ac.createOscillator(),g=ac.createGain();
@@ -1973,11 +1984,12 @@ function audioMusicStep(){
 function setMusicSound(kind){
  if(kind==='music'){
  UHY_AUDIO.music=!UHY_AUDIO.music;
- if(UHY_AUDIO.music){audioMusicStep();UHY_AUDIO.timer=setInterval(audioMusicStep,480)}else{clearInterval(UHY_AUDIO.timer);UHY_AUDIO.timer=null}
+ if(UHY_AUDIO.music){startAudio();audioMusicStep()}else{clearInterval(UHY_AUDIO.timer);UHY_AUDIO.timer=null}
  }else{UHY_AUDIO.sounds=!UHY_AUDIO.sounds;if(UHY_AUDIO.sounds)soundTone(523,.09,.024,'sine')}
- showSettings();
+ try{localStorage.setItem('uhy_audio',JSON.stringify({music:UHY_AUDIO.music,sounds:UHY_AUDIO.sounds}))}catch{}
+ audioControls();if(ui.ov==='settings')showSettings();
 }
-document.addEventListener('click',e=>{if(!UHY_AUDIO.sounds)return;const btn=e.target?.closest?.('button[data-act]');if(!btn)return;const action=btn.dataset.act;if(['audioMusic','audioSounds'].includes(action))return;soundTone(action==='daily'?784:396,.05,.013,'square')},true);
+document.addEventListener('click',e=>{if(!UHY_AUDIO.sounds)return;const btn=e.target?.closest?.('button');if(!btn)return;const action=btn.dataset.act;if(['audioMusic','audioSounds'].includes(action))return;soundTone(action==='daily'?784:396,.05,.013,'square')},true);
 function showSettings(){
   let low=false;try{low=localStorage.getItem('uhy_gfx')==='low'}catch(e){}
   showOv('<h2>Налаштування</h2><div class="list"><button class="btn block" data-act="editHero">✎ Персонаж</button><button class="btn block" data-act="locs">📍 Локація</button><button class="btn block" data-act="gfx">Графіка: '+(low?'спрощена (економить батарею)':'висока')+'</button><button class="btn block" data-act="audioMusic">♫ Музика: '+(UHY_AUDIO.music?'увімкнена':'вимкнена')+'</button><button class="btn block" data-act="audioSounds">🔊 Звуки: '+(UHY_AUDIO.sounds?'увімкнені':'вимкнені')+'</button><button class="btn block" data-act="help">Правила гри</button><button class="btn red block" data-act="reset">Скинути гру</button></div><button class="btn big" data-act="closeOv">Закрити</button>');
@@ -2028,7 +2040,7 @@ const ACT={
 /* ===== БОЇ З БОСАМИ (вшито в «Ухилянт») ===== */
 const BOSSES=[{n:'Старший',hp:1000,c:'#6a7a45'},{n:'Полициянт',hp:2500,c:'#3f63a8'},{n:'ОПЕР',hp:6000,c:'#2b2a2e'},{n:'СБУшник',hp:14000,c:'#3a3f55'},{n:'Зам. РТЦК',hp:32000,c:'#75804a'},{n:'Начальник ТЦК',hp:70000,c:'#5a7230'}];
 const BATK=[{id:'fist',n:'Кулак',d:50,e:1,i:'👊'},{id:'leg',n:'Нога',d:100,e:2,i:'🦵'},{id:'brick',n:'Цегла',d:140,e:3,i:'🧱'}];
-const BWP=[{id:'bat',n:'Бита',d:220,e:3,i:'🏏',g:40},{id:'bar',n:'Монтування',d:300,e:4,i:'🔧',g:90},{id:'chain',n:'Ланцюг',d:420,e:5,i:'⛓️',g:200},{id:'mace',n:'Золота булава',d:700,e:6,i:'🔱',g:0}];
+const BWP=[{id:'bat',n:'Бита',d:260,e:3,i:'🏏',g:40},{id:'bar',n:'Монтування',d:350,e:4,i:'🔧',g:90},{id:'chain',n:'Ланцюг',d:480,e:5,i:'⛓️',g:200},{id:'mace',n:'Золота булава',d:700,e:6,i:'🔱',g:0}];
 const EVS=[{id:'drone',n:'Збір на дрон для хлопців',g:100,c:20,s:5,i:'🛩️'},{id:'bbq',n:'Шашлики на дачі',g:60,c:12,s:2,i:'🍖'},{id:'water',n:'Розвіз води й їжі в громаді',g:80,c:15,s:3,i:'🚐'},{id:'trip',n:'Поїздка в Карпати всім загоном',g:150,c:10,s:5,i:'⛰️',it:'body3'}];
 const FN=['Вася','Олег','Макс','Діма','Андрій','Тарас','Сергій','Іван'],FCOL=['#f2a931','#7bc47f','#6fa3d8','#e8869a','#b57cf2'];
 const RSQ=[['car','Автомобіль (бус)',20],['gear','Екіпіровка',12],['drv','Бронь водієві',15]];
@@ -2055,7 +2067,7 @@ function bTick(){if(!S.started)return;const B=S.bs,t=now();bInit();let ch=false;
   if(B.fs&&t>B.fs+BD(6*HOUR)){B.hp=bHP();B.fs=null;B.cd={};B.rs={car:0,gear:0,drv:0};caught(false);toast('6 годин вийшло — тебе забрав ТЦК','bad');return}}
  if(t-B.evt>BD(10*MIN)){B.evt=t;EVS.forEach(e=>{const v=B.ev[e.id];if(!v.k)v.p=Math.min(e.g,v.p+B.sq.length)});ch=true}
  if(ch){save();if(ui.tab==='boss')render()}else if(ui.tab==='boss')bLive()}
-function bLive(){const B=S.bs;syncEnergy();document.querySelectorAll('[data-cd]').forEach(e=>{const a=bAll().find(x=>x.id===e.dataset.cd);if(!a)return;const r=(B.cd[a.id]||0)-now();e.disabled=r>0||S.energy<a.e;e.querySelector('small').textContent=r>0?'⏳ '+fmtT(r):'−'+a.e+'⚡ · '+fmt(bDmg(a))});
+function bLive(){renderScene();const B=S.bs;syncEnergy();document.querySelectorAll('[data-cd]').forEach(e=>{const a=bAll().find(x=>x.id===e.dataset.cd);if(!a)return;const r=(B.cd[a.id]||0)-now();e.disabled=r>0||S.energy<a.e;e.querySelector('small').textContent=r>0?'⏳ '+fmtT(r):'−'+a.e+'⚡ · '+fmt(bDmg(a))});
  const t=$('#btimer');if(t)t.textContent=B.fs?fmtT(B.fs+BD(6*HOUR)-now()):'старт з першого удару';
  const hb=$('#hpb');if(hb)hb.style.width=(100*B.hp/bHP())+'%';const ht=$('#hpt');if(ht)ht.textContent=fmt(B.hp)+' / '+fmt(bHP())}
 function bossRoster(){
@@ -2075,7 +2087,8 @@ function bSquad0(){const B=S.bs;let h='<div class="card"><div class="h">Загі
  h+='<div class="card"><div class="h">Визволення з ТЦК</div><div class="sub">Потрібно: загін від 3 друзів, автомобіль, екіпіровка і бронь водієві. Шанс успіху 25%.</div>'+RSQ.map(r=>'<div class="row"><span>'+(B.rs[r[0]]?'✅':'▫️')+' '+r[1]+'</span><button class="btn" data-act="brs" data-v="'+r[0]+'"'+(B.rs[r[0]]?' disabled':'')+'>₴ '+fmt(bCost(r[2]))+'</button></div>').join('')
   +'<div class="row"><span class="hint">Загін '+sqN()+'/3</span><button class="btn red" data-act="bresc"'+(S.tcc?'':' disabled')+'>🚗 Почати</button></div><button class="btn" data-act="bransom"'+(S.tcc?'':' disabled')+'>💰 Викуп — ₴ '+fmt(bCost(200))+'</button></div>';return h}
 function bEvents(){const B=S.bs;return EVS.map(e=>{const v=B.ev[e.id],dn=v.p>=e.g;return '<div class="card"><div class="row"><b>'+e.i+' '+e.n+'</b><span class="hint">'+v.p+'/'+e.g+'</span></div><div class="bar"><i style="width:'+(100*v.p/e.g)+'%;background:var(--green)"></i></div><div class="sub">Нагорода: ₴'+fmt(bCost(e.c))+' · 🪙'+e.s+(e.it?' · '+ITEM[e.it].name:'')+'. Друзі вкладаються самі.</div><div class="row"><button class="btn" data-act="bgive" data-v="'+e.id+'"'+(v.k||dn?' disabled':'')+'>Вкласти 5⚡</button><button class="btn red" data-act="bclaim" data-v="'+e.id+'"'+(dn&&!v.k?'':' disabled')+'>'+(v.k?'Знову через '+fmtT(v.k-now()):'Забрати')+'</button></div></div>'}).join('')}
-function shopBoss(){const B=S.bs;return '<div class="card"><div class="h">Бої: зброя і запас енергії</div><div class="row"><span>Макс. запас енергії +10 <span class="hint">(зараз '+maxEnergy()+')</span></span><button class="btn gold" data-act="bme">🪙 30</button></div>'+BWP.map(w=>'<div class="row"><span>'+w.i+' <b>'+w.n+'</b> <span class="hint">'+w.d+' урону · −'+w.e+'⚡</span></span>'+(B.wp.includes(w.id)?'<span class="hint">є</span>':w.g?'<button class="btn gold" data-act="bwp" data-v="'+w.id+'">🪙 '+w.g+'</button>':'<span class="hint">🔒 дроп з босів</span>')+'</div>').join('')+'</div>'}
+function shopBoss(){const B=S.bs;return '<div class="card"><div class="h">Зброя · кількість у запасі</div><p class="hint">Копії зберігаються в інвентарі. Урон одного удару не множиться на кількість.</p>'+BWP.map(w=>'<div class="weapon-row"><div><b>'+w.i+' '+w.n+'</b><small>'+w.d+' урону · у запасі '+(B.weaponCounts?.[w.id]??(B.wp.includes(w.id)?1:0))+'</small></div>'+(w.g?'<div class="weapon-buy">'+[1,5,'max'].map(n=>'<button class="btn gold" data-act="bwp" data-v="'+w.id+'" data-count="'+n+'">'+(n==='max'?'Макс.':'×'+n+' · '+w.g*n)+' зол.</button>').join('')+'</div>':'<small>Дроп із босів</small>')+'</div>').join('')+'<button class="btn gold" data-act="bme">+10 запасу енергії · 30 🪙</button></div>'}
+
 function viewShop(){return viewShop0()+shopBoss()}
 Object.assign(ACT,{bt:v=>{ui.bt=v;render()},bhit:v=>bHit(v),
  binv:()=>{const B=S.bs;if(B.sq.length>=5)return;B.sq.push({n:FN[B.sq.length%FN.length],c:FCOL[B.sq.length%5],l:1+rnd(S.level+3),nx:now()+BD(HOUR)});toast('Друг у загоні!','good');save();render()},
@@ -2086,7 +2099,7 @@ Object.assign(ACT,{bt:v=>{ui.bt=v;render()},bhit:v=>bHit(v),
  bgive:v=>{const e=S.bs.ev[v];if(!spend(5))return;e.p=Math.min(EVS.find(x=>x.id===v).g,e.p+10);save();render()},
  bclaim:v=>{const e=EVS.find(x=>x.id===v),s=S.bs.ev[v];if(!e||!s||s.k||s.p<e.g)return;s.k=now()+24*HOUR;gainMoney(bCost(e.c));S.gold+=e.s;if(e.it&&!S.inv.includes(e.it))S.inv.push(e.it);gainXP(xpNeed(S.level)*2);toast('Нагороду отримано!','good');save();render();if(NET.on&&NET.id)netSync(true)},
  bme:()=>{if(S.gold<30){toast('Не вистачає золота','bad');return}S.gold-=30;S.bs.me++;save();render()},
- bwp:v=>{const w=BWP.find(x=>x.id===v);if(S.gold<w.g){toast('Не вистачає золота','bad');return}S.gold-=w.g;S.bs.wp.push(v);save();render()},
+ bwp:async(v,button)=>{if(button.disabled)return;button.disabled=true;try{if(!await window.UHY.sync())throw Error('Дочекайся збереження');const r=await api('weapon-buy',{weapon:v,count:button.dataset.count==='max'?'max':Number(button.dataset.count||1)});if(!r?.ok)throw Error(r?.err||'Немає зв’язку');NET.walletRevision=r.walletRevision;adopt(r.save)}catch(e){toast(e.message,'bad')}finally{button.disabled=false}},
  bdemo:()=>{if(NET.id){toast('Тестовий час доступний лише офлайн','bad');return}S.bs.demo=S.bs.demo?0:1;save();render()}});
 setInterval(bTick,1000);
 document.addEventListener('keydown',e=>{if(/INPUT|TEXTAREA/.test((e.target||{}).tagName||'')||!S.started||e.ctrlKey||e.metaKey||e.altKey||!$('#overlay').hidden)return;const k=e.key;const TB=['home','boss','street','gear','path','shop'];
@@ -2159,6 +2172,7 @@ async function netSync(force){
  syncPending=(async()=>{
   const snapshot=JSON.stringify(S);window.__vd=0;
   const r=await api('save',{save:JSON.parse(snapshot),walletRevision:NET.walletRevision});
+  if(r?.ok&&r.save&&JSON.stringify(S)===snapshot){S.gold=r.save.gold;}
   if(!r||!r.ok){window.__vd=1;if(r?.save){adopt(r.save);toast(r.why||'Оновлено серверний профіль','bad')}return false;}
   if(JSON.stringify(S)!==snapshot)window.__vd=1;
   return true;
@@ -2217,6 +2231,7 @@ setInterval(save,10000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.started){render()}});
 
 window.UHY={
+ adoptServer:r=>{if(Number.isFinite(r.walletRevision))NET.walletRevision=r.walletRevision;if(r.save)adopt(r.save);},
  sync:async()=>{for(let i=0;i<4;i++){if(!await netSync(false))return false;if(!window.__vd)return true;}return false;},
  applyWallet:result=>{if(Number.isFinite(result.walletRevision))NET.walletRevision=result.walletRevision;if(Number.isFinite(result.walletCash)){S.uah=result.walletCash;save();render();}},
  editor:()=>{if(S.started){ui.cfirst=false;showCreator(false)}},
@@ -2236,14 +2251,14 @@ window.UHY={
  // Artwork only: reuses the SAME in-game sprite layers used on the primary screen.
  snapshot:(section='home',house=null)=>{
    const id=['shack','room','flat','loft','lux'].includes(house)?house:ui.house;
-   const route={housing:'home',casino:'market',world:'street',career:'office',leaderboard:'roof',friends:'yard',news:'street',account:'home',brigade:'boss',boss:'boss',health:'home',work:'office',weekly:'roof',wheel:'market',profile:'yard'};
+   const route={cityevents:'park',housing:'home',casino:'market',world:'street',career:'office',leaderboard:'roof',friends:'yard',news:'street',account:'home',brigade:'boss',boss:'boss',health:'home',work:'office',weekly:'roof',wheel:'market',profile:'yard'};
    const scene=S.tcc?'tcc'+Math.min(2,S.tcc.stage|0):(route[section]||'home');
    const painter=UHART.paint(scene,{phase:phaseNow(),house:id,seed:7});
    const av=UHART.svg(UHART.cfgFor(S.look,S.eq,S.tcc?'scared':'ok'),'0 0 200 262');
    return {scene,house:id,name:painter.name,background:painter.bg,foreground:painter.fg||'',avatar:av};
  },
  houseThumb:id=>{if(!['shack','room','flat','loft','lux'].includes(id))return '';return UHART.paint('home',{phase:'day',house:id,seed:7,thumb:true}).bg},
- bossPortrait:index=>bossSVG(Math.max(0,Math.min(5,Number(index)||0))),
+ bossPortrait:(index,damage=0)=>bossSVG(Math.max(0,Math.min(5,Number(index)||0)),Math.max(0,Math.min(3,Number(damage)||0))),
  syncHouse:syncMyHouse
 };
 if(!S.started)showIntro();

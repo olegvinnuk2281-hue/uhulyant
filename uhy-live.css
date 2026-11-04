@@ -129,3 +129,32 @@ body #socialPanel #spClose{font-size:13px!important;min-width:80px!important}
 .motion-paused [data-motion] *{animation-play-state:paused!important}
 .lowfx [data-motion] *, .lowfx [data-motion] svg{animation:none!important}
 @media(prefers-reduced-motion:reduce){[data-motion] *,[data-motion] svg{animation:none!important;transition:none!important}}
+/* RC4: restrained shoulder motion; punches only follow an action. */
+[data-motion] .uhy-arm{transform-box:view-box;animation:none!important}
+[data-motion=walk] .uhy-arm-0{animation:armWalkGentle 1.2s ease-in-out infinite alternate!important}
+[data-motion=walk] .uhy-arm-1{animation:armWalkGentle 1.2s ease-in-out infinite alternate-reverse!important}
+[data-gesture=action][data-motion=work] .uhy-arm-1{animation:armTask .8s ease-in-out 2!important}
+[data-gesture=action][data-motion=fight] .uhy-arm-1{animation:armStrike .55s ease-out 1!important}
+[data-gesture=action][data-motion=wave] .uhy-arm-0{animation:armTask 1s ease-in-out 1!important}
+@keyframes armWalkGentle{from{transform:rotate(-3deg)}to{transform:rotate(3deg)}}
+@keyframes armTask{40%{transform:rotate(-12deg)}70%{transform:rotate(-7deg)}}
+@keyframes armStrike{20%{transform:rotate(7deg)}45%{transform:rotate(-24deg)}100%{transform:rotate(0)}}
+@media(prefers-reduced-motion:reduce){[data-motion] .uhy-arm{animation:none!important}}
+.lowfx [data-motion] .uhy-arm{animation:none!important}
+/* RC5 control system: clear hierarchy, keyboard focus, generous hit targets. */
+html body{padding-top:calc(36px + env(safe-area-inset-top))!important}
+#audioControls{position:fixed;top:calc(3px + env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));display:flex;gap:6px;z-index:17000}
+#audioControls button{height:30px;padding:3px 9px;font:600 11px 'Segoe UI',sans-serif;border:1px solid #8b734d;border-radius:8px;background:#30281f;color:#f3ddba;cursor:pointer}
+#audioControls button[aria-pressed=false]{color:#a99d8c;background:#211d19}
+body #content button.btn,body #socialPanel button:not(.uhy-feed-person),body #uhyMore button{border-radius:10px!important;border:1px solid #806340!important;box-shadow:0 2px 0 #100d0980!important;background:linear-gradient(180deg,#493a2b,#35291f)!important;color:#f6e4c8!important;font:600 13px/1.25 'Segoe UI',system-ui,sans-serif!important;letter-spacing:normal!important;text-shadow:none!important;min-height:44px!important;padding:10px 14px!important;transition:background .15s,box-shadow .15s,transform .12s!important}
+body #content button.gold,body #content button.amber,body #socialPanel button[data-wact]{background:linear-gradient(180deg,#edbc67,#d79a3b)!important;color:#281b0d!important;border-color:#b17a2a!important}
+body button:disabled{opacity:.45!important;cursor:not-allowed!important;filter:grayscale(.35)}
+body button:focus-visible{outline:3px solid #b9defb!important;outline-offset:3px!important}
+@media(hover:hover){body #content button.btn:hover:not(:disabled),body #socialPanel button:hover:not(:disabled){filter:brightness(1.12);box-shadow:0 3px 9px #0005!important}}
+body button:active:not(:disabled){transform:translateY(1px)}
+.weapon-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #665038;padding:14px 0;flex-wrap:wrap}
+.weapon-row small{display:block;margin-top:5px;color:#cfb994}
+.weapon-buy{display:flex;gap:6px;flex-wrap:wrap}
+@media(max-width:420px){.weapon-buy{width:100%}.weapon-buy button{flex:1;padding:8px 5px!important}}
+
+body .weapon-buy button{text-transform:none!important;white-space:nowrap!important;font-size:12px!important}
