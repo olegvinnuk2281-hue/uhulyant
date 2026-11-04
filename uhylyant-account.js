@@ -19,7 +19,7 @@ body{padding-bottom:calc(75px + env(safe-area-inset-bottom))!important}
 #uhyAuth button.alt,#spBody .account-form button.alt{background:#44372b;color:#f5e5ca}
 #uhyAuth .auth-msg,#spBody .auth-msg{min-height:25px;color:#ffd07a}
 #uhyAuth .auth-switch{display:flex;flex-wrap:wrap;gap:4px;margin:12px 0}
-#uhyAuth small{color:#c6b69d;display:block;margin-top:12px}
+#uhyAuth small{color:#c6b69d;display:block;margin-top:12px}#uhyAuth .tg-state{text-align:center;width:min(440px,100%);border:2px solid #a87a3f;border-radius:18px;background:#2c221bcc;padding:25px 19px;box-shadow:0 20px 60px #0008}#uhyAuth .tg-state h2{font-size:30px}#uhyAuth .tg-state p{white-space:pre-line;overflow-wrap:anywhere}#uhyAuth .tg-spinner{height:35px;width:35px;margin:22px auto;border:4px solid #71512d;border-top-color:#ffc35c;border-radius:50%;animation:tgspin .9s linear infinite}@keyframes tgspin{to{transform:rotate(360deg)}}#uhyAuth .tg-actions{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}#uhyAuth .tg-actions a{display:inline-block;text-decoration:none;padding:12px 14px;background:#e6a536;color:#21180e;border-radius:10px;font-weight:800}
 `;
 const st=document.createElement('style');st.textContent=css;document.head.append(st);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -72,6 +72,17 @@ body.innerHTML=`<h2>👤 Мій акаунт</h2><p>${st?.username?'Логін: 
 if(legacy)attachForm(body.querySelector('.account-form'),'claim','pf',token,refresh);
 else if(st?.username)attachForm(body.querySelector('.account-form'),'change','pf',token);
 if(st?.username)attachForm(body.querySelector('#emailForm'),'email','em',token,refresh);
+if(st?.telegram){
+const box=document.createElement('div');box.className='account-form';
+box.innerHTML='<h3>🔗 Привʼязати старий акаунт</h3><p>Якщо грав раніше за логіном і паролем, привʼяжи той профіль до Telegram, щоб зберегти прогрес.</p><input id="tgOldUser" placeholder="Старий логін" autocomplete="username"><input id="tgOldPass" type="password" placeholder="Старий пароль" autocomplete="current-password"><button id="tgOldLink" type="button">Привʼязати профіль</button><p class="auth-msg" id="tgOldMsg"></p>';
+body.append(box);
+box.querySelector('#tgOldLink').onclick=async()=>{
+ const btn=box.querySelector('#tgOldLink'),msg=box.querySelector('#tgOldMsg');btn.disabled=true;
+ const result=await request('telegram/link',{username:box.querySelector('#tgOldUser').value,password:box.querySelector('#tgOldPass').value},token);
+ btn.disabled=false;if(!result.ok){msg.textContent=result.err||'Помилка';return}
+ localStorage.setItem('vt_net',JSON.stringify({id:result.id,key:result.key,telegram:true}));location.reload();
+};
+}
 body.querySelector('#pfForgot').onclick=()=>showGate('forgot');
 body.querySelector('#pfLogout').onclick=()=>{localStorage.removeItem('vt_net');location.reload()};
 }
@@ -102,14 +113,65 @@ if(!document.body.dataset.uhyEscapeBound){document.body.dataset.uhyEscapeBound='
 const tabHost=document.querySelector('#tabs');
 if(tabHost){new MutationObserver(()=>{const dock=tabHost.querySelector('#socialDock');if(dock&&!dock.dataset.unified)nav()}).observe(tabHost,{childList:true})}
 window.UHYACCOUNT={render:renderAccount};
+const TELEGRAM_APP_LINK='https://t.me/Uhilyant_UAbot?startapp';
+function getTelegramInitData(){
+ const raw=window.Telegram?.WebApp?.initData;
+ if(typeof raw==='string'&&raw.length)return raw;
+ const hash=new URLSearchParams(location.hash.replace(/^#/,''));
+ return hash.get('tgWebAppData')||new URLSearchParams(location.search).get('tgWebAppData')||'';
+}
+function isTelegramLaunch(){
+ if(getTelegramInitData())return true;
+ if(/(?:^|[&#?])tgWebApp(?:Platform|Version|Data|StartParam)=/i.test(location.hash+'&'+location.search))return true;
+ const platform=window.Telegram?.WebApp?.platform;
+ return !!(platform&&platform!=='unknown');
+}
+function showTelegramStatus(kind,message){
+ if(!gate){gate=document.createElement('div');gate.id='uhyAuth';document.body.append(gate)}
+ gate.hidden=false;
+ gate.innerHTML='<section class="tg-state" role="status" aria-live="polite"><h2>УХИЛЯНТ · TELEGRAM</h2><p id="tgMessage"></p><div id="tgProgress"></div><div class="tg-actions" id="tgActions"></div></section>';
+ gate.querySelector('#tgMessage').textContent=message;
+ if(kind==='loading'){gate.querySelector('#tgProgress').innerHTML='<div class="tg-spinner"></div>';return}
+ const retry=document.createElement('button');retry.type='button';retry.textContent='↻ Спробувати знову';retry.onclick=()=>init();
+ const launch=document.createElement('a');launch.href=TELEGRAM_APP_LINK;launch.target='_blank';launch.rel='noopener noreferrer';launch.textContent='Відкрити через бота';
+ gate.querySelector('#tgActions').append(retry,launch);
+}
+async function waitForTelegramData(){
+ for(let i=0;i<12;i++){
+   const raw=getTelegramInitData();if(raw)return raw;
+   await new Promise(done=>setTimeout(done,150));
+ }
+ return '';
+}
+let initializing=false;
 async function init(){
-nav();
-const token=(()=>{try{return JSON.parse(localStorage.getItem('vt_net')||'null')}catch{return null}})();
-if(new URLSearchParams(location.search).has('reset')){showGate('reset');return}
-if(!token?.id||!token?.key){showGate('login');return}
-const r=await request('account/status',null,token);
-if(!r.ok){showGate('login');return}
-if(r.legacy){showGate('claim');return}
+ if(initializing)return;
+ initializing=true;
+ try{
+  nav();
+  let token;try{token=JSON.parse(localStorage.getItem('vt_net')||'null')}catch{token=null}
+  if(new URLSearchParams(location.search).has('reset')){showGate('reset');return}
+  if(isTelegramLaunch()){
+    showTelegramStatus('loading','Автоматичний вхід через Telegram…');
+    try{window.Telegram?.WebApp?.ready?.();window.Telegram?.WebApp?.expand?.();window.Telegram?.WebApp?.requestFullscreen?.()}catch(e){}
+    const data=await waitForTelegramData();
+    if(!data){showTelegramStatus('error','Telegram не передав дані для входу. Відкрий гру через кнопку Mini App у @Uhilyant_UAbot, а не звичайним браузерним посиланням.');return}
+    const r=await request('telegram/auth',{initData:data},token);
+    if(!r.ok||!r.id||!r.key){showTelegramStatus('error','Помилка входу: '+(r.err||'Помилка сервера')+'\nПеревір TELEGRAM_BOT_TOKEN у Render і налаштування Mini App.');return}
+    if(token?.id!==r.id||token?.key!==r.key){
+      localStorage.setItem('vt_net',JSON.stringify({id:r.id,key:r.key,telegram:true}));
+      location.reload();return;
+    }
+    if(gate)gate.hidden=true;
+    return;
+  }
+  if(!token?.id||!token?.key){showGate('login');return}
+  const r=await request('account/status',null,token);
+  if(!r.ok){showGate('login');return}
+  // A password is not required for a Telegram-created profile.
+  if(r.legacy&&!r.telegram){showGate('claim');return}
+  if(gate)gate.hidden=true;
+ }finally{initializing=false}
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();

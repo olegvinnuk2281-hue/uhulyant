@@ -1,5 +1,5 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
-</style></head><body>
+</style><script src="https://telegram.org/js/telegram-web-app.js"></script></head><body>
 <title>Ухилянт</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2111,16 +2111,17 @@ try{const t=JSON.parse(localStorage.getItem('vt_net')||'null');if(t){NET.id=t.id
 const lsNet=()=>{try{localStorage.setItem('vt_net',JSON.stringify({id:NET.id,key:NET.key}))}catch(e){}};
 const sqN=()=>NET.on?NET.friends.length:S.bs.sq.length;
 async function api(path,body){const c=new AbortController(),to=setTimeout(()=>c.abort(),6000);try{const r=await fetch('/api/'+path,{method:body?'POST':'GET',headers:{'content-type':'application/json','x-id':NET.id||'','x-key':NET.key||''},body:body?JSON.stringify(body):undefined,signal:c.signal});clearTimeout(to);return await r.json()}catch(e){clearTimeout(to);return null}}
-function adopt(sv){S=Object.assign(S0(),sv);S.bs=Object.assign(defBs(),S.bs||{});S.bs.demo=0;S.up=S.up||{};if(S.tcc)S.tcc.busy=false;save();ui.lastSig='';render()}
+function adopt(sv){S=Object.assign(S0(),sv);S.bs=Object.assign(defBs(),S.bs||{});S.bs.demo=0;S.up=S.up||{};if(S.tcc)S.tcc.busy=false;save();if(S.started&&document.querySelector('#overlay')&&!document.querySelector('#overlay').hidden)hideOv();ui.lastSig='';render()}
 async function netReg(){if(NET.busy)return;NET.busy=1;const r=await api('register',{name:S.name||'Ухилянт'});NET.busy=0;if(r&&r.ok){NET.id=r.id;NET.key=r.key;lsNet();const k={name:S.name,look:S.look,started:true,say:S.say};S=Object.assign(S0(),k);S.bs=defBs();S.up={};save();toast('Онлайн-акаунт створено. Твій ID: '+r.id,'good');netSync(true);render()}}
 async function syncMyHouse(){
  if(!NET.id||!NET.key)return;
  const result=await api('world');
  if(result?.ok){window.UHY?.setHouse(result.world?.housing?.current||'shack')}
 }
+const awaitingTelegram=()=>!!(window.Telegram?.WebApp?.initData||/[&#?]tgWebApp(?:Data|Platform|Version)=/i.test(location.hash+'&'+location.search));
 async function netInit(){const p=await api('ping');if(!p||!p.ok)return;NET.on=true;
  if(NET.id){const m=await api('me');if(m&&m.ok){if(m.save)adopt(m.save);netPollF();await syncMyHouse()}else if(m&&m.err==='auth'){NET.id=NET.key=null;lsNet()}}
- if(!NET.id&&S.started){await netReg();await syncMyHouse()}render()}
+ if(!NET.id&&S.started&&!awaitingTelegram()){await netReg();await syncMyHouse()}render()}
 async function netSync(force){if(!NET.on||!NET.id||!S.started)return;if(!force&&!window.__vd)return;window.__vd=0;const r=await api('save',{save:S});if(r&&r.ok===false&&r.save){adopt(r.save);toast('Сервер повернув чесний прогрес: '+(r.why||''),'bad')}}
 async function netPollF(){const f=await api('friends');if(f&&f.ok){NET.friends=f.friends;NET.inc=f.incoming}}
 let ntk=0;async function netPoll(){if(!NET.on||!NET.id||!S.started)return;const B=S.bs;const e=await api('events');
@@ -2138,7 +2139,7 @@ Object.assign(ACT,{
  fdel:async v=>{await api('friend/del',{id:v});await netPollF();render()},
  choose:v=>{choose(v);netSync(true)},
  fcopy:()=>{try{navigator.clipboard.writeText(NET.id);toast('ID скопійовано','good')}catch(e){toast('ID: '+NET.id)}}});
-setInterval(netPoll,8000);setInterval(()=>netSync(false),15000);setInterval(()=>{if(NET.on&&!NET.id&&S.started)netReg()},4000);
+setInterval(netPoll,8000);setInterval(()=>netSync(false),15000);setInterval(()=>{if(NET.on&&!NET.id&&S.started&&!awaitingTelegram())netReg()},4000);
 document.addEventListener('visibilitychange',()=>{if(document.hidden){window.__vd=1;netSync(false)}});
 netInit();
 /* ===== ГРАФІКА ВСІХ СЦЕН ===== */

@@ -48,18 +48,23 @@ const KEYS = ['v', 'started', 'name', 'look', 'ng', 'level', 'xp', 'uah', 'gold'
 /* ---------- сховище (Supabase) ---------- */
 let DB = { players: {} };
 
+let dbLoaded=false;
 async function loadDB() {
-  if (!supabase) return;
+  if (!supabase) {console.error('SUPABASE_URL / SUPABASE_KEY не налаштовані');return;}
   try {
-    const { data, error } = await supabase.from('players').select('*');
-    if (!error && data) {
-      data.forEach(row => { DB.players[row.id] = row.data; });
-      console.log(`Завантажено ${data.length} гравців із Supabase`);
-    } else if (error) {
-      console.error('❌ Помилка завантаження бази з Supabase:', error.message);
+    const all={};let count=0;
+    for(let from=0;from<100000;from+=1000) {
+      const {data,error}=await supabase.from('players').select('*').range(from,from+999);
+      if(error)throw error;
+      for(const row of data||[]) {if(row?.id&&row?.data)all[row.id]=row.data;}
+      count+=(data||[]).length;
+      if(!data||data.length<1000)break;
     }
-  } catch (e) { console.error('Помилка завантаження бази:', e); }
+    DB.players=all;dbLoaded=true;
+    console.log(`Завантажено ${count} гравців із Supabase`);
+  } catch(e) { console.error('❌ Помилка завантаження бази з Supabase:',e.message); }
 }
+
 const dbReady = loadDB();
 
 let dirtyPlayerIds = new Set();
@@ -334,6 +339,39 @@ function auth(req) {
   const secondary=(p.sessionHashes||[]).some(h=>safeEqual(sha(key),h));
   return primary || secondary ? p : null;
 }
+// Telegram Mini App: never trust an ID from the browser without Telegram's HMAC.
+function verifyTelegramInitData(raw) {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  if (!botToken || typeof raw !== 'string' || raw.length < 20 || raw.length > 16000) return null;
+  const params = new URLSearchParams(raw);
+  const hash = params.get('hash'), authDate = Number(params.get('auth_date'));
+  if (!/^[a-f0-9]{64}$/i.test(hash || '') || !Number.isInteger(authDate)) return null;
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  if (authDate > nowSeconds + 120 || nowSeconds - authDate > 86400) return null;
+  params.delete('hash');
+  const checkString = [...params.entries()].sort(([a],[b]) => a < b ? -1 : a > b ? 1 : 0)
+      .map(([k,v]) => k + '=' + v).join('\n');
+  const secretKey = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
+  const expected = crypto.createHmac('sha256', secretKey).update(checkString).digest('hex');
+  if (!safeEqual(expected.toLowerCase(), hash.toLowerCase())) return null;
+  try {
+    const user = JSON.parse(params.get('user') || 'null');
+    if (!user || !/^\d{1,18}$/.test(String(user.id)) || user.is_bot) return null;
+    return user;
+  } catch { return null; }
+}
+function starterTelegramSave(name) {
+  const t = Date.now();
+  return {
+    ...fresh(), v:1, started:true, name, look:{skin:1,hair:0}, ng:0,
+    energy:50, eAt:t,
+    eq:{head:'head0',body:'body0',legs:'legs0',shoes:'shoes0',acc:'acc0'},
+    bronUntil:0, fakeUntil:0, wantedUntil:0, job:null, offers:null, offersAt:0,
+    tcc:null, foodAt:0, dailyAt:0, end:null, seenEnd:false, askedEnd:false,
+    eu:null, ua:{pos:0,biz:0,link:0,bizAt:0}, st:{caught:0,escaped:0,shifts:0,earned:0},
+    say:'Ласкаво просимо до Ухилянта!'
+  };
+}
 const pub = p => ({ id: p.id, name: p.name, level: p.save ? p.save.level : 1, b: p.save && p.save.bs ? num(p.save.bs.b) : 0, on: Date.now() - (p.seen || 0) < 90000 });
 
 async function api(req, res, route) {
@@ -365,6 +403,31 @@ async function api(req, res, route) {
     if (!Number.isFinite(amount) || amount<=0 || amount>1e9) return send(res,400,{ok:false,err:'Некоректна сума'});
     const item=publishNews({type:'donation',name,amount,text:`${name} підтримав гру на ₴${Math.round(amount).toLocaleString('uk-UA')}`});
     return send(res,200,{ok:true,event:item});
+  }
+  if (route === 'telegram/auth') {
+    if (req.method !== 'POST') return send(res,405,{ok:false,err:'Method not allowed'});
+    if (!supabase) return send(res,503,{ok:false,err:'У Render не налаштована база Supabase'});
+    if (!dbLoaded) return send(res,503,{ok:false,err:'Не вдалося завантажити акаунти з Supabase'});
+    if (limited('tg' + ip, 20, 5*MIN)) return send(res,429,{ok:false,err:'Забагато спроб входу'});
+    const input = await body(req), user = verifyTelegramInitData(input?.initData);
+    if (!user) return send(res,401,{ok:false,err:!process.env.TELEGRAM_BOT_TOKEN ? 'TELEGRAM_BOT_TOKEN відсутній у Render' : 'Недійсні або застарілі дані Telegram'});
+    const telegramId = String(user.id);
+    let player = Object.values(DB.players).find(p => p.telegramId === telegramId);
+    if (!player) {
+      const name = cleanName((user.first_name || user.username || 'Ухилянт') + ' ' + (user.last_name || ''));
+      const created = createPlayer(name,{telegramId,telegramUsername:String(user.username||'').slice(0,64)});
+      player=DB.players[created.id];player.save=starterTelegramSave(name);
+      dirtyPlayerIds.add(player.id);
+      await flush();
+      return send(res,200,{ok:true,...created,fresh:true});
+    }
+    const existing = auth(req);
+    if (existing && existing.id === player.id) return send(res,200,{ok:true,id:player.id,key:String(req.headers['x-key']),fresh:false});
+    const key=crypto.randomBytes(32).toString('hex');
+    player.sessionHashes=[...new Set([...(player.sessionHashes||[]),sha(key)])].slice(-12);
+    player.seen=Date.now();dirtyPlayerIds.add(player.id);
+    await flush();
+    return send(res,200,{ok:true,id:player.id,key,fresh:false});
   }
   if (route === 'account/register') {
     if (limited('areg' + ip, 5, 36e5)) return send(res, 429, { ok:false, err:'Забагато спроб реєстрації' });
@@ -434,7 +497,24 @@ async function api(req, res, route) {
     p.username=username; p.passSalt=crypto.randomBytes(16).toString('hex'); p.passHash=passwordHash(password,p.passSalt); dirtyPlayerIds.add(p.id);
     return send(res,200,{ok:true,username});
   }
-  if (route === 'account/status') return send(res,200,{ok:true,username:p.username || null,email:p.email||null,legacy:!p.passHash});
+  if (route === 'account/status') return send(res,200,{ok:true,username:p.username || null,email:p.email||null,legacy:!p.passHash,telegram:!!p.telegramId});
+  if (route === 'telegram/link') {
+    if (!p.telegramId) return send(res,403,{ok:false,err:'Цей акаунт не привʼязаний до Telegram'});
+    if (limited('tglink'+p.id,8,15*MIN)) return send(res,429,{ok:false,err:'Забагато спроб'});
+    const b = await body(req), username=cleanLogin(b?.username);
+    const old=Object.values(DB.players).find(x=>x.username===username);
+    if (!old || !old.passHash || !safeEqual(passwordHash(b?.password||'',old.passSalt),old.passHash))
+      return send(res,403,{ok:false,err:'Неправильний логін або пароль старого акаунта'});
+    if (old.telegramId && old.telegramId !== p.telegramId)
+      return send(res,409,{ok:false,err:'Цей профіль уже привʼязаний до іншого Telegram'});
+    if (old.id === p.id) return send(res,200,{ok:true,id:p.id,key:String(req.headers['x-key'])});
+    old.telegramId=p.telegramId; p.telegramId=null;
+    const key=crypto.randomBytes(32).toString('hex');
+    old.sessionHashes=[...new Set([...(old.sessionHashes||[]),sha(key)])].slice(-12);
+    dirtyPlayerIds.add(p.id);dirtyPlayerIds.add(old.id);
+    await flush();
+    return send(res,200,{ok:true,id:old.id,key,restored:true});
+  }
   if (route === 'account/email') {
     const b=await body(req); if(!b) return send(res,400,{ok:false});
     const email=cleanEmail(b.email);
