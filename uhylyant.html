@@ -690,7 +690,69 @@ function avatarInner(look,eq,mood){
   if(A.look==='bag')o+='<rect x="118" y="176" width="42" height="34" rx="9" fill="'+A.col+'"/><rect x="118" y="186" width="42" height="4" fill="'+shade(A.col,-.3)+'"/>';
   return o;
 }
-function avatarSVG(look,eq,mood,vb){return '<svg viewBox="'+(vb||'0 0 200 300')+'" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'+avatarInner(look,eq,mood)+'</svg>'}
+/* Illustrated editable character; geometry responds to owned equipment and live beard. */
+function comicAvatarSVG(look,eq,mood='ok',vb='0 0 200 300',working=false,beardMm=0){
+ const item=k=>ITEM?.[eq?.[k]]||ITEM?.[k+'0']||{look:'tee',col:'#262628'};
+ const head=item('head'),body=item('body'),pants=item('legs'),shoes=item('shoes');
+ const skin=SKIN[Number(look?.skin)]||SKIN[1],hair=HAIR[Number(look?.hair)]||HAIR[0];
+ const wear=working?'#536a55':body.col||'#282728';
+ const legColor=working?'#455449':pants.col||'#2b4767';
+ const outline='#171312',shadeSkin=shade(skin,-.16),lip=shade(skin,-.39),beard=Math.min(35,Math.max(0,Math.floor(beardMm)));
+ const ink='stroke="'+outline+'" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"';
+ let g=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" aria-hidden="true">
+ <ellipse cx="100" cy="289" rx="57" ry="8" fill="#070606" opacity=".28"/>
+ <path d="M71 191l-4 78q14 7 30 0l3-63 4 63q14 6 30-2l-4-80" fill="${legColor}" ${ink}/>
+ <path d="M84 202l-2 58M116 202l2 58" fill="none" stroke="#99a0a7" stroke-opacity=".26" stroke-width="2"/>
+ <path d="M64 259q18-6 34 3l1 18H58q-5-8 6-21zm40 3q17-8 31 0l7 18h-40z" fill="${shoes.col||'#252225'}" ${ink}/>
+ <path d="M63 278h35m5 0h37" stroke="#9b8e79" stroke-width="4"/>
+ <path d="M54 130q-20 1-26 32l-6 37q-2 15 8 17 13 3 17-10l13-48" fill="${skin}" ${ink}/>
+ <path d="M145 130q23 4 29 28l6 44q2 16-10 17-12 1-15-14l-12-43" fill="${skin}" ${ink}/>
+ <path d="M35 165l-6 25m135-29 9 33" stroke="${shadeSkin}" stroke-width="4"/>
+ <g fill="none" stroke="#30221b" stroke-width="2.4" opacity=".95"><path d="M27 178l15 13-10 7 11 8M157 176l12 12-12 8 15 10"/><path d="M32 179l5-10m125 8 5-12M35 204l-8-2m137 1 9-3"/></g>
+ <path d="M67 106q32-13 64 0l27 20q8 21 6 67l-19 12-3-12-87 1-8 12q-14-38-9-71z" fill="${wear}" ${ink}/>
+ <path d="M69 111q30 8 62 0" fill="none" stroke="#e4e1cf" stroke-opacity=".13" stroke-width="4"/>
+ ${working?`<path d="M71 130h58v60H71z" fill="#a0a487" stroke="#263129" stroke-width="3"/><path d="M100 130v58M67 128q33 23 66 0" stroke="#364f3d" stroke-width="5" fill="none"/><rect x="80" y="169" width="40" height="12" rx="4" fill="#697856"/><path d="M90 178h20" stroke="#a2b79a" stroke-width="2"/><path d="M64 130l-6 41m85-41 6 41" stroke="#d4c6a4" stroke-width="4"/>`:
+ body.look==='suit'?`<path d="M77 113l23 30 23-30-10 77H88z" fill="#d4c9b1"/><path d="M92 131l8 9 9-9-9 45z" fill="#943c33"/><path d="M77 114l-15 20 29 41m32-61 16 20-30 41" fill="none" stroke="${shade(wear,-.2)}" stroke-width="9"/>`:
+ body.look==='jacket'?`<path d="M100 111v84M76 114l24 24 24-24" fill="none" stroke="${shade(wear,-.26)}" stroke-width="5"/><path d="M61 164h25m29 0h24" fill="none" stroke="#151413" stroke-width="3"/>`:
+ body.look==='hoodie'?`<path d="M69 134q-10-30 31-24 41-6 31 24M75 165h50v17H75z" fill="none" stroke="${shade(wear,-.3)}" stroke-width="5"/>`:
+ `<path d="M76 126q24 10 48 0" fill="none" stroke="${shade(wear,.22)}" stroke-opacity=".6" stroke-width="4"/>`}
+ <path d="M84 95v20q15 12 32-1V95" fill="${shadeSkin}" ${ink}/>
+ <g fill="none" stroke="#32221f" stroke-width="2"><path d="M92 102l-7 7 11 7-4-8 11 9 8-10"/><path d="M90 108l20 7m-20-2 20-8"/><path d="M99 102v13"/></g>
+ <path d="M63 48q-6 29 9 44 12 19 31 20 26-4 37-30l1-39q-5-28-39-30-33-1-39 35z" fill="${skin}" ${ink}/>
+ <path d="M66 63q-11-6-11 8 0 13 15 14m69-22q10-5 12 9-1 12-13 11" fill="${shadeSkin}" ${ink}/>
+ <path d="M68 57q19-13 31-7l24-4q13 5 17 10l-3-20-19-22-33-3-20 18z" fill="${hair}" stroke="${outline}" stroke-width="3.2"/>
+ <path d="M74 53q12-6 23-1M108 51q13-5 24 1" fill="none" stroke="${hair}" stroke-width="6" stroke-linecap="round"/>
+ <path d="M75 59q10-7 22 0M108 57q12-7 23-3" stroke="${outline}" stroke-width="5.2" fill="none" stroke-linecap="round"/>
+ <path d="M75 67q9-5 18-1m17 0q11-6 18-2" stroke="#211714" stroke-width="2.3" fill="none"/>
+ <ellipse cx="86" cy="67" rx="3.7" ry="4.5" fill="#241e1e"/><ellipse cx="119" cy="65" rx="3.7" ry="4.5" fill="#241e1e"/>
+ <circle cx="87" cy="66" r="1.2" fill="#fff8db"/><circle cx="120" cy="64" r="1.2" fill="#fff8db"/>
+ <path d="M102 64l-7 17q5 5 13 1" fill="none" stroke="${shadeSkin}" stroke-width="3.5"/>
+ <path d="M85 88q17 7 33-4" fill="none" stroke="${lip}" stroke-width="3.4" stroke-linecap="round"/>
+ <path d="M81 93q19 12 39-5" fill="none" stroke="${shadeSkin}" stroke-width="2" opacity=".8"/>
+ <g fill="#30211c" opacity=".82"><circle cx="77" cy="85" r="1"/><circle cx="83" cy="89" r="1.5"/><circle cx="90" cy="94" r="1"/><circle cx="114" cy="96" r="1.3"/><circle cx="126" cy="83" r="1"/></g>
+ ${beard>0?`<path d="M72 88q7 ${5+beard*.23} 30 ${13+beard*.5} 31 ${13+beard*.5} 30 ${-5-beard*.2} 31-13q-18 16-61 0z" fill="#30241e" opacity="${Math.min(.94,.24+beard/37)}" stroke="#261b18" stroke-width="2"/>`:''}
+ ${head.look==='cap'||head.look==='beanie'||head.look==='hardhat'?`<path d="M63 48q-7-32 37-39 43-1 46 40l-30 7-52-1z" fill="${working?'#a7b68b':head.col}" ${ink}/><path d="M63 51q45-14 83-5l20 6q-31 14-102 9z" fill="${working?'#53634b':shade(head.col,-.25)}" ${ink}/><path d="M100 11v34m-31-8q29-19 66 1" fill="none" stroke="#ffffff" stroke-opacity=".2" stroke-width="2"/>`:head.look==='hood'?`<path d="M59 62q-14-50 39-57 58-2 52 54" fill="none" stroke="${head.col}" stroke-width="19"/>`:head.look==='panama'?`<path d="M69 45q3-34 30-32 30-2 35 32z" fill="${head.col}" ${ink}/><path d="M43 47q60-14 113 0-10 19-113 0z" fill="${head.col}" ${ink}/>`:`<path d="M66 45q28-19 66 0" fill="none" stroke="${hair}" stroke-width="7"/>`}
+ <path d="M111 90l31-5" stroke="#f6f0da" stroke-width="5" stroke-linecap="round"/><path d="M140 85l7-1" stroke="#dd5832" stroke-width="5"/>
+ <path d="M147 80q-9-12 3-20t-3-22" stroke="#e8e2d7" stroke-opacity=".52" stroke-width="2" fill="none"/>
+ <path d="M62 124q2 12 16 16m59-16q-4 11-17 17" fill="none" stroke="#e6e0c8" stroke-opacity=".24" stroke-width="3"/>
+ ${working?`<path d="M77 130l10 16-10 14M125 130l-10 16 10 14" fill="none" stroke="#e9d7a7" stroke-width="2"/><circle cx="100" cy="151" r="9" fill="#f3ce6a" stroke="#2a2118" stroke-width="3"/><path d="M96 151l3 3 6-7" fill="none" stroke="#43351c" stroke-width="2"/>`:''}
+ <g class="uhy-ink-tattoos" stroke="#30211d" stroke-width="2.1" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".88">
+ <path d="M31 182l6-6 7 5-3 7-8 1-4 8 8 7m-2-22l2 8m6-6l-3 9"/>
+ <path d="M34 198q11-4 9 7-4 9-10 5m2-15l7 16"/>
+ <path d="M158 178l8-6 5 7-4 7 7 7-10 8-7-5 6-9m-3-7l9 16"/>
+ <path d="M159 205q8-8 17 0l-2 7-8 4-8-6Z"/>
+ <path d="M91 102l-5 6 7 5 7-7 8 8 7-6" stroke-width="2.5"/>
+ <path d="M95 107l4 6 5-5m-1-3l4 7"/>
+ <path d="M78 153l8 7-8 7m41-11l-8 8 8 7" stroke-opacity=".3"/>
+ </g>
+ <path d="M80 73l9-2m28-1 8-2" stroke="#ffffff" stroke-opacity=".3" stroke-width="1.8" stroke-linecap="round"/>
+ <path d="M89 93q14 6 26-3" stroke="#ffc7a2" stroke-opacity=".43" stroke-width="1.4" fill="none"/>
+ <path d="M64 120q35 7 76-1" stroke="#fff8e2" stroke-opacity=".14" stroke-width="1.6" fill="none"/>
+ </svg>`;
+ return g;
+}
+
+function avatarSVG(look,eq,mood,vb){return comicAvatarSVG(look,eq,mood,vb||'0 0 200 300')}
 const VB={head:'46 0 108 112',body:'30 108 140 104',legs:'50 178 100 108',shoes:'44 236 112 60',acc:'8 80 184 150'};
 const thumb=it=>avatarSVG(S.look,Object.assign({},BASE_EQ,{[it.slot]:it.id}),'ok',VB[it.slot]);
 
@@ -762,6 +824,13 @@ const BOLT='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h7l-
 const COIN='<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="#ffd04a" stroke="#b8901a" stroke-width="1.5"/><path d="M8 4v8M6 6.5c0-.8.9-1.2 2-1.2s2 .4 2 1.2-.9 1.1-2 1.4-2 .6-2 1.4.9 1.2 2 1.2 2-.4 2-1.2" stroke="#8a6a0a" stroke-width="1.2" fill="none"/></svg>';
 const TABS=[['home','Дім'],['boss','Бої'],['street','Вулиця'],['gear','Одяг'],['path','Шлях'],['shop','Донат']];
 
+function renderTopActions(){
+ const hud=document.getElementById('hud');if(!hud)return;
+ const actions=document.createElement('div');actions.id='uhyTopActions';
+ actions.innerHTML='<button type="button" data-uhy-top="edit" aria-label="Редактор зовнішності">✎ Герой</button><button type="button" data-uhy-top="health">❤️ Здоровʼя</button><button type="button" data-uhy-top="housing">🏠 Хати</button><button type="button" data-uhy-top="world">💼 Робота</button>';
+ hud.appendChild(actions);
+ actions.onclick=ev=>{const action=ev.target.closest('[data-uhy-top]')?.dataset.uhyTop;if(!action)return;if(action==='edit')window.UHY_SCENE?.open?.();else if(window.UHY_NAV?.open)window.UHY_NAV.open(action);else document.querySelector('#socialDock [data-sp="'+action+'"]')?.click()};
+}
 function renderHUD(){
   syncEnergy();
   const mx=maxEnergy(),need=xpNeed(S.level),t=now();
@@ -773,11 +842,11 @@ function renderHUD(){
   $('#hud').innerHTML='<div class="hud-top"><div class="who"><span class="lvl t'+tierOf(S.level)+'">'+S.level+'</span><div class="who-txt"><b>'+esc(S.name||'Ухилянт')+'</b><small>'+rankOf(S.level)+(S.ng?' · НГ+'+S.ng:'')+'</small></div></div><div class="wallet"><span class="chip"><b style="color:var(--green)">₴</b>'+fmt(S.uah)+'</span><span class="chip gold">'+COIN+fmt(S.gold)+'</span><button class="icon-btn" data-act="settings" aria-label="Налаштування"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></button></div></div>'
    +'<div class="bar xp"><i style="width:'+(S.level>=MAXLVL?100:Math.min(100,S.xp/need*100))+'%"></i></div>'
    +'<div class="hud-bot"><div class="energy">'+BOLT+'<div class="bar en"><i style="width:'+(S.energy/mx*100)+'%"></i></div><span class="num">'+S.energy+'/'+mx+(S.energy<mx?' · '+Math.ceil((regenMs()-(t-S.eAt))/1000)+' с':'')+'</span></div><div class="status">'+st.join('')+'</div></div>';
-  tickCd();
+  renderTopActions();tickCd();
 }
 function renderScene(){
   const sc=$('#scene');if(!sc)return;
-  if(!S.tcc && ui.tab!=='boss' && window.UHY_SCENE && window.UHY_SCENE.render){window.UHY_SCENE.render();return;}
+  if(window.UHY_SCENE?.render){window.UHY_SCENE.render();return;}
   sc.dataset.night=String((new Date(Date.now()+7200000).getUTCHours()<6)||(new Date(Date.now()+7200000).getUTCHours()>=20));
   sc.innerHTML=scene(sceneKind())+'<div class="bubble" id="bubble"></div>';
   $('#bubble').textContent=S.say||'';
@@ -1125,29 +1194,108 @@ function bgPath(place,tier='shack',dark=night()){
 const kind=place==='home'?'home-'+tier:place;
 return '/assets/comic-'+kind+'-'+(dark?'night':'day')+'.svg';
 }
-function avatar(look,eq,beard){
-let svg=avatarSVG(look,eq,'ok').replace('<svg ','<svg stroke="#241a16" stroke-width="1.2" ');
-const mm=Math.max(0,Math.min(35,Number(beard)||0));
-const len=Math.min(32,mm*0.9),alpha=Math.min(0.95,0.25+mm/28);
-const beardSvg=mm>0?'<path d="M69 77Q72 '+(86+len*0.55)+' 100 '+(87+len)+'Q128 '+(86+len*0.55)+' 131 77Q118 '+(82+len*.15)+' 100 '+(83+len*.25)+'Q82 '+(82+len*.15)+' 69 77Z" fill="#34251d" opacity="'+alpha.toFixed(2)+'" stroke="#201714" stroke-width="1.6"/>' : '';
-return svg.replace('</svg>',beardSvg+'</svg>');
+function avatar(look,eq,beard){return comicAvatarSVG(look,eq,'ok','0 0 200 300',false,Number(beard)||0)}
+/* One illustrated camera for every section, with contextual locations and uniform. */
+let socialSection=null,workShift=null,worldState=null;
+const SCENE_NAMES={yard:'🏘 Двір',street:'🏙 Місто',roof:'🌃 Дах',forest:'🌲 Ліс',home:'🏠 Моя хата',tcc0:'🚨 ТЦК · ЗАТРИМАННЯ',tcc1:'🚐 ДОРОГА · ТЦК',tcc2:'🎖 НА ПОЗИЦІЯХ',work:'👷 РОБОЧА ЗМІНА',workshop:'🔧 МАЙСТЕРНЯ',boss:'⚔ АРЕНА БОСА',hospital:'🏥 ЛІКАРНЯ',casino:'🎰 КАЗИНО',transit:'🚏 У ДОРОЗІ'};
+const streetState=()=>worldState?.street||null;
+function sceneContext(){
+ if(S.tcc)return {place:'tcc'+Math.max(0,Math.min(2,Number(S.tcc.stage)||0)),label:SCENE_NAMES['tcc'+Math.max(0,Math.min(2,Number(S.tcc.stage)||0))],mode:'danger'};
+ const section=socialSection||ui.tab;
+ const st=streetState();
+ if(st?.mode==='trench')return {place:'tcc2',label:SCENE_NAMES.tcc2,mode:'trench',street:st};
+ if(st?.mode==='detained')return {place:'tcc0',label:SCENE_NAMES.tcc0,mode:'danger',street:st};
+ if(workShift)return {place:'work',label:SCENE_NAMES.work+' · '+(workShift.name||'Робота'),mode:'work'};
+ const map={world:'street',housing:'home',health:'hospital',career:'workshop',casino:'casino',leaderboard:'roof',friends:'yard',news:'street',account:'home',boss:'boss',street:'street',path:'forest',shop:'casino'};
+ let place=map[section]||cfg.location;
+ if(section==='home'&&cfg.location==='home')place='home';
+ return {place,label:SCENE_NAMES[place]||'УХИЛЯНТ',mode:place==='boss'?'fight':(section==='world'&&st?.curfewActive?'curfew':'normal'),street:st};
+}
+function presentActor(working=false){return comicAvatarSVG(S.look,S.eq,'ok','0 0 200 300',working,beardNow())}
+function smallTime(ms){const t=Math.max(0,Math.ceil(ms/1000));return String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0')}
+function shiftStatus(){if(!workShift)return '';const ms=Number(workShift.endsAt)-Date.now();return ms>0?'⏳ Зміна · '+smallTime(ms):'✅ Зміна завершена · забери оплату'}
+function actorShouldSmoke(context){return !!(worldState?.world?.boosts?.smoke||context.place==='street'||context.place==='roof');}
+function backFX(context){
+ const treeSet=['street','forest','tcc0','tcc2'].includes(context.place);
+ return treeSet?'<div class="uhy-tree a"></div><div class="uhy-tree b"></div><div class="uhy-tree c"></div>':'';
+}
+function sceneProps(context){
+ const st=context.street||streetState();
+ if(context.mode==='trench'||context.place==='tcc2')return '<div class="uhy-trench"></div><div class="uhy-rifle"></div><div class="uhy-muzzle"></div>';
+ if(context.mode==='danger'||st?.mode==='detained')return '<div class="uhy-bus danger"></div><div class="uhy-cops"><span></span><span></span></div>';
+ if(context.place==='street')return '<div class="uhy-bus patrol"></div><div class="uhy-cops quiet"><span></span></div>';
+ return '';
+}
+function statusText(context,dark){
+ if(shiftStatus())return shiftStatus();
+ if(context.mode==='trench')return '🎖 На нулі · тримай оборону';
+ if(context.mode==='danger')return '🚨 Поруч бусик, поліція та ТЦК';
+ if(context.mode==='fight')return '⚔ Підготуй спорядження';
+ if(context.mode==='curfew')return '🌙 Комендантська година · менший ризик, жорсткіший наслідок';
+ return dark?'🌙 НІЧ':'☀ ДЕНЬ';
+}
+function paintMini(context,dark){
+ const mini=document.getElementById('uhySceneMini');if(!mini)return;
+ mini.dataset.mode=context.mode;
+ const path=bgPath(context.place,currentHouse,dark);
+ mini.style.backgroundImage='linear-gradient(90deg,#090b0b77,#00000009 58%),url("'+path+'")';
+ const actor=mini.querySelector('.uhy-mini-actor');
+ if(actor){actor.innerHTML=presentActor(context.mode==='work'||context.mode==='trench'||context.place==='tcc2');actor.classList.toggle('smoking',actorShouldSmoke(context));}
+ const title=mini.querySelector('.uhy-mini-label');if(title)title.textContent=context.label;
+ const timer=mini.querySelector('.uhy-mini-timer');if(timer)timer.textContent=statusText(context,dark);
+ mini.classList.toggle('work-active',context.mode==='work');
+ mini.classList.toggle('danger-active',context.mode==='danger'||context.mode==='trench');
+ mini.classList.toggle('curfew-active',context.mode==='curfew');
+ const edit=mini.querySelector('.uhy-mini-edit');if(edit)edit.onclick=()=>openEditor();
 }
 function sceneRender(){
-const sc=document.getElementById('scene');if(!sc)return;
-const dark=night(),location=cfg.location;
-const img=bgPath(location,currentHouse,dark);
-sc.dataset.night=String(dark);
-sc.innerHTML='<div class="uhy-backdrop"></div><div class="uhy-actor"></div><div class="uhy-scene-label"></div><div class="uhy-controls"><button type="button" id="uhyEditBtn">✎ Персонаж</button><button type="button" id="uhyLocationBtn">⌖ Локація</button></div><div class="bubble" id="bubble"></div>';
-sc.querySelector('.uhy-backdrop').style.backgroundImage='url("'+img+'")';
-sc.querySelector('.uhy-actor').innerHTML=avatar(S.look,S.eq,beardNow());
-sc.querySelector('.uhy-scene-label').textContent=scenes[location]+' · '+(dark?'Ніч':'День');
-const vit=document.createElement('div');vit.className='uhy-vitals';vit.textContent='🥣 '+Math.floor(avatarCare.hunger)+'% · ❤️ '+Math.floor(avatarCare.health)+'% · 🧔 '+beardNow()+' мм';vit.dataset.mm=String(beardNow());sc.appendChild(vit);
-sc.querySelector('#bubble').textContent=S.say||'';
-sc.querySelector('#uhyEditBtn').onclick=()=>openEditor();
-sc.querySelector('#uhyLocationBtn').onclick=()=>openEditor('location');
-lastNight=dark;
+ const sc=document.getElementById('scene');if(!sc)return;
+ const context=sceneContext(),dark=night(),bg=bgPath(context.place,currentHouse,dark);
+ const changed=sc.dataset.place!==context.place||sc.dataset.night!==String(dark);
+ sc.dataset.night=String(dark);sc.dataset.place=context.place;sc.dataset.mode=context.mode;
+ sc.innerHTML='<div class="uhy-fx-back"></div><div class="uhy-backdrop"></div><div class="uhy-ambient"></div><div class="uhy-scene-prop"></div><div class="uhy-actor"></div><div class="uhy-scene-label"></div><div class="uhy-controls"><button type="button" id="uhyEditBtn" aria-label="Редактор персонажа">✎</button><button type="button" id="uhyLocationBtn">⌖ Локація</button></div><div class="uhy-live-status"></div><div class="uhy-vitals"></div><div class="bubble" id="bubble"></div>';
+ sc.querySelector('.uhy-backdrop').style.backgroundImage='url("'+bg+'")';
+ sc.querySelector('.uhy-fx-back').innerHTML=backFX(context);
+ sc.querySelector('.uhy-scene-prop').innerHTML=sceneProps(context);
+ const actor=sc.querySelector('.uhy-actor');
+ actor.innerHTML=presentActor(context.mode==='work'||context.mode==='trench'||context.place==='tcc2');
+ actor.classList.toggle('smoking',actorShouldSmoke(context));
+ actor.classList.toggle('armed',context.mode==='trench'||context.place==='tcc2');
+ sc.querySelector('.uhy-scene-label').textContent=context.label+' · '+(dark?'Ніч':'День');
+ sc.querySelector('.uhy-live-status').textContent=statusText(context,dark);
+ const vit=sc.querySelector('.uhy-vitals');
+ vit.textContent='🥣 '+Math.floor(avatarCare.hunger)+'% · ❤️ '+Math.floor(avatarCare.health)+'% · 🧔 '+beardNow()+'мм';
+ vit.dataset.mm=String(beardNow());
+ sc.querySelector('#bubble').textContent=S.say||'';
+ sc.querySelector('#uhyEditBtn').onclick=()=>openEditor();
+ sc.querySelector('#uhyLocationBtn').onclick=()=>openEditor('location');
+ sc.classList.toggle('uhy-danger',context.mode==='danger'||context.mode==='trench');
+ sc.classList.toggle('uhy-working',context.mode==='work');
+ sc.classList.toggle('uhy-curfew',context.mode==='curfew');
+ if(changed){sc.classList.remove('uhy-transition');void sc.offsetWidth;sc.classList.add('uhy-transition')}
+ lastNight=dark;paintMini(context,dark);
 }
-window.UHY_SCENE={render:sceneRender,open:openEditor,syncHousing:()=>syncHousing()};
+function ensureShellUX(){
+ try{const tg=window.Telegram?.WebApp;tg?.ready?.();tg?.expand?.();if(typeof tg?.requestFullscreen==='function')tg.requestFullscreen()}catch(e){}
+ let hint=document.getElementById('rotateHint');
+ if(!hint){
+  hint=document.createElement('div');hint.id='rotateHint';
+  hint.innerHTML='<div><b>↻ Поверни телефон</b><span>Для нормального відображення відкрий гру в альбомному режимі.</span></div>';
+  document.body.appendChild(hint);
+ }
+ const portrait=window.matchMedia('(max-width: 900px)').matches&&window.matchMedia('(orientation: portrait)').matches;
+ hint.hidden=!portrait;
+}
+window.addEventListener('resize',ensureShellUX);window.addEventListener('orientationchange',ensureShellUX);setTimeout(ensureShellUX,0);setTimeout(ensureShellUX,1200);
+window.UHY_SCENE={
+ render:sceneRender,open:openEditor,syncHousing:()=>syncHousing(),
+ getWorker:()=>presentActor(true),
+ setSection:s=>{socialSection=s||null;sceneRender()},
+ setShift:shift=>{workShift=shift&&Number.isFinite(Number(shift.endsAt))?shift:null;sceneRender()},
+ setWorldState:data=>{worldState=data||null;sceneRender()},
+ updateTimer:()=>{const status=shiftStatus();document.querySelectorAll('.uhy-mini-timer,.uhy-live-status').forEach(el=>{if(status&&el)el.textContent=status})}
+};
+
 const root=document.createElement('div');
 root.id='uhyEditor';
 root.setAttribute('aria-hidden','true');
@@ -1251,4 +1399,194 @@ else{ui.lastSig=sigNow();render()}
 
 
 
+<style id="uhyV15Style">
+/* UHYLYANT v15 — cohesive inked comic style / compact Telegram Mini App */
+:root{--bg:#171719;--panel:#28221c;--panel-2:#382a20;--ink:#f6e3bc;--muted:#bca98c;--line:#896539;--amber:#f0b844;--amber-edge:#84541e;--red:#bc4435}
+body{background:radial-gradient(circle at 75% 12%,#6b4d2933,transparent 32%),linear-gradient(135deg,#111a20,#27211b 70%)!important}
+.hud{border:2px solid #ac7839!important;border-radius:9px!important;background:linear-gradient(145deg,#37271e,#19191a)!important;box-shadow:3px 4px 0 #0c0b0b!important}
+.hud .lvl{color:#1c130b;background:linear-gradient(#ffca61,#cf8b24)!important;border:2px solid #7a511b!important;border-radius:7px!important}
+.hud .chip{height:28px!important;background:#33251b!important;border:1px solid #a07842!important;color:#f6deaa!important}
+#uhyTopActions{display:flex;flex-wrap:wrap;gap:5px;align-items:center;padding-top:3px}
+#uhyTopActions button{min-height:31px;cursor:pointer;background:#51402c;border:1px solid #bb8742;color:#fce5bc;border-radius:5px;font:800 11px Oswald,Impact,Arial,sans-serif;padding:4px 10px;box-shadow:1px 2px #100a07;letter-spacing:.025em}
+#uhyTopActions button:first-child{background:#e7a533;color:#24170a}
+#uhyTopActions button:active{transform:translateY(1px)}
+.card,.paper{border:2px solid #896235!important;background:linear-gradient(145deg,#352921,#222222)!important;box-shadow:3px 4px #100d0b!important}
+.card .h{color:#f3bc61!important;font:800 14px Oswald,Impact,Arial,sans-serif!important;letter-spacing:.045em}
+.paper{background:linear-gradient(145deg,#e3cf9f,#bfa77c)!important;color:#2a211a!important}
+.btn{font:800 12px Oswald,Impact,Arial,sans-serif!important;letter-spacing:.02em!important;border-width:2px!important;min-height:35px!important;border-radius:6px!important;padding:6px 10px!important}
+.btn.big{min-height:42px!important;font-size:15px!important}
+.btn.sm{min-height:32px!important;font-size:12px!important}
+.btn:active:not(:disabled){transform:translateY(2px)!important}
+#scene.scene{border:3px solid #b28040!important;border-radius:9px!important;box-shadow:3px 5px 0 #100b07!important;background:#151b1e!important}
+#scene .uhy-backdrop{animation:uhy-dolly 16s ease-in-out infinite alternate;background-size:cover;background-position:center;filter:contrast(1.05) saturate(.99)}
+#scene .uhy-actor{left:clamp(5px,7%,72px)!important;width:clamp(112px,34%,360px)!important;height:94%!important;bottom:-4%!important;animation:uhy-breathe 3.2s ease-in-out infinite alternate!important;z-index:3!important}
+#scene .uhy-actor svg{filter:drop-shadow(3px 4px 1px #130f0ccc)!important}
+#scene .uhy-ambient{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,#07080b22,transparent 65%)}
+#scene .uhy-fx-back{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+#scene .uhy-scene-prop{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:hidden}
+#scene .uhy-tree{position:absolute;bottom:20px;width:26px;height:84px;transform-origin:50% 100%;animation:uhy-tree-sway 3.8s ease-in-out infinite alternate}
+#scene .uhy-tree::before{content:'';position:absolute;left:10px;bottom:0;width:6px;height:36px;background:#2d231a;border-radius:3px}
+#scene .uhy-tree::after{content:'';position:absolute;left:0;bottom:24px;width:26px;height:38px;background:radial-gradient(circle at 50% 45%,#537445,#24341f 70%);border-radius:50% 50% 46% 46%}
+#scene .uhy-tree.a{left:67%;height:84px;opacity:.88}.uhy-tree.b{left:77%;height:96px;animation-duration:4.7s;opacity:.78}.uhy-tree.c{left:87%;height:74px;animation-duration:3.1s;opacity:.7}
+#scene .uhy-bus{position:absolute;right:8%;bottom:15px;width:108px;height:44px;background:linear-gradient(180deg,#5f7386,#2b3642);border:3px solid #121a21;border-radius:10px 12px 9px 9px;box-shadow:0 8px 20px #0007;animation:uhy-bus-rock 2.6s ease-in-out infinite}
+#scene .uhy-bus::before{content:'';position:absolute;left:9px;top:8px;width:54px;height:14px;background:#bbd8ef;border-radius:5px}.uhy-bus::after{content:'';position:absolute;right:12px;top:9px;width:18px;height:18px;border-radius:50%;background:#d9e4ed;box-shadow:-62px 0 0 #d9e4ed,-24px 23px 0 5px #111,-76px 23px 0 5px #111}
+#scene .uhy-bus.patrol{opacity:.68;transform:scale(.92)}#scene .uhy-bus.danger{animation:uhy-bus-rock 1.4s ease-in-out infinite,uhy-siren-pulse 1s linear infinite}
+#scene .uhy-cops{position:absolute;right:2%;bottom:18px;display:flex;gap:10px;align-items:flex-end}.uhy-cops.quiet{opacity:.72}.uhy-cops span{display:block;position:relative;width:16px;height:36px;background:linear-gradient(#1c2a45,#0f1623);border-radius:6px 6px 3px 3px;animation:uhy-guard-bob 1.6s ease-in-out infinite alternate}.uhy-cops span::before{content:'';position:absolute;left:2px;top:-10px;width:12px;height:12px;background:#efd5b0;border-radius:50%}.uhy-cops span:nth-child(2){animation-delay:.4s}
+#scene .uhy-trench{position:absolute;left:46%;right:0;bottom:0;height:54px;background:linear-gradient(180deg,#6e5a3b,#47331e);border-top:3px solid #a88a53;clip-path:polygon(0 26%,8% 34%,15% 24%,25% 40%,34% 18%,45% 28%,52% 14%,63% 32%,74% 16%,85% 30%,100% 18%,100% 100%,0 100%)}
+#scene .uhy-rifle{position:absolute;left:34%;bottom:31px;width:76px;height:10px;background:linear-gradient(90deg,#1b1f24,#535f66);border-radius:8px;transform:rotate(-18deg)}#scene .uhy-rifle::before{content:'';position:absolute;left:-10px;top:-4px;width:18px;height:18px;background:#403021;border-radius:3px 50% 50% 4px}.uhy-rifle::after{content:'';position:absolute;right:-6px;top:3px;width:20px;height:4px;background:#b6c1c9;border-radius:3px}
+#scene .uhy-muzzle{position:absolute;left:55%;bottom:52px;width:24px;height:24px;background:radial-gradient(circle,#ffd45d 0 28%,#ff9a1f 30%,transparent 66%);animation:uhy-muzzle 1.1s linear infinite}
+#scene .uhy-actor.smoking::before,#socialPanel .uhy-mini-actor.smoking::before{content:'';position:absolute;right:24%;top:34%;width:12px;height:3px;background:linear-gradient(90deg,#f9e1b6,#8d5f2b);border-radius:3px;box-shadow:10px 0 0 -1px #d73d2a;transform:rotate(-8deg)}
+#scene .uhy-actor.smoking::after,#socialPanel .uhy-mini-actor.smoking::after{content:'';position:absolute;right:19%;top:24%;width:26px;height:26px;background:radial-gradient(circle at 45% 48%,#ffffff96 0 22%,transparent 60%);filter:blur(1px);animation:uhy-smoke 2.8s ease-out infinite}
+#rotateHint{position:fixed;left:10px;right:10px;top:10px;z-index:120;display:flex;justify-content:center;pointer-events:none}#rotateHint[hidden]{display:none}#rotateHint>div{display:flex;flex-direction:column;gap:2px;max-width:440px;background:#15120edc;border:2px solid #c49854;color:#ffe2aa;padding:10px 14px;border-radius:12px;text-align:center;box-shadow:0 8px 30px #0008}#rotateHint b{font:800 14px Oswald,Impact,Arial,sans-serif;letter-spacing:.05em}#rotateHint span{font-size:12px;line-height:1.3}
+#scene.uhy-danger .uhy-ambient{animation:uhy-siren-flash 1.5s linear infinite}
+#scene.uhy-working .uhy-actor{animation:uhy-work-bob 1.5s ease-in-out infinite alternate!important}
+#scene .uhy-scene-label{top:8px;left:8px;max-width:52%;padding:5px 8px;border:2px solid #b3823f;background:#201b17e8;color:#ffe5ae;font:800 12px Oswald,Impact,Arial,sans-serif;letter-spacing:.07em}
+#scene .uhy-controls{top:8px;right:8px;gap:4px}
+#scene .uhy-controls button{padding:5px 9px;min-height:30px;font:800 11px Oswald,Impact,Arial,sans-serif;border-radius:5px;box-shadow:2px 2px #160f0b}
+#scene .uhy-vitals{left:8px;right:auto;bottom:40px;max-width:85%;white-space:nowrap;background:#121311e8;border-color:#ae8247;border-radius:5px;font:800 11px Oswald,Impact,Arial,sans-serif}
+#scene .uhy-live-status{position:absolute;z-index:5;right:8px;bottom:40px;max-width:58%;padding:5px 8px;background:#21261ce8;color:#fbd795;border:1px solid #be9757;border-radius:5px;font:800 12px Oswald,Impact,Arial,sans-serif;text-align:right}
+#scene .uhy-live-status:empty{display:none}
+#scene.uhy-transition .uhy-backdrop{animation:uhy-new-scene .46s ease-out}
+#scene .bubble{z-index:5!important;max-width:100%;font-size:11px;line-height:1.3;padding:5px 7px}
+#uhyEditor .uhy-dialog{background:linear-gradient(140deg,#382d22,#211d1c);border-color:#c59857;border-radius:9px!important}
+#uhyEditor .uhy-preview{border:3px solid #8d653e;background-size:cover;background-position:center}
+#uhyEditor select{background:#201a16;border:2px solid #785a39;padding:8px 9px;border-radius:6px}
+/* Persistent illustrated scene in every secondary section. */
+#socialPanel .spbox{display:flex!important;flex-direction:column!important;overflow:hidden!important;box-shadow:0 25px 70px #070707dd!important}
+#socialPanel .uhy-mini-scene{position:relative;flex:0 0 auto;height:clamp(120px,23dvh,210px);width:100%;background:#323b3f center/cover no-repeat;border-bottom:3px solid #c3934a;overflow:hidden;isolation:isolate}
+#socialPanel .uhy-mini-scene::after{content:"";position:absolute;inset:0;z-index:0;background:linear-gradient(90deg,#070b0d44,transparent 75%);pointer-events:none}
+#socialPanel .uhy-mini-actor{position:absolute;z-index:2;bottom:-15px;left:clamp(35px,16%,145px);height:145%;width:clamp(100px,30%,235px);display:flex;justify-content:center;align-items:flex-end;animation:uhy-breathe 3.1s ease-in-out infinite alternate;filter:drop-shadow(5px 5px 1px #100b0abb);pointer-events:none}
+#socialPanel .uhy-mini-actor svg{height:100%;width:100%}
+#socialPanel .uhy-mini-label{position:absolute;left:9px;top:10px;z-index:4;background:#191511da;border:1px solid #b07d3c;color:#ffd897;padding:4px 7px;border-radius:4px;font:900 13px Oswald,Impact,Arial,sans-serif;letter-spacing:.05em;max-width:60%}
+#socialPanel .uhy-mini-timer{position:absolute;right:60px;bottom:10px;z-index:4;background:#251d16dd;border:1px solid #ba8444;color:#ffe0a8;padding:5px 9px;border-radius:4px;font:800 12px Oswald,Impact,Arial,sans-serif}
+#socialPanel .uhy-mini-edit{position:absolute;right:10px;bottom:10px;z-index:5;border:2px solid #a8793a!important;color:#241b11!important;background:#ecc25a!important;border-radius:5px!important;min-width:35px;min-height:34px;font-size:17px!important;padding:1px!important;box-shadow:2px 2px #211713!important}
+#socialPanel .uhy-mini-scene.danger-active::before{content:"";position:absolute;inset:0;background:#ed383836;z-index:1;animation:uhy-siren-flash 1.5s infinite}
+#socialPanel .uhy-mini-scene.work-active .uhy-mini-actor{animation:uhy-work-bob 1.4s ease-in-out infinite alternate}
+#socialPanel .spclose{z-index:20!important;top:8px!important;right:10px!important;min-width:32px!important;min-height:32px!important;margin:0!important;padding:1px 7px!important;font-weight:900!important;font-size:16px!important;border:2px solid #bb935d!important;background:#221b15eb!important;color:#ffe5b0!important}
+#spBody{flex:1;min-height:0;overflow-y:auto!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+/* Bottom menu: five compact primary actions; rare controls are in More. */
+#socialDock{gap:3px!important}
+#socialDock>button{font:800 11px Oswald,Impact,Arial,sans-serif!important;border:1px solid #967040!important;border-radius:5px!important;background:#392a1e!important;color:#f3deb6!important;min-height:41px!important;padding:4px 3px!important;margin:0!important;box-shadow:1px 2px #0d0b0a!important;white-space:normal!important}
+#socialDock>button:last-child{color:#221609!important;background:#eeb644!important}
+#uhyMore{border:2px solid #a27b47!important;background:#2b211af7!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px!important;max-height:min(55dvh,420px)!important}
+#uhyMore button{min-height:35px!important;padding:7px 5px!important;font:800 12px Oswald,Impact,Arial,sans-serif!important}
+@keyframes uhy-dolly{from{transform:scale(1.015)}to{transform:scale(1.085) translateX(-1.6%)}}
+@keyframes uhy-breathe{from{transform:translateY(0) rotate(-.4deg)}to{transform:translateY(-5px) rotate(.35deg)}}
+@keyframes uhy-work-bob{from{transform:translateY(0) rotate(-1deg)}to{transform:translateY(-7px) rotate(1deg)}}
+@keyframes uhy-siren-flash{0%,49%{background:linear-gradient(110deg,#ee2c2c5b,transparent 66%)}50%,100%{background:linear-gradient(240deg,#305de35a,transparent 66%)}}
+@keyframes uhy-new-scene{from{opacity:.55;transform:scale(1.14)}to{opacity:1;transform:scale(1)}}
+@keyframes uhy-tree-sway{from{transform:rotate(-3deg)}to{transform:rotate(3deg)}}
+@keyframes uhy-smoke{0%{opacity:.1;transform:translate(0,0) scale(.5)}35%{opacity:.45;transform:translate(6px,-8px) scale(.9)}100%{opacity:0;transform:translate(14px,-26px) scale(1.35)}}
+@keyframes uhy-bus-rock{from{transform:translateY(0)}to{transform:translateY(-2px)}}
+@keyframes uhy-guard-bob{from{transform:translateY(0)}to{transform:translateY(-3px)}}
+@keyframes uhy-siren-pulse{0%,100%{filter:drop-shadow(-8px -3px 0 #f3353560) drop-shadow(12px -3px 0 #2d74ff60)}50%{filter:drop-shadow(-8px -3px 0 #2d74ff80) drop-shadow(12px -3px 0 #f3353580)}}
+@keyframes uhy-muzzle{0%,70%,100%{opacity:.1;transform:scale(.8)}72%,78%{opacity:1;transform:scale(1.08)}90%{opacity:.25;transform:scale(.92)}}
+@media(max-width:899px){
+ body{padding:0 6px!important;padding-bottom:0!important;max-width:100%;height:100dvh!important}
+ .hud{margin:4px 0!important;padding:5px 7px!important;gap:4px!important}
+ .hud .who{gap:5px!important}.hud .who-txt b{font-size:12px!important}.hud .who-txt small{font-size:9px!important}
+ .hud .chip{font-size:10px!important;padding:0 5px!important;height:25px!important}.hud .wallet{gap:3px!important}
+ .hud .lvl{min-width:32px!important;height:30px!important;font-size:16px!important}
+ .hud .bar{height:5px!important}.hud .bar.en{height:6px!important}
+ #uhyTopActions{flex-wrap:nowrap;gap:3px;padding-top:1px;overflow-x:auto;scrollbar-width:none}
+ #uhyTopActions button{flex:1 1 0;white-space:nowrap;padding:5px 3px!important;font-size:10px!important;min-height:27px!important;max-height:30px!important}
+ #scene.scene{height:clamp(148px,26dvh,235px)!important;min-height:0!important;flex:none!important;margin:0!important}
+ #scene .uhy-actor{width:40%!important;min-width:110px!important;left:2%!important;height:89%!important;bottom:-3%!important}
+ #scene .uhy-scene-label{max-width:48%!important;font-size:10px!important;padding:4px 5px!important;left:5px!important;top:5px!important}
+ #scene .uhy-controls{top:5px!important;right:5px!important;max-width:51%!important}
+ #scene .uhy-controls button{padding:3px 6px!important;font-size:10px!important;min-height:27px!important}
+ #scene .uhy-vitals{bottom:35px!important;left:5px!important;font-size:9px!important;padding:3px 4px!important;max-width:86%!important}
+ #scene .uhy-live-status{bottom:35px!important;right:5px!important;font-size:9px!important;padding:3px 4px!important;max-width:58%!important}
+ #scene .bubble{bottom:5px!important;left:5px!important;right:5px!important;font-size:10px!important;padding:3px 5px!important}
+ .content{padding:7px 1px 5px!important;gap:8px!important;min-height:0!important;flex:1!important}
+ .tabs{flex:none!important;height:50px!important;min-height:0!important;max-height:50px!important;padding:3px!important;grid-template-columns:1fr!important;display:block!important;margin:0 0 max(5px,env(safe-area-inset-bottom))!important;overflow:visible!important}
+ .tabs>.tab{display:none!important}
+ #socialDock{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;width:100%!important;min-height:41px!important;max-height:43px!important;padding:0!important;gap:3px!important}
+ #socialDock>button{min-height:38px!important;max-height:40px!important;min-width:0!important;font-size:9.7px!important;padding:3px 0!important;border-radius:4px!important;line-height:1.09!important;word-break:normal!important}
+ #uhyMore{bottom:calc(58px + env(safe-area-inset-bottom))!important;left:50%!important;width:calc(100% - 12px)!important}
+ #socialPanel .uhy-mini-scene{height:clamp(93px,16dvh,137px)!important;max-height:137px!important}
+ #socialPanel .uhy-mini-actor{left:20%!important;height:143%!important;bottom:-14px!important;width:122px!important}
+ #socialPanel .uhy-mini-label{max-width:65%!important;padding:3px 6px!important;font-size:11px!important;left:6px!important;top:6px!important}
+ #socialPanel .uhy-mini-timer{right:46px!important;bottom:6px!important;font-size:10px!important;padding:3px 5px!important}
+ #socialPanel .uhy-mini-edit{right:7px!important;bottom:6px!important;min-height:28px!important;min-width:28px!important;padding:0!important}
+ #socialPanel .spclose{top:5px!important;right:6px!important;min-height:27px!important;min-width:28px!important;font-size:13px!important}
+}
+@media(max-width:370px){#scene.scene{height:145px!important}#scene .uhy-controls button{font-size:9px!important}#uhyTopActions button{font-size:9px!important}#socialPanel .uhy-mini-actor{left:18%!important}}
+@media(prefers-reduced-motion:reduce){#scene .uhy-backdrop,#scene .uhy-actor,#scene.uhy-transition .uhy-backdrop,#socialPanel .uhy-mini-actor,#socialPanel .uhy-mini-scene.danger-active::before{animation:none!important}}
+
+
+/* V16: responsive tactile controls, min tap targets without oversized panels */
+*{box-sizing:border-box}
+#scene .uhy-fx-back,#scene .uhy-scene-prop{pointer-events:none}
+#socialPanel .world-card{border-radius:12px!important;gap:10px!important;padding:clamp(9px,1.2vw,14px)!important;box-shadow:3px 4px 0 #100b07!important}
+#socialPanel .world-card h3{font:900 clamp(15px,2vw,20px)/1.16 Oswald,Impact,Arial,sans-serif!important;letter-spacing:.025em!important}
+#socialPanel .world-card p,#spBody p{font-size:clamp(12px,1.2vw,14px);line-height:1.42}
+#socialPanel .world-job{gap:5px!important;padding:9px!important;border-radius:8px!important}
+#socialPanel .world-job b{font-size:13px!important;line-height:1.25}
+#socialPanel .world-job small{font-size:11px!important;line-height:1.25}
+#socialPanel .world-list{gap:7px!important}
+#socialPanel .world-actions{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(min(100%,145px),1fr));gap:6px!important;width:100%!important}
+#socialPanel .world-actions button,#socialPanel .world-card button,#socialPanel .spitem button{min-height:34px!important;max-width:100%;padding:6px 9px!important;line-height:1.2!important;font:800 clamp(11px,1.1vw,13px) Oswald,Arial,sans-serif!important;border-radius:6px!important;border:1px solid #aa7c38!important;white-space:normal!important;overflow-wrap:anywhere!important;box-shadow:1px 2px 0 #0c0905!important;transition:filter .16s,transform .12s}
+#socialPanel .world-actions button:active,#socialPanel .world-card button:active{transform:translateY(2px)}
+#socialPanel .world-stat{gap:5px!important}
+#socialPanel .world-stat span{padding:5px 7px!important;font-size:11px!important;border-radius:6px!important}
+#spBody{padding:12px 14px 88px!important;scrollbar-width:thin}
+#socialPanel h2{font:900 clamp(18px,2vw,25px) Oswald,Impact,Arial,sans-serif!important;letter-spacing:.02em!important;margin-bottom:8px!important}
+#socialPanel .spbox{width:min(1140px,100%)!important;max-height:calc(100dvh - 8px)!important}
+#socialPanel .world-banner{padding:8px 10px!important;font-size:11px!important}
+#socialDock{max-width:680px!important;min-height:44px!important;max-height:51px!important}
+#socialDock>button{padding:3px 2px!important;min-height:42px!important;max-height:47px!important;font-size:10px!important;line-height:1.1!important;overflow-wrap:anywhere!important}
+#uhyTopActions button{min-width:0!important;min-height:29px!important;font-size:11px!important;padding:4px 7px!important}
+#uhyMore{width:min(450px,calc(100% - 16px))!important;grid-template-columns:repeat(2,minmax(0,1fr))!important}
+#uhyMore button{min-height:35px!important;font-size:12px!important}
+#scene .uhy-vitals,#scene .uhy-live-status{font-size:11px!important;max-width:52%!important}
+#scene .uhy-scene-label{max-width:55%!important;font-size:11px!important}
+#scene .uhy-controls button{max-width:110px}
+.kbd{display:none!important}
+@media(max-width:899px){
+ body{padding-bottom:env(safe-area-inset-bottom)!important}
+ #scene.scene{height:clamp(150px,31dvh,250px)!important}
+ .hud{padding:5px 7px!important}
+ #spBody{padding:7px 9px 90px!important}
+ #socialPanel .world-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}
+ #socialPanel .world-wide{grid-column:1/-1!important}
+ #socialPanel .world-list{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #socialPanel .world-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #socialPanel .world-actions button,#socialPanel .world-card button{width:100%!important;min-width:0!important;min-height:31px!important;font-size:10.5px!important;padding:5px 5px!important}
+ #socialPanel .world-job{padding:7px!important}
+ #socialPanel .world-job small{font-size:10px!important}
+ #socialPanel .spbox{height:100dvh!important;max-height:100dvh!important}
+ #socialPanel .uhy-mini-scene{height:clamp(105px,27dvh,155px)!important;max-height:none!important}
+ #socialPanel .slot-reel{height:clamp(65px,15vh,95px)!important}
+ #socialPanel .casino-layout{grid-template-columns:1fr!important}
+ #socialPanel .slot-machine{padding:12px!important}
+ #socialPanel .slot-reels{margin:9px auto!important}
+}
+@media(min-width:700px) and (max-width:1000px) and (orientation:landscape){
+ #socialPanel .world-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+ #socialPanel .world-wide{grid-column:1/-1!important}
+ #socialPanel .world-list{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #socialPanel .uhy-mini-scene{height:clamp(82px,23dvh,125px)!important}
+ #socialPanel .spbox{width:min(100%,1050px)!important}
+}
+@media(max-width:480px) and (orientation:portrait){
+ #socialPanel .world-grid{grid-template-columns:1fr!important}
+ #socialPanel .world-list{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #socialPanel .world-wide{grid-column:1!important}
+ #socialPanel .world-stat span{font-size:10px!important}
+ #scene .uhy-live-status{font-size:9px!important}
+ #scene .uhy-vitals{max-width:88%!important;font-size:9px!important}
+}
+@media(prefers-reduced-motion:reduce){.uhy-tree,.uhy-muzzle,.uhy-bus,.uhy-cops span,.smoking::after{animation:none!important}}
+
+#uhyMore .uhyMoreHeader{grid-column:1/-1;margin:5px 0 0;border-bottom:1px solid #765532;padding:6px 8px 5px;background:#30251b;color:#ffd38b;font:900 12px Oswald,Impact,Arial,sans-serif;letter-spacing:.07em;border-radius:5px}
+#uhyMore button{font:800 12px Oswald,Impact,Arial,sans-serif!important;min-height:36px!important;padding:7px!important;max-width:100%;overflow-wrap:anywhere}
+
+/* V16 desktop: do not show the legacy six giant buttons alongside the unified dock */
+@media(min-width:900px){
+ body:has(#socialDock[data-unified]) .tabs>.tab{display:none!important}
+ body:has(#socialDock[data-unified]) .tabs{display:flex!important;align-items:center!important;justify-content:center!important;min-height:54px!important;max-height:58px!important;padding:0!important;overflow:visible!important;margin-bottom:0!important}
+ body:has(#socialDock[data-unified]) #socialDock{max-width:700px!important}
+}
+</style>
 </body></html>

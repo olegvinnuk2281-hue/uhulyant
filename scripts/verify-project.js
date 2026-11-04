@@ -7,7 +7,7 @@ for(const f of required){
  const p=path.join(root,f);if(!fs.existsSync(p)||fs.statSync(p).size<100)throw Error('Missing/empty '+f);
 }
 const assets=fs.readdirSync(path.join(root,'assets'));
-const requiredAssets=['game-icon.webp',...['yard','street','roof','forest'].flatMap(x=>['day','night'].map(time=>`comic-${x}-${time}.svg`)),...['shack','room','flat','loft','lux'].flatMap(h=>['day','night'].map(time=>`comic-home-${h}-${time}.svg`))];
+const requiredAssets=['game-icon.webp',...['yard','street','roof','forest','tcc0','tcc1','tcc2','work','workshop','transit','boss','hospital','casino'].flatMap(x=>['day','night'].map(time=>`comic-${x}-${time}.svg`)),...['shack','room','flat','loft','lux'].flatMap(h=>['day','night'].map(time=>`comic-home-${h}-${time}.svg`))];
 for(const f of requiredAssets)if(!assets.includes(f))throw Error('Missing asset: assets/'+f);
 const html=fs.readFileSync(path.join(root,'uhylyant.html'),'utf8');
 let n=0;

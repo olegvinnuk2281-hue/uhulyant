@@ -1,8 +1,8 @@
 {
   "name": "uhylyant-telegram-miniapp",
-  "version": "14.0.0",
+  "version": "15.0.0",
   "private": true,
-  "description": "Complete Uhylyant browser game / Telegram Mini App restored for fresh GitHub deployment",
+  "description": "Uhylyant Telegram Mini App: contextual comic scenes, compact mobile HUD and timed work shifts",
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",

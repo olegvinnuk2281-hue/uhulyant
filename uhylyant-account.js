@@ -101,18 +101,33 @@ const original=document.querySelector('#tabs'),dock=document.querySelector('#soc
 if(!original||!dock||dock.dataset.unified)return;
 dock.dataset.unified='1';
 const originalTabs=[...original.querySelectorAll(':scope > .tab')];
-const extra=[...dock.querySelectorAll('[data-sp]')].map(b=>({label:b.textContent,action:()=>b.click(),key:b.dataset.sp}));
-const menu=document.createElement('div');menu.id='uhyMore';menu.hidden=true;document.body.append(menu);
-const entries=originalTabs.map((b,i)=>({label:b.textContent.trim()||'Розділ '+(i+1),action:()=>b.click(),key:'tab'+i})).concat(extra);
-const find=(needle)=>entries.find(x=>x.key===needle)||entries.find(x=>x.label.toLowerCase().includes(needle));
-const primary=[find('tab0'),find('tab1'),find('world'),find('casino')].filter(Boolean);
+const social=[...dock.querySelectorAll('[data-sp]')];
+const oldActions=originalTabs.map((b,i)=>({
+ label:['🏠 Дім','⚔ Бої','🚶 Маршрути','🧥 Одяг','🧭 Шлях','💎 Донат'][i]||b.textContent.trim(),
+ action:()=>document.querySelectorAll('#tabs > .tab')[i]?.click(),key:'tab'+i
+}));
+const newActions=social.map(b=>({label:b.textContent.trim(),action:()=>window.UHY_NAV?.open?.(b.dataset.sp),key:b.dataset.sp}));
+const entries=[...oldActions,...newActions];
+const find=key=>entries.find(x=>x.key===key);
+let menu=document.getElementById('uhyMore');
+if(!menu){menu=document.createElement('div');menu.id='uhyMore';document.body.append(menu)}
+menu.replaceChildren();menu.hidden=true;
+const make=(parent,label,action)=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=()=>{menu.hidden=true;action()};parent.append(b);return b};
+const primary=[['tab0','🏠 Дім'],['tab1','⚔ Бої'],['world','🏙 Вулиця'],['casino','🎰 Казино']];
 dock.replaceChildren();
-const make=(parent,label,action)=>{const b=document.createElement('button');b.textContent=label;b.onclick=()=>{menu.hidden=true;action()};parent.append(b);return b};
-primary.forEach(x=>make(dock,x.label,x.action));
-const more=make(dock,'☰ Меню',()=>{menu.hidden=!menu.hidden});
-more.onclick=()=>{menu.hidden=!menu.hidden};
-entries.filter(x=>!primary.includes(x)).forEach(x=>make(menu,x.label,x.action));
-document.addEventListener('keydown',e=>{if(e.key==='Escape')menu.hidden=true});
+primary.forEach(([id,label])=>{const item=find(id);if(item)make(dock,label,item.action)});
+const more=make(dock,'☰ Меню',()=>{});more.onclick=()=>{menu.hidden=!menu.hidden};
+const groups=[
+ ['👤 ПЕРСОНАЖ',[['tab3','🧥 Одяг'],['housing','🏠 Хати'],['health','🩺 Здоровʼя'],['account','👤 Акаунт']]],
+ ['🌆 СВІТ',[['tab2','🚶 Маршрути'],['tab4','🧭 Шлях'],['career','🎖 Карʼєра']]],
+ ['🏆 СПІЛЬНОТА',[['leaderboard','🏆 Рейтинг'],['friends','👥 Друзі'],['news','📰 Новини']]],
+ ['💎 МАГАЗИН',[['tab5','💎 Донат']]]
+];
+groups.forEach(([title,items])=>{
+ const h=document.createElement('div');h.className='uhyMoreHeader';h.textContent=title;menu.append(h);
+ items.forEach(([id,label])=>{const item=find(id);if(item)make(menu,label,item.action)});
+});
+window.__uhyNavClose=()=>{menu.hidden=true};
 }
 window.UHYACCOUNT={render:renderAccount};
 const TELEGRAM_APP_LINK='https://t.me/Uhilyant_UAbot?startapp';
@@ -191,5 +206,15 @@ async function init(){
   if(gate)gate.hidden=true;
  }finally{initializing=false}
 }
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+// The main game recreates #tabs on each render. Rebuild the 5-button dock
+// whenever that happens, including after character creation or changing tabs.
+function watchNav(){
+ const tabs=document.querySelector('#tabs');if(!tabs)return;
+ const observer=new MutationObserver(()=>{
+  if(document.querySelector('#socialDock')&&!document.querySelector('#socialDock[data-unified]'))nav();
+ });
+ observer.observe(tabs,{childList:true});
+ nav();
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{watchNav();init()});else{watchNav();init()}
 })();
