@@ -61,6 +61,21 @@ const WHEEL_REWARDS=[
   {id:'premium',label:'Золотий дипломат',emoji:'👑',type:'premium',item:'acc6',weight:10,tier:'legendary'}
 ];
 if(WHEEL_REWARDS.reduce((sum,r)=>sum+r.weight,0)!==10000)throw Error('Wheel weights must equal 10000');
+// V27: costume bundles are purchased on the server and compatible with legacy gear.
+const V27_SETS = [
+  {id:'night',name:'Нічний райдер',price:380,level:1,description:'Каптур, темна куртка, штани та кросівки',icon:'🌘',bonus:{nightCashPct:4},bonusLabel:'нічні справи +4% ₴'},
+  {id:'worker',name:'Майстер району',price:1400,level:4,description:'Каска, робочий жилет та міцні черевики',icon:'🛠',bonus:{workXPPct:4},bonusLabel:'досвід роботи +4%'},
+  {id:'neon',name:'Неоновий курʼєр',price:5100,level:12,description:'Яскрава куртка та сумка доставки',icon:'⚡',bonus:{workCashPct:3},bonusLabel:'зарплата +3% ₴'},
+  {id:'urban',name:'Міський агент',price:18000,level:35,description:'Стриманий піджак, окуляри й дипломат',icon:'🕶',bonus:{workCashPct:5},bonusLabel:'зарплата +5% ₴'},
+  {id:'royal',name:'Золотий магнат',price:68000,level:100,description:'Золотий костюм та статусний аксесуар',icon:'👑',bonus:{workCashPct:6,workXPPct:2},bonusLabel:'зарплата +6% ₴ · досвід +2%'},
+  {id:'mechanic',name:'Мандрівний механік',price:94000,level:150,description:'Захисний шолом, комбінезон, міцне взуття та набір інструментів',icon:'🔩',bonus:{workXPPct:7},bonusLabel:'досвід роботи +7%'},
+  {id:'nightguard',name:'Тихий нічний дозорець',price:145000,level:220,description:'Темна форма з бронею та спорядженням для нічних маршрутів',icon:'🌙',bonus:{nightCashPct:7,nightXPPct:3},bonusLabel:'нічні справи +7% ₴ · досвід +3%'}
+].map((o,i)=>({...o,tier:7+i,parts:['head','body','legs','shoes','acc'].map(k=>k+(7+i))}));
+const V27_SET_PARTS=new Set(V27_SETS.flatMap(o=>o.parts));
+const NICK_RE=/^[\p{L}\p{N}_]{3,20}$/u;
+const NICK_FORBIDDEN=/^(admin|administrator|moderator|support|system|telegram|адмін|администратор|підтримка|тцк)$/iu;
+const normalizeNick=v=>String(v||'').trim().normalize('NFC');
+const nickTaken=(name,exclude)=>Object.values(DB.players).some(x=>x.id!==exclude&&x.name?.normalize('NFC').toLocaleLowerCase('uk')===name.toLocaleLowerCase('uk'));
 const wheelPublic=()=>WHEEL_REWARDS.map(({id,label,emoji,tier,weight})=>({id,label,emoji,tier,chance:weight/100}));
 const wheelState=(p,t=Date.now())=>{const lastAt=Math.max(0,Number(p.dailyWheel?.lastAt||0),Number(p.save?.dailyAt||0),Number(p.world?.lastDaily||0));return {ok:true,serverNow:t,ready:!lastAt||t-lastAt>=WHEEL_COOLDOWN,remainingMs:Math.max(0,lastAt+WHEEL_COOLDOWN-t),nextAt:lastAt?lastAt+WHEEL_COOLDOWN:0,lastSpin:p.dailyWheel?.lastSpin||null,rewards:wheelPublic()}};
 const wheelBusy=new Set();
@@ -212,7 +227,7 @@ function createPlayer(name, loginData = {}) {
   return { id, key };
 }
 const newId = () => { for (;;) { let s = ''; for (let i = 0; i < 8; i++) s += ALPHA[crypto.randomInt(ALPHA.length)]; if (!DB.players[s]) return s; } };
-const cleanName = n => String(n || 'Ухилянт').replace(/[<>&"'`]/g, '').trim().slice(0, 16) || 'Ухилянт';
+const cleanName = n => String(n || 'Ухилянт').replace(/[<>&"'`]/g, '').trim().slice(0, 20) || 'Ухилянт';
 const num = (v, d = 0) => (Number.isFinite(+v) ? +v : d);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const sumUp = up => Object.values(up || {}).reduce((a, b) => a + Math.max(0, num(b)), 0);
@@ -221,11 +236,12 @@ const rate = new Map();
 function limited(key, max, win) { const t = Date.now(), a = (rate.get(key) || []).filter(x => t - x < win); a.push(t); rate.set(key, a); return a.length > max; }
 setInterval(() => { const t = Date.now(); for (const [k, a] of rate) if (!a.some(x => t - x < 36e5)) rate.delete(k); }, 6e4).unref();
 
-const LOOK_MAX = { skin: 5, hair: 7, hc: 7, hs: 7, face: 5, body: 2, beard: 5, tat: 3 };
+const LOOK_MAX = { skin: 5, hair: 7, hc: 7, hs: 7, face: 5, body: 2, beard: 5, tat: 5 };
 const LOCS_OK = ['yard', 'street', 'park', 'market', 'station', 'roof', 'forest', 'home'];
 function cleanLook(l) {
   const o = {}; if (!l || typeof l !== 'object') return { skin: 1, hair: 0 };
   for (const k of Object.keys(LOOK_MAX)) { const v = l[k]; if (Number.isInteger(v) && v >= 0 && v <= LOOK_MAX[k]) o[k] = v; }
+  if (typeof l.smoke === 'boolean') o.smoke = l.smoke;
   if (LOCS_OK.includes(l.loc)) o.loc = l.loc;
   if (o.skin === undefined) o.skin = 1; if (o.hair === undefined) o.hair = 0;
   return o;
@@ -234,7 +250,7 @@ function cleanLook(l) {
 function fresh() {
   return { level: 1, xp: 0, uah: 150, gold: 0, ng: 0, inv: ['head0', 'body0', 'legs0', 'shoes0', 'acc0'], up: {}, st: { earned: 0, escaped: 0, caught: 0 }, bs: { me: 0, wp: [], r: 0, b: 0, w: 0 }, dailyAt: 0, end: null, seenEnd: false };
 }
-const ID_RE = /^(head|body|legs|shoes|acc)([0-6])$/;
+const ID_RE = /^(head|body|legs|shoes|acc)([0-9]|1[0-3])$/;
 const BASE_INV = ['head0', 'body0', 'legs0', 'shoes0', 'acc0'];
 const isInt = (v, a, b) => Number.isInteger(v) && v >= a && v <= b;
 
@@ -243,7 +259,9 @@ function validate(p, nx) {
   if (!nx || typeof nx !== 'object' || Array.isArray(nx)) return bad('формат');
   for (const k of Object.keys(nx)) if (!KEYS.includes(k)) delete nx[k];
   nx.look = cleanLook(nx.look);
-  nx.name = cleanName(nx.name); nx.say = String(nx.say || '').slice(0, 300);
+  nx.name = cleanName(nx.name);
+  if(p.save?.started && nx.name!==cleanName(p.save.name||p.name))return bad('Змінити нік можна лише в профілі');
+  nx.say = String(nx.say || '').slice(0, 300);
 
   const L = num(nx.level, 0), xp = num(nx.xp, -1), ng = num(nx.ng, 0), uah = num(nx.uah, -1), gold = num(nx.gold, -1);
   if (!isInt(L, 1, 1e7) || !(xp >= 0) || xp > xpNeed(L) + 1e-6) return bad('рівень');
@@ -254,7 +272,7 @@ function validate(p, nx) {
   const inv = Array.isArray(nx.inv) ? nx.inv : null;
   if (!inv || inv.length > 40 || new Set(inv).size !== inv.length) return bad('інвентар');
   let maxT = 0;
-  for (const id of inv) { const m = ID_RE.exec(String(id)); if (!m) return bad('предмет'); maxT = Math.max(maxT, +m[2]); }
+  for (const id of inv) { const m = ID_RE.exec(String(id)); if (!m) return bad('предмет'); maxT = Math.max(maxT, Math.min(6,+m[2])); }
   for (const b of BASE_INV) if (!inv.includes(b)) return bad('інвентар');
   const eq = nx.eq && typeof nx.eq === 'object' ? nx.eq : {};
   for (const k of Object.keys(eq)) if (eq[k] != null && !inv.includes(eq[k])) return bad('екіпіровка');
@@ -316,8 +334,15 @@ function validate(p, nx) {
   const dD = Math.max(0, dealt(bb, r, hp) - dealt(pbb, pr, php));
   const wp = Array.isArray(bs.wp) ? bs.wp : null;
   if (!wp || wp.length > 4 || new Set(wp).size !== wp.length) return bad('зброя');
-  // Counts can only change through the purchase endpoint, never via a client save.
-  if(JSON.stringify(bs.weaponCounts||{})!==JSON.stringify(pb.weaponCounts||{}))return bad('кількість зброї');
+  // Clients may spend copies while offline, but can never increase a stack by saving.
+  const countWeapons=['bat','bar','chain','mace'],oldCounts=pb.weaponCounts||{},nextCounts=bs.weaponCounts;
+  if(nextCounts!==undefined&&(!nextCounts||typeof nextCounts!=='object'||Array.isArray(nextCounts)))return bad('кількість зброї');
+  if(nextCounts)for(const id of Object.keys(nextCounts))if(!countWeapons.includes(id))return bad('кількість зброї');
+  for(const id of countWeapons){
+    const previous=num(oldCounts[id],Array.isArray(pb.wp)&&pb.wp.includes(id)?1:0);
+    const next=nextCounts&&Object.hasOwn(nextCounts,id)?num(nextCounts[id],-1):previous;
+    if(!isInt(next,0,previous))return bad('кількість зброї');
+  }
   let wpGold = 0;
   for (const x of wp) { if (x === 'mace') { if (w < 4) return bad('зброя'); } else if (WEAPON_GOLD[x]) wpGold += WEAPON_GOLD[x]; else return bad('зброя'); }
 
@@ -346,6 +371,7 @@ function validate(p, nx) {
   const oldInv = new Set(pv.inv || []);
   const added = inv.filter(id => !oldInv.has(id)).map(id => ({ id, t: +ID_RE.exec(id)[2] })).sort((a, c) => c.t - a.t);
   if (added.length > 12) return bad('предмети');
+  if(added.some(it=>it.t>=7))return bad('Набори одягу можна купити лише у майстерні');
   let free = dW + tripItem, itemUah = 0, itemGold = 0;
   for (const it of added) {
     if (it.t === 0) continue;
@@ -606,7 +632,7 @@ async function api(req, res, route) {
     if(!Object.hasOwn(WEAPON_GOLD,b?.weapon))return send(res,400,{ok:false,err:'Невідома зброя'});
     const count=b.count==='max'?Math.floor(p.save.gold/price):Number(b.count);
     if(!Number.isSafeInteger(count)||count<1||count*price>p.save.gold)return send(res,400,{ok:false,err:'Недостатньо монет або невірна кількість'});
-    const bs=p.save.bs;bs.weaponCounts=bs.weaponCounts||{};
+    const bs=p.save.bs;bs.wp=Array.isArray(bs.wp)?bs.wp:[];bs.weaponCounts=bs.weaponCounts||{};
     bs.weaponCounts[b.weapon]=(bs.weaponCounts[b.weapon]??(bs.wp.includes(b.weapon)?1:0))+count;
     if(!bs.wp.includes(b.weapon))bs.wp.push(b.weapon);
     p.save.gold-=count*price;p.goldSpent=(p.goldSpent||0)+count*price;
@@ -695,6 +721,18 @@ async function api(req, res, route) {
     p.username=username; p.passSalt=crypto.randomBytes(16).toString('hex'); p.passHash=passwordHash(password,p.passSalt); dirtyPlayerIds.add(p.id);
     return send(res,200,{ok:true,username});
   }
+  if(route==='player/rename'){
+    if(req.method!=='POST')return send(res,405,{ok:false,err:'Використай POST'});
+    const b=await body(req);const name=normalizeNick(b?.name);
+    if(!NICK_RE.test(name)||NICK_FORBIDDEN.test(name))return send(res,400,{ok:false,err:'Нік: 3–20 букв, цифр або _, без службових назв'});
+    if(name.toLocaleLowerCase('uk')===String(p.name).toLocaleLowerCase('uk'))return send(res,200,{ok:true,name:p.name,save:p.save,nextAt:Math.max(0,Number(p.nicknameChangedAt||0)+7*DAY)});
+    if(nickTaken(name,p.id))return send(res,409,{ok:false,err:'Цей нік уже зайнятий'});
+    if(p.nicknameChangedAt && Date.now()-p.nicknameChangedAt<7*DAY)return send(res,429,{ok:false,err:'Наступна зміна ніку через '+Math.ceil((7*DAY-(Date.now()-p.nicknameChangedAt))/HOUR)+' год'});
+    const old=p.name;p.name=name;p.nicknameChangedAt=Date.now();if(p.save)p.save.name=name;
+    logPlayer(p,'profile','оновив нік (раніше '+old+')',0);
+    dirtyPlayerIds.add(p.id);
+    return send(res,200,{ok:true,name,save:p.save,nextAt:p.nicknameChangedAt+7*DAY});
+  }
   if (route === 'account/status') return send(res,200,{ok:true,username:p.username || null,email:p.email||null,legacy:!p.passHash,telegram:!!p.telegramId});
   if (route === 'telegram/link') {
     if (!p.telegramId) return send(res,403,{ok:false,err:'Цей акаунт не привʼязаний до Telegram'});
@@ -769,18 +807,50 @@ async function api(req, res, route) {
     const gear={tracksuit:{name:'Олімпійка',slot:'body',stealth:2},uniform:{name:'Польова форма',slot:'body',energy:5},bat:{name:'Біта',slot:'weapon',attack:8},knife:{name:'Ніж (ігровий)',slot:'weapon',attack:12},chain:{name:'Ланцюг',slot:'weapon',attack:15},vest:{name:'Бронежилет',slot:'body',energy:10},shadow:{name:'Тіньова куртка',slot:'body',stealth:12},storm:{name:'Штормова форма',slot:'body',energy:20},legend:{name:'Легендарна біта',slot:'weapon',attack:40}};
     const get=()=>{if(w.brigade&&typeof w.brigade==='object')return w.brigade;const g=Object.values(DB.players).find(x=>x.world&&x.world.brigade&&typeof x.world.brigade==='object'&&x.world.brigade.id===w.brigade);return g&&g.world.brigade};
     // Fictional in-game Kyiv clock. Curfew is a gameplay rule, not real-world legal advice.
-    const nightClock=()=>{const d=new Date(Date.now()+2*60*60*1000),h=d.getUTCHours(),m=d.getUTCMinutes();return {hour:h,minute:m,active:h>=0&&h<5,start:'00:00',end:'05:00'};};
-    const nightTasks=[{id:'delivery',name:'Нічна доставка',cash:165,xp:38,risk:7,drop:'tracksuit',desc:'Доставити пакунок через тихі двори'},{id:'watch',name:'Нічний сторож',cash:140,xp:44,risk:4,drop:'vest',desc:'Перевірити склад та освітлення'},{id:'radio',name:'Радіомайстерня',cash:120,xp:55,risk:2,drop:'chain',desc:'Полагодити старий приймач'},{id:'taxi',name:'Нічне таксі',cash:195,xp:35,risk:9,drop:'uniform',desc:'Довезти пасажира до вокзалу'}];
-    const state=()=>{const br=get();return {ok:true,serverNow:Date.now(),world:w,skills:{days:(w.workDays||[]).length,shifts:w.workShifts||0,xp:w.xp||0},houses,gear,bosses,jobs:jobOffers(),night:{...nightClock(),tasks:nightTasks,cooldownMs:Math.max(0,4*MIN-(Date.now()-(w.lastNight||0)))},brigade:br?{...br,members:br.members.map(id=>({id,name:DB.players[id]?.name||id}))}:null}};
-    const jobPool=[
-      {id:'courier',name:'Курʼєр',cash:65,xp:18,drop:'tracksuit',risk:13,minDays:0,minXP:0},
-      {id:'warehouse',name:'Підсобник на складі',cash:75,xp:20,drop:'chain',risk:17,minDays:0,minXP:0},
-      {id:'workshop',name:'Помічник майстра',cash:110,xp:30,drop:'knife',risk:19,minDays:2,minXP:80},
-      {id:'guard',name:'Охоронець',cash:150,xp:38,drop:'bat',risk:24,minDays:3,minXP:150},
-      {id:'patrol',name:'Старший зміни',cash:215,xp:50,drop:'uniform',risk:29,minDays:5,minXP:350},
-      {id:'foreman',name:'Бригадир',cash:330,xp:70,drop:'vest',risk:34,minDays:7,minXP:650}
+    const kyivParts=(date=new Date())=>Object.fromEntries(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Kyiv',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date).filter(x=>x.type!=='literal').map(x=>[x.type,x.value]));
+    const nightClock=()=>{const t=kyivParts(),h=Number(t.hour),m=Number(t.minute);return {hour:h,minute:m,active:h>=0&&h<5,start:'00:00',end:'05:00'};};
+    // All street rewards, risks and caught outcomes are calculated here, not by the browser.
+    const nightTasks=[
+      {id:'delivery',name:'Нічна доставка',cash:195,xp:38,risk:28,drop:'tracksuit',desc:'Доставити пакунок через тихі двори',motion:'courier'},
+      {id:'wagons',name:'Розвантаження вагонів',cash:120,xp:34,risk:24,drop:'vest',desc:'Перенести мішки та ящики на станції',motion:'warehouse'},
+      {id:'watch',name:'Нічний сторож',cash:90,xp:27,risk:12,drop:'vest',desc:'Обійти склад із ліхтариком',motion:'guard'},
+      {id:'radio',name:'Радіомайстерня',cash:65,xp:25,risk:8,drop:'chain',desc:'Полагодити старий приймач',motion:'texts'},
+      {id:'taxi',name:'Нічне таксі',cash:270,xp:55,risk:42,drop:'uniform',desc:'Довезти пасажира до вокзалу',motion:'courier'}
     ];
-    const jobOffers=()=>{const cycle=Math.floor(Date.now()/(20*MIN));return jobPool.filter((j,i)=>j.minDays===0||((cycle+i*3)%5)<3).map(j=>({...j,locked:(w.workDays||[]).length<j.minDays||w.xp<j.minXP}));};
+    const jobPool=[
+      {id:'tea',name:'Помічник у чайній з бронню',cash:12,xp:6,risk:1,interviewRisk:2,minDays:0,minXP:0,motion:'clean',protected:true,desc:'Чай і рис, але майже нульовий ризик'},
+      {id:'texts',name:'Написання текстів удома',cash:52,xp:15,risk:0,interviewRisk:4,minDays:0,minXP:0,motion:'texts',remote:true,desc:'Ноутбук, тексти, ніяких виходів'},
+      {id:'courier',name:'Курʼєр',cash:100,xp:22,risk:20,interviewRisk:11,minDays:0,minXP:0,motion:'courier',desc:'Доставка по місту, ризик патруля'},
+      {id:'warehouse',name:'Підсобник на складі',cash:140,xp:29,risk:28,interviewRisk:13,minDays:0,minXP:0,motion:'warehouse',desc:'Тягай ящики, отримуй більше'},
+      {id:'workshop',name:'Помічник майстра',cash:190,xp:38,risk:33,interviewRisk:16,minDays:2,minXP:80,motion:'repair',desc:'Ремонтуй інструменти та обладнання'},
+      {id:'guard',name:'Охоронець',cash:240,xp:46,risk:38,interviewRisk:18,minDays:3,minXP:150,motion:'guard',desc:'Патрулюй двір без броні'},
+      {id:'patrol',name:'Старший зміни',cash:350,xp:58,risk:44,interviewRisk:23,minDays:5,minXP:350,motion:'repair',desc:'Відповідальний за бригаду'},
+      {id:'foreman',name:'Бригадир',cash:480,xp:75,risk:49,interviewRisk:26,minDays:7,minXP:650,motion:'build',desc:'Керуєш будівельним майданчиком'},
+      {id:'highway',name:'Нічний курʼєр без броні',cash:980,xp:120,risk:60,interviewRisk:20,minDays:2,minXP:100,motion:'courier',desc:'Великий заробіток, 60% шанс затримання'},
+      {id:'engineer',name:'Інженер із бронню',cash:620,xp:92,risk:3,interviewRisk:8,minDays:18,minXP:1700,motion:'texts',protected:true,desc:'Стабільна висока зарплата для досвідчених'}
+    ];
+    const jobOffers=()=>{const cycle=Math.floor(Date.now()/(20*MIN));return jobPool.filter((j,i)=>j.id===w.employment?.id||j.minDays===0||j.id==='highway'||j.id==='engineer'||((cycle+i*3)%5)<3).map(j=>({...j,effectiveRisk:p.save?.bronUntil>Date.now()?0:j.risk,locked:(w.workDays||[]).length<j.minDays||w.xp<j.minXP}));};
+    const activeSet=()=>V27_SETS.find(set=>set.parts.every(part=>{const m=ID_RE.exec(part);return m&&p.save?.eq?.[m[1]]===part;}));
+    const setBonus=()=>activeSet()?.bonus||{};
+    const effectiveRisk=r=>p.save?.bronUntil>Date.now()?0:r;
+    const caughtScenes=['Бус біля зупинки','Перевірка документів','Патруль біля переходу','Рейд на робочому місці','Контроль біля вокзалу','Засідка на складі'];
+    const caughtWorld=source=>{
+      const incident=caughtScenes[crypto.randomInt(caughtScenes.length)],sv=p.save||(p.save=starterTelegramSave(p.name));
+      if(sv.tcc)return false;
+      sv.tcc={stage:0,nextAt:0,busy:false};sv.st=sv.st||{caught:0,escaped:0,shifts:0,earned:0};sv.st.caught=(Number(sv.st.caught)||0)+1;
+      w.health=Math.max(1,w.health-12);
+      p.career=p.career||{status:'civilian',trainingAt:0,crateClaimed:false,coins:0};p.career.status='detained';p.career.caughtAt=Date.now();
+      w.lastIncident={type:'tcc',at:Date.now(),source,scene:incident};
+      w.message='ТЦК: '+incident+'. Тебе затримали — нагороду не отримано.';
+      logPlayer(p,'tcc','потрапив до ТЦК під час «'+source+'»',0);return true;
+    };
+    const refreshHunger=()=>{
+      const now=Date.now(),at=Math.min(now,Math.max(0,Number(w.hungerAt||now)));
+      w.hunger=Math.max(0,Math.min(100,Number.isFinite(+w.hunger)?Number(w.hunger):85)-Math.floor((now-at)/HOUR)*3);
+      w.hungerAt=at+Math.floor((now-at)/HOUR)*HOUR;
+    };
+    refreshHunger();
+    const state=()=>{const br=get();return {ok:true,serverNow:Date.now(),world:w,save:p.save,skills:{days:(w.workDays||[]).length,shifts:w.workShifts||0,xp:w.xp||0},houses,gear,bosses,sets:V27_SETS,jobs:jobOffers(),night:{...nightClock(),tasks:nightTasks.map(j=>({...j,effectiveRisk:effectiveRisk(j.risk)})),cooldownMs:Math.max(0,4*MIN-(Date.now()-(w.lastNight||0)))},brigade:br?{...br,members:br.members.map(id=>({id,name:DB.players[id]?.name||id}))}:null}};
     if(req.method==='GET')return send(res,200,state());
     const b=await body(req);if(!b||typeof b.action!=='string')return send(res,400,{ok:false,err:'Некоректна дія'});
     const t=Date.now(), fail=err=>send(res,200,{ok:false,err});
@@ -789,18 +859,25 @@ async function api(req, res, route) {
     } else if(b.action==='apply'){
       const j=jobOffers().find(x=>x.id===b.job);if(!j)return fail('Ця вакансія вже закрита. Оновіть список');if(j.locked)return fail('Недостатньо досвіду або відпрацьованих днів');
       const reason=['Погана репутація персонажа','Не підійшов зовнішній вигляд','Велика конкуренція','Роботодавець змінив вимоги'];
-      if(crypto.randomInt(100)<j.risk){w.message='Відмова: '+reason[crypto.randomInt(reason.length)];}
+      if(crypto.randomInt(100)<j.interviewRisk){w.message='Відмова: '+reason[crypto.randomInt(reason.length)];}
       else {w.employment={id:j.id,name:j.name};w.message='Вас прийняли на роботу: '+j.name;}
     } else if(b.action==='quit'){
       if(w.workShift?.endsAt)return fail('Дочекайся завершення зміни');w.employment=null;w.message='Ви звільнилися';
     } else if(b.action==='shift'){
+      if(p.save?.tcc)return fail('Спочатку звільнись із ТЦК');
       if(w.workShift?.endsAt)return fail('Зміна вже триває, дочекайся завершення');
       if(t-(w.lastWork||0)<5*MIN)return fail('Наступна зміна через '+Math.ceil((5*MIN-(t-w.lastWork))/1000)+' с');
       const j=jobPool.find(x=>x.id===w.employment?.id);if(!j)return fail('Спочатку влаштуйтеся на роботу');
+      if(w.hunger<10)return fail('Спочатку поїж — сил для роботи не вистачає');
+      const risk=effectiveRisk(j.risk);
+      if(crypto.randomInt(10000)<risk*100){caughtWorld(j.name);w.lastWork=t;return send(res,200,state());}
+      w.lastIncident=null;
       const houseBonus=houses.find(x=>x.id===w.housing.current)||houses[0];
+      const outfitBonus=setBonus();
       const duration=60*1000+crypto.randomInt(16)*5000;
-      w.workShift={startedAt:t,endsAt:t+duration,name:j.name,jobId:j.id,cash:j.cash+Math.floor(j.cash*(houseBonus.energy/100)),xp:j.xp,drop:j.drop,loot:crypto.randomInt(100)<12,claimed:false};
-      w.lastWork=t;w.message='Зміна почалася. Зарплата після завершення таймера.';
+      const baseCash=j.cash+Math.floor(j.cash*(houseBonus.energy/100));
+      w.workShift={startedAt:t,endsAt:t+duration,name:j.name,jobId:j.id,motion:j.motion,risk,protected:!!j.protected,cash:Math.floor(baseCash*(100+(outfitBonus.workCashPct||0))/100),xp:Math.floor(j.xp*(100+(outfitBonus.workXPPct||0))/100),drop:j.drop,loot:crypto.randomInt(100)<12,claimed:false};
+      w.lastWork=t;w.hunger=Math.max(0,w.hunger-3);w.message='Зміна почалася. Зарплата після завершення таймера.';
     } else if(b.action==='workCollect'){
       const sh=w.workShift;
       if(!sh||!sh.endsAt)return fail('Немає активної зміни');
@@ -808,7 +885,7 @@ async function api(req, res, route) {
       const amount=Math.max(0,Math.floor(Number(sh.cash)||0)),xp=Math.max(0,Math.floor(Number(sh.xp)||0));
       w.cash=(Number(w.cash)||0)+amount;w.xp=(Number(w.xp)||0)+xp;
       w.workShifts=(w.workShifts||0)+1;weeklyScore(p,'work');
-      const gameDay=new Date(sh.startedAt+2*3600000).toISOString().slice(0,10);
+      const date=kyivParts(new Date(sh.startedAt));const gameDay=`${date.year}-${date.month}-${date.day}`;
       w.workDays=Array.isArray(w.workDays)?w.workDays:[];
       if(!w.workDays.includes(gameDay))w.workDays.push(gameDay);
       w.workDays=w.workDays.slice(-365);
@@ -816,14 +893,42 @@ async function api(req, res, route) {
       w.message='Зміна завершена: +'+amount+' ₴, +'+xp+' XP'+(found?', знахідка: '+gear[sh.drop].name:'');
       w.workShift=null;w.lastWork=t;
     } else if(b.action==='nightTask'){
+      if(p.save?.tcc)return fail('Спочатку звільнись із ТЦК');
+      if(w.hunger<8)return fail('Спочатку поїж перед нічною вилазкою');
       const clock=nightClock();if(!clock.active)return fail('Нічні справи доступні лише з 00:00 до 05:00 за ігровим київським часом');
       if(t-(w.lastNight||0)<4*MIN)return fail('Наступна нічна справа через '+Math.ceil((4*MIN-(t-(w.lastNight||0)))/1000)+' с');
       const task=nightTasks.find(x=>x.id===b.task);if(!task)return fail('Невідома нічна справа');
       w.lastNight=t;w.nightRuns=(w.nightRuns||0)+1;
-      // Risk is deliberately lower than daytime job interview risk, but nonzero.
-      if(crypto.randomInt(100)<Math.max(1,task.risk-(houses.find(x=>x.id===w.housing.current)?.stealth||0))){w.message='Нічна справа зірвалася: помітили патруль. Нагороди немає.';}
-      else{w.cash+=task.cash;w.xp+=task.xp;const loot=crypto.randomInt(100)<9;if(loot)w.items.push(task.drop);w.message='Нічна справа: +'+task.cash+' ₴, +'+task.xp+' XP'+(loot?', знахідка: '+gear[task.drop].name:'');}
-    } else if(b.action==='slots'){
+      w.hunger=Math.max(0,w.hunger-3);
+      if(crypto.randomInt(10000)<effectiveRisk(task.risk)*100){caughtWorld(task.name);}
+      else{const bonus=setBonus(),cash=Math.floor(task.cash*(100+(bonus.nightCashPct||0))/100),xp=Math.floor(task.xp*(100+(bonus.nightXPPct||0))/100);w.lastIncident=null;w.cash+=cash;w.xp+=xp;const loot=crypto.randomInt(100)<9;if(loot)w.items.push(task.drop);w.message='Нічна справа: +'+cash+' ₴, +'+xp+' XP'+(loot?', знахідка: '+gear[task.drop].name:'');}
+    } else if(b.action==='foodRun'){
+      if(p.save?.tcc)return fail('Спочатку звільнись із ТЦК');
+      if(w.hunger>=100)return fail('Ти ще не голодний');
+      const mode=b.mode==='order'?'order':b.mode==='shop'?'shop':null;
+      if(!mode)return fail('Обери магазин чи доставку');
+      const price=mode==='order'?125:55;
+      if(w.cash<price)return fail('Не вистачає ігрових ₴');
+      if(t-(w.lastMeal||0)<2*MIN)return fail('Наступний прийом їжі через 2 хвилини');
+      w.cash-=price;w.lastMeal=t;
+      if(mode==='shop'&&crypto.randomInt(100)<22){caughtWorld('Похід по продукти');}
+      else{w.lastIncident=null;w.hunger=Math.min(100,w.hunger+(mode==='order'?55:45));w.message=mode==='order'?'Курʼєр приніс вечерю додому.':'Купив продукти та приготував вечерю.';logPlayer(p,'food',mode==='order'?'замовив вечерю':'повернувся з продуктами');}
+    } else if(b.action==='outfitBuy'||b.action==='outfitWear'){
+      const set=V27_SETS.find(x=>x.id===b.set);if(!set)return fail('Такого комплекту немає');
+      const sv=p.save;if(!sv?.started)return fail('Спочатку створи персонажа');
+      const owned=set.parts.every(id=>(sv.inv||[]).includes(id));
+      if(b.action==='outfitBuy'){
+        if(owned)return fail('Цей комплект уже куплений');
+        if(Number(sv.level||1)<set.level)return fail('Потрібен рівень '+set.level);
+        if(w.cash<set.price)return fail('Не вистачає ігрових ₴');
+        if((sv.inv||[]).length+set.parts.length>40)return fail('Інвентар заповнений');
+        w.cash-=set.price;sv.inv=sv.inv||[];
+        for(const part of set.parts)if(!sv.inv.includes(part))sv.inv.push(part);
+        logPlayer(p,'outfit','придбав новий комплект «'+set.name+'»');
+      }else if(!owned)return fail('Спочатку придбай комплект');
+      sv.eq=sv.eq||{};for(const part of set.parts){const mt=ID_RE.exec(part);if(mt)sv.eq[mt[1]]=part;}
+      w.message='Одягнуто: '+set.name;
+        } else if(b.action==='slots'){
       const bet=Number(b.bet);if(!Number.isSafeInteger(bet)||bet<10||bet>1000||bet>w.cash)return fail('Ставка 10–1000 ігрових ₴, не більше балансу');
       // All randomness and payouts are determined server-side. No real-money play.
       // Low stakes produce small wins more frequently; larger bets have greater volatility.
@@ -881,7 +986,7 @@ async function api(req, res, route) {
     } else if(b.action==='join'){
       if(w.brigade)return fail('Ви вже у бригаді');const id=String(b.id||'').trim().toUpperCase();const target=Object.values(DB.players).map(x=>x.world?.brigade).find(x=>x&&x.id===id);if(!target)return fail('Бригаду не знайдено');if(target.members.length>=8)return fail('У бригаді максимум 8 гравців');target.members.push(p.id);const owner=DB.players[target.owner];if(owner)dirtyPlayerIds.add(owner.id);w.brigade=id;w.message='Ви вступили в '+target.name;
     } else if(b.action==='fight'){
-      const br=get();if(!br||!br.members.includes(p.id))return fail('Потрібна бригада');const boss=bosses.find(x=>x.id===b.boss);if(!boss)return fail('Немає боса');if(!br.fight||br.fight.hp<=0){if(br.fight&&t-br.fight.finishedAt<10*MIN)return fail('Новий рейд через 10 хвилин');br.keys=Math.max(0,Math.floor(Number(br.keys)||0));br.wins=br.wins||{};const stage=bosses.findIndex(x=>x.id===boss.id);const needed=[0,2,4][stage];if(stage>0&&!br.wins[bosses[stage-1].id])return fail('Спочатку переможіть попереднього боса');if(br.keys<needed)return fail('Для відкриття потрібно '+needed+' ключів');br.keys-=needed;br.fight={boss:boss.id,hp:boss.hp,maxHp:boss.hp,hits:{},finishedAt:0,keysSpent:needed}}if(br.fight.boss!==boss.id)return fail('Спочатку завершіть поточного боса');if(t-(br.fight.hits[p.id]||0)<30*1000)return fail('Атака раз на 30 секунд');br.fight.hits[p.id]=t;weeklyScore(p,'fight');const weapon=gear[w.equipped.weapon];const dmg=200+Math.min(300,Math.floor(w.xp/10))+(weapon?.attack||0)*20+(houses.find(x=>x.id===w.housing.current)?.energy||0)*3; br.fight.hp=Math.max(0,br.fight.hp-dmg);w.message=`Удар по ${boss.name}: ${dmg} шкоди`;if(!br.fight.hp){br.fight.finishedAt=t;br.wins=br.wins||{};br.wins[boss.id]=(Number(br.wins[boss.id])||0)+1;br.keys=(Number(br.keys)||0)+([1,2,4][bosses.findIndex(x=>x.id===boss.id)]||1);for(const id of br.members){const m=DB.players[id];if(!m)continue;const mw=m.world||(m.world={cash:Number(m.save?.uah)||0,xp:0,items:[],equipped:{}});mw.xp+=boss.hp/30;mw.cash+=boss.hp/60;const loot=boss.id==='ce'?'legend':boss.id==='my'?'storm':'shadow';if(crypto.randomInt(100)<35)mw.items.push(loot);dirtyPlayerIds.add(id)}logPlayer(p,'brigade',`із бригадою «${br.name}» переміг боса ${boss.name}!`)}
+      const br=get();if(!br||!br.members.includes(p.id))return fail('Потрібна бригада');const boss=bosses.find(x=>x.id===b.boss);if(!boss)return fail('Немає боса');if(!br.fight||br.fight.hp<=0){if(br.fight&&t-br.fight.finishedAt<10*MIN)return fail('Новий рейд через 10 хвилин');br.keys=Math.max(0,Math.floor(Number(br.keys)||0));br.wins=br.wins||{};const stage=bosses.findIndex(x=>x.id===boss.id);const needed=[0,2,4][stage];if(br.keys<needed)return fail('Для цього боса потрібно '+needed+' ключів');br.keys-=needed;br.fight={boss:boss.id,hp:boss.hp,maxHp:boss.hp,hits:{},finishedAt:0,keysSpent:needed}}if(br.fight.boss!==boss.id)return fail('Спочатку завершіть поточного боса');if(t-(br.fight.hits[p.id]||0)<30*1000)return fail('Атака раз на 30 секунд');br.fight.hits[p.id]=t;weeklyScore(p,'fight');const weapon=gear[w.equipped.weapon];const dmg=200+Math.min(300,Math.floor(w.xp/10))+(weapon?.attack||0)*20+(houses.find(x=>x.id===w.housing.current)?.energy||0)*3; br.fight.hp=Math.max(0,br.fight.hp-dmg);w.message=`Удар по ${boss.name}: ${dmg} шкоди`;if(!br.fight.hp){br.fight.finishedAt=t;br.wins=br.wins||{};br.wins[boss.id]=(Number(br.wins[boss.id])||0)+1;br.keys=(Number(br.keys)||0)+([1,2,4][bosses.findIndex(x=>x.id===boss.id)]||1);for(const id of br.members){const m=DB.players[id];if(!m)continue;const mw=m.world||(m.world={cash:Number(m.save?.uah)||0,xp:0,items:[],equipped:{}});mw.xp+=boss.hp/30;mw.cash+=boss.hp/60;const loot=boss.id==='ce'?'legend':boss.id==='my'?'storm':'shadow';if(crypto.randomInt(100)<35)mw.items.push(loot);dirtyPlayerIds.add(id)}logPlayer(p,'brigade',`із бригадою «${br.name}» переміг боса ${boss.name}!`)}
     } else if(b.action==='hospital'){
       w.health=clamp(Math.floor(num(w.health,100)),0,100);
       if(w.cash<320)return fail('Для лікування потрібно 320 ігрових ₴');
@@ -989,6 +1094,15 @@ async function api(req, res, route) {
     const d = Math.floor(num(b.dmg));
     const t = Date.now(); p.hits = p.hits.filter(x => t - x < 3 * HOUR);
     if (d <= 0 || d > cap || p.hits.length >= 30) return send(res, 200, { ok: false, err: 'відхилено' });
+    let usedWeapon=null;
+    if(b.weapon!==undefined&&b.weapon!==null){
+      const id=String(b.weapon),allowed=['bat','bar','chain','mace'],bs=sv?.bs;
+      if(!allowed.includes(id)||!bs||!Array.isArray(bs.wp)||!bs.wp.includes(id))return send(res,200,{ok:false,err:'Цієї зброї немає в інвентарі'});
+      const counts=bs.weaponCounts||(bs.weaponCounts={});
+      const copies=Math.floor(num(counts[id],1));
+      if(copies<1)return send(res,200,{ok:false,err:'Зброя зламалася — у запасі більше немає копій'});
+      counts[id]=copies-1;usedWeapon=id;
+    }
     p.hits.push(t);
     logPlayer(p,'attack','завдав '+d.toLocaleString('uk-UA')+' шкоди босу',25000);
     const previousMax = num(p.maxDamage, 0);
@@ -1001,7 +1115,7 @@ async function api(req, res, route) {
       dirtyPlayerIds.add(o.id);
     });
     dirtyPlayerIds.add(p.id); 
-    return send(res, 200, { ok: true });
+    return send(res, 200, usedWeapon?{ok:true,save:sv,weapon:usedWeapon,remaining:sv.bs.weaponCounts[usedWeapon]}:{ ok: true });
   }
   if (route === 'events') { const list = p.events; p.events = []; dirtyPlayerIds.add(p.id); return send(res, 200, { ok: true, list }); }
   return send(res, 404, { ok: false });
@@ -1062,7 +1176,7 @@ async function durableApi(req,res,route){
         for(const sub of newsSubscribers){try{sub.write('data: '+JSON.stringify(event)+'\n\n')}catch{newsSubscribers.delete(sub)}}
       }
       const current=auth(req)||DB.players[obj.id];
-      if(current){obj.walletRevision=Number(current.walletRevision||0);if(current.save){obj.walletCash=current.save.uah;if(obj.save&&route==='daily-wheel')obj.save.uah=current.save.uah;if(route==='save')obj.save=current.save;}}
+      if(current){obj.walletRevision=Number(current.walletRevision||0);if(current.save){obj.walletCash=current.save.uah;if(obj.save)obj.save=current.save;if(route==='save')obj.save=current.save;}}
       return send(res,code,obj);
     }catch(e){
       DB.players=JSON.parse(before);newsEvents=JSON.parse(oldNews);
@@ -1087,7 +1201,7 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(200,{'content-type':name.endsWith('.svg')?'image/svg+xml; charset=utf-8':'image/webp','cache-control':'public, max-age=3600','x-content-type-options':'nosniff'});res.end(data)
       });
     }
-    if (u.pathname === '/uhy-polish.css' || u.pathname === '/uhy-polish.js' || u.pathname === '/uhy-live.css' || u.pathname === '/weekly.js' || u.pathname === '/motion.js' || u.pathname === '/city-events.js') {
+    if (u.pathname === '/uhy-polish.css' || u.pathname === '/uhy-polish.js' || u.pathname === '/uhy-live.css' || u.pathname === '/weekly.js' || u.pathname === '/motion.js' || u.pathname === '/city-events.js' || u.pathname === '/v27.css' || u.pathname === '/v27-action.js') {
       const f=path.join(__dirname,u.pathname.slice(1));
       return fs.readFile(f,(err,data)=>{if(err){res.writeHead(404);return res.end('Not found')}
         res.writeHead(200,{'content-type':u.pathname.endsWith('.css')?'text/css; charset=utf-8':'application/javascript; charset=utf-8','cache-control':'no-cache','x-content-type-options':'nosniff'});res.end(data)});
@@ -1237,7 +1351,7 @@ async function show(which){stopNews();active=which;panel.classList.remove('uhy-v
 const observer=new MutationObserver(dock);observer.observe($('#tabs'),{childList:true});dock();
 })();
 </script>`;
-      const extras = '<script src="/uhylyant-ui.js"></script><script src="/uhylyant-account.js"></script><link rel="stylesheet" href="/uhy-live.css"><script src="/weekly.js"></script><script src="/motion.js"></script><script src="/city-events.js"></script>';
+      const extras = '<script src="/uhylyant-ui.js"></script><script src="/uhylyant-account.js"></script><link rel="stylesheet" href="/uhy-live.css"><script src="/weekly.js"></script><script src="/motion.js"></script><script src="/city-events.js"></script><link rel="stylesheet" href="/v27.css"><script src="/v27-action.js"></script>';
       // Patch the original client's detention handler in-memory; source HTML and old saves remain compatible.
       const oldCatch = `S.tcc={stage:0,nextAt:0,busy:false};S.st.caught++;`;
       const newCatch = `S.tcc={stage:0,nextAt:0,busy:false};S.st.caught++;

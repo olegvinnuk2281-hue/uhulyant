@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
 </style><script src="https://telegram.org/js/telegram-web-app.js"></script></head><body>
 <title>Ухилянт</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -356,7 +356,7 @@ const BODY=[{bw:50,ww:33,aw:16,hip:34,nm:'Худий'},{bw:57,ww:39,aw:19,hip:38
 const FACE_N=['Класичне','Кутасте','Масивне','Вузьке','Суворе','Добродушне'];
 const HAIR_N=['Під нуль','Короткий','Зачіска','Довге','Лисий','Кучері','Ірокез','Пучок'];
 const BEARD_N=['Без бороди','Щетина','Коротка','Борода','Козлина','Вуса'];
-const TAT_N=['Без тату','Рука','Обидві руки','Рукави + шия'];
+const TAT_N=['Без тату','Рука','Обидві руки','Рукави + шия','Орнаментальні рукави','Геометрія · рукави'];
 
 /* ---------- спільні шматки ---------- */
 function form(d,base,o){
@@ -381,6 +381,8 @@ return `<svg id="uhArtDefs" width="0" height="0" style="position:absolute;left:-
 <pattern id="uh-dots" width="4.4" height="4.4" patternUnits="userSpaceOnUse" patternTransform="rotate(20)"><circle cx="2.2" cy="2.2" r=".95" fill="${INK}"/></pattern>
 <pattern id="uh-stub" width="3" height="3" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".55" fill="${INK}"/><circle cx="2.4" cy="2.3" r=".45" fill="${INK}"/></pattern>
 <pattern id="uh-tat" width="15" height="15" patternUnits="userSpaceOnUse" patternTransform="rotate(12)"><circle cx="7.5" cy="7.5" r="4.6" fill="none" stroke="${INK}" stroke-width="1.4"/><circle cx="7.5" cy="7.5" r="1.7" fill="${INK}"/><path d="M7.5 0v2.6M7.5 12.4V15M0 7.5h2.6M12.4 7.5H15M2 2l2 2M13 2l-2 2M2 13l2-2M13 13l-2-2" stroke="${INK}" stroke-width="1.2" fill="none"/></pattern>
+<pattern id="uh-tat-ornate" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M10 1C4 5 4 8 10 10C16 8 16 5 10 1ZM10 19C4 15 4 12 10 10C16 12 16 15 10 19ZM1 10C5 4 8 4 10 10C8 16 5 16 1 10ZM19 10C15 4 12 4 10 10C12 16 15 16 19 10Z" fill="none" stroke="${INK}" stroke-width="1.1"/><circle cx="10" cy="10" r="1.7" fill="${INK}"/></pattern>
+<pattern id="uh-tat-geo" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(12)"><path d="M10 1L19 10L10 19L1 10ZM10 5L15 10L10 15L5 10ZM0 0h4v2H0M16 18h4v2h-4" fill="none" stroke="${INK}" stroke-width="1.15"/><circle cx="10" cy="10" r="1.2" fill="${INK}"/></pattern>
 <pattern id="uh-plaid" width="14" height="14" patternUnits="userSpaceOnUse"><rect width="14" height="3" y="5" fill="#fff" opacity=".18"/><rect width="3" height="14" x="5" fill="#fff" opacity=".18"/><rect width="14" height="1" y="1" fill="${INK}" opacity=".35"/><rect width="1" height="14" x="1" fill="${INK}" opacity=".35"/></pattern>
 <pattern id="uh-brick" width="22" height="12" patternUnits="userSpaceOnUse"><path d="M0 .5h22M0 6.5h22M0 12h22M5 .5v6M16 6.5v5.5" stroke="${INK}" stroke-width=".9" opacity=".55" fill="none"/></pattern>
 <filter id="uh-ink" x="-4%" y="-4%" width="108%" height="108%"><feTurbulence type="fractalNoise" baseFrequency=".045" numOctaves="2" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.1" xChannelSelector="R" yChannelSelector="G"/></filter>
@@ -637,6 +639,7 @@ function wearShoes(F,c,b,sk){
 /* ---------- ГОЛОВНА ЗБІРКА ---------- */
 function person(cfg){
   const c=Object.assign({skin:1,hc:0,hair:1,face:0,body:1,beard:0,tat:0,mood:'ok',smoke:true,hurt:false},cfg);
+  const tatPattern=c.tat===4?'uh-tat-ornate':c.tat===5?'uh-tat-geo':'uh-tat';
   const b=BODY[c.body%3]||BODY[1];
   const sk=SKIN[c.skin]||SKIN[1];
   const H=c.H||{look:'none',col:'#000'},B=c.B||{look:'tee',col:'#555'},L=c.L||{look:'jeans',col:'#345'},F=c.F||{look:'sneakers',col:'#ddd'},A=c.A||{look:'none',col:'#000'};
@@ -655,7 +658,7 @@ function person(cfg){
   /* голова (шия) і одяг: спершу шия, потім одяг, потім руки, потім голова */
   const nk=`M88 88 L87 124 Q100 134 113 124 L112 88Z`;
   o+=form(nk,sk,{dx:-4,dy:-2})+`<path d="M86 96 Q100 118 114 96 L114 108 Q100 124 86 108Z" fill="${dark(sk,.7)}" opacity=".5"/>`;
-  if(c.tat>=3){const id=uid();o+=`<clipPath id="${id}"><path d="${nk}"/></clipPath><g clip-path="url(#${id})"><rect x="86" y="100" width="28" height="26" fill="url(#uh-tat)" opacity=".55"/></g>`}
+  if(c.tat>=3){const id=uid();o+=`<clipPath id="${id}"><path d="${nk}"/></clipPath><g clip-path="url(#${id})"><rect x="86" y="100" width="28" height="26" fill="url(#${tatPattern})" opacity=".55"/></g>`}
   const wb=wearBody(B,c,b,sk,ar);
   o+=wb.body;
   /* руки: шкіра + тату, потім рукав */
@@ -667,7 +670,7 @@ function person(cfg){
     if(!full){
       o+=form(a.d,sk,{dx:-3.5,dy:-2.5});
       const t=(c.tat>=2)||(c.tat===1&&s===1);
-      if(t){const id=uid();o+=`<clipPath id="${id}"><path d="${a.d}"/></clipPath><g clip-path="url(#${id})"><rect x="${a.sx-20}" y="${c.tat>=3?140:176}" width="40" height="${c.tat>=3?100:60}" fill="url(#uh-tat)" opacity=".82"/><rect x="${a.sx-20}" y="${c.tat>=3?140:176}" width="40" height="${c.tat>=3?100:60}" fill="${INK}" opacity=".12"/></g>`;}
+      if(t){const id=uid();o+=`<clipPath id="${id}"><path d="${a.d}"/></clipPath><g clip-path="url(#${id})"><rect x="${a.sx-20}" y="${c.tat>=3?140:176}" width="40" height="${c.tat>=3?100:60}" fill="url(#${tatPattern})" opacity=".82"/><rect x="${a.sx-20}" y="${c.tat>=3?140:176}" width="40" height="${c.tat>=3?100:60}" fill="${INK}" opacity=".12"/></g>`;}
     }
     o+=wb.sleeves[i];
     if(full&&c.tat>=2){/* кисть із тату */
@@ -705,7 +708,7 @@ function svg(cfg,vb,opts){
 function cfgFor(look,eq,mood,extra){
   look=look||{};
   return Object.assign({skin:look.skin|0,hc:look.hc!=null?look.hc|0:(look.hair|0),hair:look.hs!=null?look.hs|0:1,face:look.face|0,body:look.body!=null?look.body|0:1,beard:look.beard|0,tat:look.tat|0,
-   mood:mood==='scared'?'scared':mood==='hurt'?'hurt':mood==='happy'?'happy':'ok',smoke:mood!=='scared',
+   mood:mood==='scared'?'scared':mood==='hurt'?'hurt':mood==='happy'?'happy':'ok',smoke:look.smoke!==false&&mood!=='scared',
    H:gi(eq,'head'),B:gi(eq,'body'),L:gi(eq,'legs'),F:gi(eq,'shoes'),A:gi(eq,'acc')},extra||{});
 }
 G.UHART=Object.assign(G.UHART||{},{INK,SKIN,HCOL,BODY,FACE_N,HAIR_N,BEARD_N,TAT_N,mix,dark,lite,form,ln,fi,fl,limb,defs,init,person,svg,cfgFor,uid,P,f1});
@@ -1356,7 +1359,7 @@ const SCENES={
  station:{n:'Вокзал',f:sceneStation,fg:null,hero:{x:1,h:84,smoke:1}},
  roof:{n:'Дах',f:sceneRoof,fg:null,hero:{x:2,h:84,smoke:1}},
  forest:{n:'Лісосмуга',f:sceneForest,fg:null,hero:{x:1,h:84,smoke:0}},
- home:{n:'Хата',f:sceneHome,fg:null,hero:{x:1,h:84,smoke:1}},
+ home:{n:'Хата',f:sceneHome,fg:null,hero:{x:1,h:100,smoke:1}},
  office:{n:'Офіс',f:sceneOffice,fg:null,hero:{x:1,h:84,smoke:0}},
  eu:{n:'Європа',f:sceneEU,fg:null,hero:{x:1,h:84,smoke:1}},
  tcc0:{n:'ТЦК',f:sceneTCC0,fg:null,hero:{x:1,h:84,smoke:0}},
@@ -1415,16 +1418,21 @@ const EMP=['ТОВ «Горизонт»','ФОП Петренко','«Мирни
 const SLOTS=[['head','Голова'],['body','Тулуб'],['legs','Ноги'],['shoes','Взуття'],['acc','Аксесуар']];
 const RAR=['#8f9aa8','#58d27b','#5aa9ff','#b57cf2','#ff9a3c','#ff5d6c','#ffd04a'];
 const RAW={
- head:[['Без головного убору','none','#000','s'],['Кепка','cap','#3b4a5a','s'],['Каптур','hood','#2d3340','s'],['Вʼязана шапка','beanie','#8a3340','e'],['Панама дачника','panama','#b9a46a','s'],['Каска будівельника','hardhat','#f2b01e','s'],['Золота панама','panama','#e8b923','s']],
- body:[['Футболка','tee','#8aa0b8','c'],['Худі','hoodie','#4a5568','s'],['Куртка курʼєра','jacket','#d4731a','e'],['Жилет «під працівника»','vest','#c7d23a','s'],['Піджак','suit','#2e3b55','c'],['Костюм у клітинку','suit','#5b4b6e','c'],['Золотий костюм','suit','#c99a1b','c']],
- legs:[['Шорти','shorts','#7b8ea3','e'],['Спортивки','track','#3a4455','e'],['Джинси','jeans','#2f5d8a','s'],['Робочі штани','work','#5f6b3a','s'],['Класичні штани','formal','#262b36','c'],['Брюки преміум','formal','#3b3f5c','c'],['Золоті штани','formal','#c99a1b','s']],
- shoes:[['Шльопанці','slides','#5c6a7c','e'],['Кеди','sneakers','#e9eef3','e'],['Кросівки','sneakers','#3d8bff','e'],['Робочі черевики','boots','#6b4a2e','s'],['Туфлі','dress','#1a1d24','c'],['Туфлі преміум','dress','#442b21','c'],['Золоті кросівки','sneakers','#e8b923','e']],
- acc:[['Нічого','none','#000','e'],['Навушники','headphones','#2a2f3a','e'],['Рюкзак курʼєра','backpack','#d4731a','s'],['Окуляри','glasses','#20242c','s'],['Дипломат','briefcase','#4a3a2a','c'],['Термосумка доставки','bag','#2f8f6a','s'],['Золотий дипломат','briefcase','#e8b923','c']]
+ head:[['Без головного убору','none','#000','s'],['Кепка','cap','#3b4a5a','s'],['Каптур','hood','#2d3340','s'],['Вʼязана шапка','beanie','#8a3340','e'],['Панама дачника','panama','#b9a46a','s'],['Каска будівельника','hardhat','#f2b01e','s'],['Золота панама','panama','#e8b923','s'],['Каптур райдера','hood','#242b45','s'],['Каска майстра','hardhat','#efaa35','s'],['Шолом неон','cap','#1ac4c0','s'],['Капелюх агента','panama','#344458','s'],['Золота кепка','cap','#d8af4d','s']],
+ body:[['Футболка','tee','#8aa0b8','c'],['Худі','hoodie','#4a5568','s'],['Куртка курʼєра','jacket','#d4731a','e'],['Жилет «під працівника»','vest','#c7d23a','s'],['Піджак','suit','#2e3b55','c'],['Костюм у клітинку','suit','#5b4b6e','c'],['Золотий костюм','suit','#c99a1b','c'],['Куртка райдера','jacket','#3a335f','s'],['Жилет майстра','vest','#bd6b32','e'],['Неонова куртка','jacket','#14a5ad','e'],['Піджак агента','suit','#293949','c'],['Золотий сюртук','suit','#d2a94c','c']],
+ legs:[['Шорти','shorts','#7b8ea3','e'],['Спортивки','track','#3a4455','e'],['Джинси','jeans','#2f5d8a','s'],['Робочі штани','work','#5f6b3a','s'],['Класичні штани','formal','#262b36','c'],['Брюки преміум','formal','#3b3f5c','c'],['Золоті штани','formal','#c99a1b','s'],['Штани райдера','track','#29283d','e'],['Карго майстра','work','#6c6547','e'],['Неонові карго','work','#175c72','s'],['Штани агента','formal','#28374a','c'],['Золоті брюки','formal','#a77b29','s']],
+ shoes:[['Шльопанці','slides','#5c6a7c','e'],['Кеди','sneakers','#e9eef3','e'],['Кросівки','sneakers','#3d8bff','e'],['Робочі черевики','boots','#6b4a2e','s'],['Туфлі','dress','#1a1d24','c'],['Туфлі преміум','dress','#442b21','c'],['Золоті кросівки','sneakers','#e8b923','e'],['Черевики райдера','boots','#27213c','s'],['Берці майстра','boots','#54432d','e'],['Неонові кросівки','sneakers','#23d1cb','s'],['Туфлі агента','dress','#212b3e','c'],['Золоті кросівки','sneakers','#deb955','c']],
+ acc:[['Нічого','none','#000','e'],['Навушники','headphones','#2a2f3a','e'],['Рюкзак курʼєра','backpack','#d4731a','s'],['Окуляри','glasses','#20242c','s'],['Дипломат','briefcase','#4a3a2a','c'],['Термосумка доставки','bag','#2f8f6a','s'],['Золотий дипломат','briefcase','#e8b923','c'],['Термос райдера','bag','#574b9b','e'],['Інструмент майстра','briefcase','#a8743b','s'],['Сумка курʼєра','backpack','#e69b35','e'],['Дипломат агента','briefcase','#283443','c'],['Золотий кейс','briefcase','#f3c644','c']]
 };
+RAW.head.push(['Шолом механіка','hardhat','#bf6537','s'],['Кепка дозорця','cap','#263349','s']);
+RAW.body.push(['Куртка механіка','jacket','#b86637','s'],['Форма нічного дозорця','jacket','#303b4a','s']);
+RAW.legs.push(['Карго механіка','work','#68604b','s'],['Тактичні штани','work','#323d4d','s']);
+RAW.shoes.push(['Черевики механіка','boots','#594433','e'],['Нічні берці','boots','#292c35','e']);
+RAW.acc.push(['Набір інструментів','briefcase','#a8743b','s'],['Сумка дозорця','backpack','#364858','e']);
 const ITEMS=[],ITEM={};
 SLOTS.forEach(([slot])=>RAW[slot].forEach((a,t)=>{
-  const main=3*t,side=t;
-  const it={id:slot+t,slot,t,name:a[0],look:a[1],col:a[2],st:a[3]==='s'?main:side,ch:a[3]==='c'?main:side,en:a[3]==='e'?main:side,lvl:TIER_LVL[t],price:itemPrice(t),gold:t===6?150:0};
+  const main=3*Math.min(t,5),side=Math.min(t,5); // High-tier set pieces stay within the existing item stat ceiling.
+  const it={id:slot+t,slot,t,name:a[0],look:a[1],col:a[2],st:a[3]==='s'?main:side,ch:a[3]==='c'?main:side,en:a[3]==='e'?main:side,lvl:t>=7?[1,4,12,35,100,150,220][t-7]:TIER_LVL[t],price:t>=7?0:itemPrice(t),gold:t===6?150:0};
   ITEMS.push(it);ITEM[it.id]=it;
 }));
 const BASE_EQ={head:'head0',body:'body0',legs:'legs0',shoes:'shoes0',acc:'acc0'};
@@ -1509,7 +1517,7 @@ function bronState(){const t=now();if(S.bronUntil>t)return'real';if(S.fakeUntil>
 function riskFor(mod){
   if(S.end==='eu')return 0;
   if(S.end==='ua'&&S.ua.link>=5)return 0;
-  let r=.30-gear().st*.004+mod;
+  let r=.40-gear().st*.004+mod;
   if(S.wantedUntil>now())r+=.15;
   r*=RAID[raid().lvl].m;
   if(S.end==='ua')r-=S.ua.link*.07;
@@ -1812,7 +1820,7 @@ function renderHUD(){
   if(b)st.push('<span class="tag green">Бронь <span class="cd" data-until="'+(b==='real'?S.bronUntil:S.fakeUntil)+'"></span></span>');
   if(S.wantedUntil>t)st.push('<span class="tag red">Розшук <span class="cd" data-until="'+S.wantedUntil+'"></span></span>');
   if(S.job)st.push('<span class="tag gray">'+esc(JOBS[S.job.ji].n)+'</span>');
-  $('#hud').innerHTML='<div class="hud-top"><div class="who"><span class="lvl t'+tierOf(S.level)+'">'+S.level+'</span><div class="who-txt"><b>'+esc(S.name||'Ухилянт')+'</b><small>'+rankOf(S.level)+(S.ng?' · НГ+'+S.ng:'')+'</small></div></div><div class="wallet"><span class="chip"><b style="color:var(--green)">₴</b>'+fmt(S.uah)+'</span><span class="chip gold">'+COIN+fmt(S.gold)+'</span><button class="icon-btn" data-act="settings" aria-label="Налаштування"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></button></div></div>'
+  $('#hud').innerHTML='<div class="hud-top"><div class="who"><span class="lvl t'+tierOf(S.level)+'">'+S.level+'</span><div class="who-txt"><b>'+esc(S.name||'Ухилянт')+'</b><button class="uhy-rename-inline" data-act="renameOpen" aria-label="Змінити нік">✎</button><small>'+rankOf(S.level)+(S.ng?' · НГ+'+S.ng:'')+'</small></div></div><div class="wallet"><span class="chip"><b style="color:var(--green)">₴</b>'+fmt(S.uah)+'</span><span class="chip gold">'+COIN+fmt(S.gold)+'</span><button class="icon-btn" data-act="settings" aria-label="Налаштування"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></button></div></div>'
    +'<div class="bar xp"><i style="width:'+(S.level>=MAXLVL?100:Math.min(100,S.xp/need*100))+'%"></i></div>'
    +'<div class="hud-bot"><div class="energy">'+BOLT+'<div class="bar en"><i style="width:'+(S.energy/mx*100)+'%"></i></div><span class="num">'+S.energy+'/'+mx+(S.energy<mx?' · '+Math.ceil((regenMs()-(t-S.eAt))/1000)+' с':'')+'</span></div><div class="status">'+st.join('')+'</div></div>';
   tickCd();
@@ -1867,7 +1875,7 @@ function viewStreet(){
   const t=tier(),pool=JOBS.filter(j=>!j.remote&&j.t<=t&&j.t>=Math.max(0,t-1));
   let h=riskCard(0);
   if(S.job&&!JOBS[S.job.ji].remote)h+=jobCard();
-  h+='<div class="card"><div class="h">Підробітки на вулиці</div>'+pool.map(j=>'<div class="row"><div class="grow"><div class="name">'+esc(j.n)+'</div><div class="sub">₴'+fmt(gigPay(j,1))+' · 10 енергії · ризик '+(bronState()==='real'?0:Math.round(riskFor(j.r)*100))+'%</div></div><button class="btn sm amber" data-act="gig" data-v="'+j.i+'">Йти</button></div>').join('')+'</div>';
+  h+='<div class="card uhy-action-panel"><div class="h">🚶 Підробітки на вулиці</div><div class="sub">Обери нагороду. Вищий заробіток = більший ризик ТЦК.</div>'+pool.map(j=>'<div class="row uhy-action-row"><div class="grow"><div class="name">'+esc(j.n)+'</div><div class="sub">💵 ₴'+fmt(gigPay(j,1))+' · ⚡ 10 · 🚨 '+(bronState()==='real'?0:Math.round(riskFor(j.r)*100))+'% ризик</div></div><button class="btn amber" data-act="gig" data-v="'+j.i+'">Спробувати</button></div>').join('')+'</div>';
   h+='<div class="card"><div class="h">Постійна робота</div><div class="sub">Платять краще, ніж підробітки, а інколи ще й обіцяють бронь.</div><button class="btn block" data-act="search">Шукати роботу · 8 енергії</button></div>';
   if(S.offers&&S.offers.length)h+=S.offers.map(offerHTML).join('');
   return h;
@@ -1890,7 +1898,7 @@ function viewGear0(){
   const g=gear(),mod=0;
   let h='<div class="card"><div class="stats3"><div class="stat"><b>'+g.st+'</b><span>Скритність</span></div><div class="stat"><b>+'+g.ch+'%</b><span>Харизма</span></div><div class="stat"><b>+'+g.en*3+'</b><span>Енергія</span></div></div><div class="hint">Скритність знижує ризик (кожна одиниця дає −0,4%). Харизма підвищує заробіток. Витривалість збільшує запас енергії.</div></div>';
   h+='<div class="pills">'+SLOTS.map(s=>'<button class="pill'+(ui.slot===s[0]?' on':'')+'" data-act="slot" data-v="'+s[0]+'">'+s[1]+'</button>').join('')+'</div>';
-  h+='<div class="list">'+ITEMS.filter(i=>i.slot===ui.slot).map(it=>{
+  h+='<div class="list">'+ITEMS.filter(i=>i.slot===ui.slot&&i.t<7).map(it=>{
     const own=S.inv.includes(it.id),on=S.eq[it.slot]===it.id,lock=S.level<it.lvl;
     let btn;
     if(on)btn='<button class="btn sm" disabled>Одягнено</button>';
@@ -1939,6 +1947,20 @@ function render(){
 /* ---------- вікна ---------- */
 function showOv(html){$('#dlg').innerHTML=html;$('#overlay').hidden=false}
 function hideOv(){$('#overlay').hidden=true}
+function renameOpen(){
+ if(!NET?.id){toast('Увійди в онлайн-акаунт','bad');return}
+ showOv('<h2>✎ Змінити нік</h2><p>Нік видно в рейтингу, новинах та друзях. 3–20 букв, цифр або _. Перша зміна безкоштовна, далі раз на 7 діб.</p><label for="v27Nick">Новий нік</label><input id="v27Nick" maxlength="20" autocomplete="off" value="'+esc(S.name)+'"><button class="btn amber big" data-act="renameSave">Зберегти нік</button><button class="btn block" data-act="closeOv">Скасувати</button>');
+}
+async function renameSave(){
+ const input=$('#v27Nick'),name=(input?.value||'').trim();
+ if(!/^[\p{L}\p{N}_]{3,20}$/u.test(name)){toast('Нік: 3–20 букв, цифр або _','bad');return}
+ if(!await netSync(true)){toast('Спочатку синхронізуй прогрес','bad');return}
+ const r=await api('player/rename',{name});
+ if(!r?.ok){toast(r?.err||'Помилка зміни ніку','bad');return}
+ if(r.save){S=Object.assign(S0(),r.save);S.bs=Object.assign(defBs(),S.bs||{});S.up=S.up||{}}else S.name=r.name;
+ save();hideOv();render();toast('Нік збережено на сервері','good');
+}
+
 const PRESETS=[['Дворовий',{skin:1,hc:0,hs:1,face:1,body:1,beard:1,tat:3}],['Айтішник',{skin:0,hc:1,hs:2,face:3,body:0,beard:0,tat:0}],['Дачник',{skin:1,hc:5,hs:0,face:5,body:2,beard:3,tat:1}],['Бригадир',{skin:2,hc:0,hs:0,face:2,body:2,beard:2,tat:2}],['Студент',{skin:0,hc:3,hs:5,face:0,body:0,beard:0,tat:0}],['Рокер',{skin:3,hc:0,hs:3,face:4,body:1,beard:4,tat:3}],['Рудий',{skin:0,hc:4,hs:6,face:2,body:1,beard:5,tat:2}],['Дід',{skin:1,hc:6,hs:4,face:5,body:1,beard:5,tat:0}]];
 function showCreator(first){
   if(first!==undefined)ui.cfirst=first;
@@ -1951,11 +1973,11 @@ function showCreator(first){
   if(ui.ct==='face')body='<label>Шкіра</label>'+sw('skin',UHART.SKIN,c.skin)+'<label>Риси обличчя</label>'+bg('face',UHART.FACE_N,c.face%6);
   if(ui.ct==='hair')body='<label>Зачіска</label>'+bg('hs',UHART.HAIR_N,c.hair)+'<label>Колір волосся</label>'+sw('hc',UHART.HCOL,c.hc);
   if(ui.ct==='beard')body='<label>Борода</label>'+bg('beard',UHART.BEARD_N,c.beard);
-  if(ui.ct==='body')body='<label>Статура</label>'+bg('body',UHART.BODY.map(b=>b.nm),c.body)+'<label>Татуювання</label>'+bg('tat',UHART.TAT_N,c.tat);
+  if(ui.ct==='body')body='<label>Статура</label>'+bg('body',UHART.BODY.map(b=>b.nm),c.body)+'<label>Татуювання · два нові малюнки</label>'+bg('tat',UHART.TAT_N,c.tat)+'<label>Сигарета</label><button type="button" class="btn block" data-act="smokeToggle" aria-pressed="'+(S.look.smoke!==false)+'">'+(S.look.smoke===false?'🚭 Прибрати сигарету':'🚬 Залишити сигарету')+'</button>';
   showOv('<h2>'+(ui.cfirst?'Ухилянт':'Персонаж')+'</h2>'+(ui.cfirst?'<p>Місто. Бус на кожному розі. Одягайся непомітно, шукай роботу й не вір обіцянкам про бронь. Створи свого героя.</p>':'')+'<div class="prev big">'+UHART.svg(UHART.cfgFor(S.look,S.eq,'ok'),'0 0 200 262')+'</div>'
    +(ui.cfirst?'<label for="nameIn">Імʼя</label><input id="nameIn" maxlength="14" autocomplete="off" value="'+esc(nm||'')+'" placeholder="Як тебе звати?">':'')
    +'<div class="tabsc">'+tabs.map(t=>'<button class="'+(ui.ct===t[0]?'on':'')+'" data-act="ct" data-v="'+t[0]+'">'+t[1]+'</button>').join('')+'</div>'+body
-   +'<button class="btn" data-act="locs">📍 Обрати локацію</button>'+(ui.cfirst?'<button class="btn amber big" data-act="start">Почати</button><div class="hint">Вигадана сатирична гра. Усі шанси й події умовні.</div>':'<button class="btn amber big" data-act="closeOv">Готово</button>'));
+   +'<button class="btn" data-act="locs">📍 Обрати локацію</button>'+(!ui.cfirst?'<button class="btn" data-act="renameOpen">✎ Змінити нік</button>':'')+(ui.cfirst?'<button class="btn amber big" data-act="start">Почати</button><div class="hint">Вигадана сатирична гра. Усі шанси й події умовні.</div>':'<button class="btn amber big" data-act="closeOv">Готово</button>'));
 }
 function showIntro(){showCreator(true)}
 function showLocs(){
@@ -1970,9 +1992,9 @@ function startAudio(){if(!UHY_AUDIO.ctx){const T=window.AudioContext||window.web
 document.addEventListener('pointerdown',startAudio,{once:true});document.addEventListener('keydown',startAudio,{once:true});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){clearInterval(UHY_AUDIO.timer);UHY_AUDIO.timer=null;UHY_AUDIO.ctx?.suspend()}else if(UHY_AUDIO.ctx)startAudio()});
 setTimeout(audioControls,0);
-function soundTone(freq,len=.10,vol=.025,kind='triangle'){
+function soundTone(freq,len=.10,vol=.025,kind='triangle',delay=0){
  try{if(!UHY_AUDIO.ctx){const T=window.AudioContext||window.webkitAudioContext;if(!T)return;UHY_AUDIO.ctx=new T();}
- const ac=UHY_AUDIO.ctx,t=ac.currentTime+.012,o=ac.createOscillator(),g=ac.createGain();
+ const ac=UHY_AUDIO.ctx,t=ac.currentTime+Math.max(.012,Number(delay)||0),o=ac.createOscillator(),g=ac.createGain();
  o.type=kind;o.frequency.setValueAtTime(freq,t);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+len);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+len+.02);
  }catch(e){}
 }
@@ -1989,7 +2011,21 @@ function setMusicSound(kind){
  try{localStorage.setItem('uhy_audio',JSON.stringify({music:UHY_AUDIO.music,sounds:UHY_AUDIO.sounds}))}catch{}
  audioControls();if(ui.ov==='settings')showSettings();
 }
-document.addEventListener('click',e=>{if(!UHY_AUDIO.sounds)return;const btn=e.target?.closest?.('button');if(!btn)return;const action=btn.dataset.act;if(['audioMusic','audioSounds'].includes(action))return;soundTone(action==='daily'?784:396,.05,.013,'square')},true);
+function cartoonSound(button){
+ const action=button.dataset.act||button.dataset.wact||'';
+ if(['audioMusic','audioSounds','settings','tab','ct','lk','closeOv'].includes(action))return;
+ let seq;
+ if(/fight|hit|bhit|boss/i.test(action))seq=[[145,.12,.026,'sawtooth',0],[620,.06,.018,'square',.075]];
+ else if(/tcc|escape|rescue|bribe|bransom|bresc/i.test(action))seq=[[760,.08,.018,'square',0],[480,.10,.023,'sawtooth',.09],[700,.08,.017,'square',.19]];
+ else if(/work|shift|gig|apply|nightTask|accept|search/i.test(action))seq=[[294,.055,.017,'triangle',0],[392,.055,.018,'triangle',.075],[523,.075,.020,'square',.15]];
+ else if(/food|hospital|meal|eat/i.test(action))seq=[[260,.06,.018,'triangle',0],[392,.065,.019,'sine',.08],[523,.08,.018,'triangle',.16]];
+ else if(/spin|wheel|daily|claim/i.test(action))seq=[[660,.05,.016,'square',0],[880,.06,.019,'square',.065],[1175,.09,.020,'triangle',.14]];
+ else if(/outfit|equip|look|buy|gear|bwp/i.test(action))seq=[[392,.06,.017,'triangle',0],[587,.07,.019,'triangle',.085],[784,.10,.018,'sine',.17]];
+ else if(/house|home|collect/i.test(action))seq=[[220,.07,.017,'triangle',0],[330,.08,.018,'sine',.09]];
+ else seq=[[440,.045,.012,'square',0],[660,.055,.012,'triangle',.055]];
+ seq.forEach(([freq,len,vol,kind,delay])=>soundTone(freq,len,vol,kind,delay));
+}
+document.addEventListener('click',e=>{if(!UHY_AUDIO.sounds)return;const btn=e.target?.closest?.('button');if(btn&&!btn.disabled)cartoonSound(btn)},true);
 function showSettings(){
   let low=false;try{low=localStorage.getItem('uhy_gfx')==='low'}catch(e){}
   showOv('<h2>Налаштування</h2><div class="list"><button class="btn block" data-act="editHero">✎ Персонаж</button><button class="btn block" data-act="locs">📍 Локація</button><button class="btn block" data-act="gfx">Графіка: '+(low?'спрощена (економить батарею)':'висока')+'</button><button class="btn block" data-act="audioMusic">♫ Музика: '+(UHY_AUDIO.music?'увімкнена':'вимкнена')+'</button><button class="btn block" data-act="audioSounds">🔊 Звуки: '+(UHY_AUDIO.sounds?'увімкнені':'вимкнені')+'</button><button class="btn block" data-act="help">Правила гри</button><button class="btn red block" data-act="reset">Скинути гру</button></div><button class="btn big" data-act="closeOv">Закрити</button>');
@@ -2008,8 +2044,10 @@ const ACT={
   audioMusic:()=>setMusicSound('music'),
   audioSounds:()=>setMusicSound('sounds'),
   editHero:()=>{ui.cfirst=false;showCreator(false)},
+  renameOpen,renameSave,openSets:()=>{const b=document.querySelector('#socialDock [data-sp="world"]');if(b)b.click();else toast('Підключи онлайн-акаунт','bad')},
   ct:v=>{ui.ct=v;showCreator()},
   lk:(v,a)=>{const k=a.dataset.k,n=+v,L=S.look;if(k==='hc'){L.hc=n;L.hair=n}else L[k]=n;if(S.started){save();ui.sk='';renderScene()}showCreator()},
+  smokeToggle:()=>{S.look.smoke=S.look.smoke===false;save();if(S.started)renderScene();showCreator()},
   pre:v=>{const p=PRESETS[+v];if(!p)return;Object.assign(S.look,p[1],{hair:p[1].hc});if(S.started){save();ui.sk='';renderScene()}showCreator()},
   locs:showLocs,
   back:()=>showCreator(),
@@ -2049,6 +2087,7 @@ const BD=x=>x/(S.bs.demo?60:1);
 const bHP=()=>Math.round(BOSSES[S.bs.b].hp*Math.pow(1.45,S.bs.r));
 function bInit(){const B=S.bs;if(B.hp==null)B.hp=bHP();EVS.forEach(e=>{if(!B.ev[e.id])B.ev[e.id]={p:0,k:0}})}
 const bAll=()=>BATK.concat(BWP.filter(w=>S.bs.wp.includes(w.id)));
+const weaponCount=id=>Math.max(0,Math.floor(Number(S.bs.weaponCounts?.[id]??(S.bs.wp.includes(id)?1:0))||0));
 const bMult=()=>{const g=gear();return(1+.015*(g.st+g.ch+g.en))*(1+.02*Math.min(S.level,300))};
 const bDmg=a=>Math.round(a.d*bMult());
 /* ---- рівень: рубльові цінники в ₴ від рівня гравця ---- */
@@ -2056,8 +2095,22 @@ const bCost=k=>Math.round(basePay(tier())*k);
 function bFx(d){const h=$('#hero'),bo=$('#boss'),sc=$('#scene');if(!h||!bo)return;h.classList.add('punch');
  setTimeout(()=>{bo.classList.add('hurt');sc.classList.add('shk');setTimeout(()=>sc.classList.remove('shk'),260);
  const e=document.createElement('div');e.className='dmg';e.textContent='−'+fmt(d);e.style.left=(52+Math.random()*18)+'%';e.style.top=(14+Math.random()*24)+'%';sc.appendChild(e);setTimeout(()=>e.remove(),1000)},170)}
-function bHit(id){const B=S.bs;if(S.tcc){toast('Ти під затриманням','bad');return}bInit();const a=bAll().find(x=>x.id===id);if(!a||(B.cd[id]||0)>now())return;
- if(!spend(a.e))return;B.cd[id]=now()+BD(3*HOUR);if(!B.fs)B.fs=now();const d=bDmg(a);if(NET.on)api('hit',{dmg:d,b:B.b});B.hp=Math.max(0,B.hp-d);gainXP(a.e*2);if(B.hp<=0)bWin();save();render();bFx(d)}
+let bossHitBusy=false;
+async function bHit(id){const B=S.bs;if(bossHitBusy)return;if(S.tcc){toast('Ти під затриманням','bad');return}bInit();const a=bAll().find(x=>x.id===id);if(!a||(B.cd[id]||0)>now())return;
+ const paidWeapon=!BATK.some(x=>x.id===id),copies=paidWeapon?weaponCount(id):Infinity;
+ if(paidWeapon&&copies<1){toast('Ця зброя вже зламалася','bad');return}if(S.energy<a.e){toast('Не вистачає енергії','bad');return}
+ bossHitBusy=true;try{
+  const d=bDmg(a);
+  if(paidWeapon&&NET.on){
+   if(!await window.UHY.sync()){toast('Спочатку дочекайся збереження','bad');return}
+   const result=await api('hit',{dmg:d,b:B.b,weapon:id});
+   if(!result?.ok){toast(result?.err||'Не вдалося підтвердити удар','bad');return}
+   if(result.save?.bs?.weaponCounts)B.weaponCounts=Object.assign({},result.save.bs.weaponCounts);
+  }else if(paidWeapon){B.weaponCounts=B.weaponCounts||{};B.weaponCounts[id]=copies-1}
+  if(!spend(a.e))return;B.cd[id]=now()+BD(3*HOUR);if(!B.fs)B.fs=now();
+  if(NET.on&&!paidWeapon)api('hit',{dmg:d,b:B.b});
+  B.hp=Math.max(0,B.hp-d);gainXP(a.e*2);if(B.hp<=0)bWin();save();render();bFx(d)
+ }finally{bossHitBusy=false}}
 function bWin(){const B=S.bs,k=B.b+1+B.r*6;gainXP(Math.round(xpNeed(S.level)*3*k));const c=bCost(2*k);gainMoney(c);let m='Перемога над «'+BOSSES[B.b].n+'»! +₴'+fmt(c);
  if(Math.random()<.25+.08*B.b){const t=Math.min(6,B.b+rnd(2)+Math.min(B.r,2)),c2=ITEMS.filter(i=>i.t===t&&!S.inv.includes(i.id));if(c2.length){const it=pick(c2);S.inv.push(it.id);m+=' · Дроп: '+it.name}}
  if(B.b>=3&&Math.random()<.12&&!B.wp.includes('mace')){B.wp.push('mace');m+=' · Золота булава!'}
@@ -2067,7 +2120,7 @@ function bTick(){if(!S.started)return;const B=S.bs,t=now();bInit();let ch=false;
   if(B.fs&&t>B.fs+BD(6*HOUR)){B.hp=bHP();B.fs=null;B.cd={};B.rs={car:0,gear:0,drv:0};caught(false);toast('6 годин вийшло — тебе забрав ТЦК','bad');return}}
  if(t-B.evt>BD(10*MIN)){B.evt=t;EVS.forEach(e=>{const v=B.ev[e.id];if(!v.k)v.p=Math.min(e.g,v.p+B.sq.length)});ch=true}
  if(ch){save();if(ui.tab==='boss')render()}else if(ui.tab==='boss')bLive()}
-function bLive(){renderScene();const B=S.bs;syncEnergy();document.querySelectorAll('[data-cd]').forEach(e=>{const a=bAll().find(x=>x.id===e.dataset.cd);if(!a)return;const r=(B.cd[a.id]||0)-now();e.disabled=r>0||S.energy<a.e;e.querySelector('small').textContent=r>0?'⏳ '+fmtT(r):'−'+a.e+'⚡ · '+fmt(bDmg(a))});
+function bLive(){renderScene();const B=S.bs;syncEnergy();document.querySelectorAll('[data-cd]').forEach(e=>{const a=bAll().find(x=>x.id===e.dataset.cd);if(!a)return;const r=(B.cd[a.id]||0)-now(),paid=!BATK.some(x=>x.id===a.id),copies=paid?weaponCount(a.id):Infinity;e.disabled=r>0||S.energy<a.e||(paid&&copies<1);e.querySelector('small').textContent=r>0?'⏳ '+fmtT(r):paid&&copies<1?'⚒ Зброя зламалась':paid?'Залишилось ударів: '+copies+' · −'+a.e+'⚡':'−'+a.e+'⚡ · '+fmt(bDmg(a))});
  const t=$('#btimer');if(t)t.textContent=B.fs?fmtT(B.fs+BD(6*HOUR)-now()):'старт з першого удару';
  const hb=$('#hpb');if(hb)hb.style.width=(100*B.hp/bHP())+'%';const ht=$('#hpt');if(ht)ht.textContent=fmt(B.hp)+' / '+fmt(bHP())}
 function bossRoster(){
@@ -2082,12 +2135,12 @@ function viewBoss(){bInit();const bt=ui.bt||'f';
 function bFight(){const B=S.bs,N=BOSSES[B.b];
  let h='<div class="card"><div class="row"><b style="font:700 22px var(--font-display);letter-spacing:.04em;text-transform:uppercase">'+N.n+(B.r?' ★'+B.r:'')+'</b><span class="hint">'+(B.b+1)+'/6 · коло '+(B.r+1)+'</span></div><div class="bar" style="height:16px"><i id="hpb" style="width:'+(100*B.hp/bHP())+'%;background:linear-gradient(var(--red),#a02a1c)"></i></div><div class="row hint"><span id="hpt">'+fmt(B.hp)+' / '+fmt(bHP())+'</span><span>⏱ <b id="btimer"></b></span></div></div>';
  if(S.tcc)return h+'<div class="card"><div class="name">Ти під затриманням</div><div class="sub">Бити боса не можна. Поклич загін на визволення (вкладка «Загін») або втікай на вкладці «Дім».</div></div>';
- return h+'<div class="card"><div class="h">Удари · перезарядка кожного 3 год</div><div class="bxatk">'+bAll().map(a=>'<button class="btn" data-act="bhit" data-v="'+a.id+'" data-cd="'+a.id+'">'+a.i+' '+a.n+'<span class="kbd">'+(bAll().indexOf(a)+1)+'</span><small></small></button>').join('')+'</div><div class="hint">Бій триває 6 годин від першого удару. Не вклався — тебе забирає ТЦК. Друзі з загону б’ють боса разом із тобою. Удар коштує енергії; одяг і рівень підсилюють урон.</div></div><div class="card"><div class="h">Нагорода</div><div class="sub">Досвід, гривні та '+Math.round(25+8*B.b)+'% на шмотку з магазину одягу'+(B.b>=3?', шанс на золоту булаву':'')+'.</div></div>'}
+ return h+'<div class="card"><div class="h">Удари · перезарядка кожного 3 год</div><div class="bxatk">'+bAll().map(a=>{const paid=!BATK.some(x=>x.id===a.id),copies=paid?weaponCount(a.id):Infinity;return '<button class="btn" data-act="bhit" data-v="'+a.id+'" data-cd="'+a.id+'"'+(paid&&copies<1?' disabled':'')+'>'+a.i+' '+a.n+'<span class="kbd">'+(bAll().indexOf(a)+1)+'</span><small>'+(paid?'Залишилось ударів: '+copies:'−'+a.e+'⚡ · '+fmt(bDmg(a)))+'</small></button>'}).join('')+'</div><div class="hint">Кулак, нога і цегла не ламаються. Кожна куплена одиниця зброї вистачає на один удар; після цього вона закінчується. Бій триває 6 годин від першого удару. Удар коштує енергії; одяг і рівень підсилюють урон.</div></div><div class="card"><div class="h">Нагорода</div><div class="sub">Досвід, гривні та '+Math.round(25+8*B.b)+'% на шмотку з магазину одягу'+(B.b>=3?', шанс на золоту булаву':'')+'.</div></div>'}
 function bSquad0(){const B=S.bs;let h='<div class="card"><div class="h">Загін ('+B.sq.length+'/5)</div>'+(B.sq.map(f=>'<div class="row"><span class="bxav" style="background:'+f.c+'">'+f.n[0]+'</span><div class="grow"><div class="name">'+f.n+'</div><div class="sub">рів. '+f.l+' · б’є твого боса, а ти — його</div></div></div>').join('')||'<div class="sub">Поки нікого. Друзі б’ють боса одночасно з тобою.</div>')+'<button class="btn" data-act="binv"'+(B.sq.length>=5?' disabled':'')+'>＋ Запросити друга (демо)</button></div>';
  h+='<div class="card"><div class="h">Визволення з ТЦК</div><div class="sub">Потрібно: загін від 3 друзів, автомобіль, екіпіровка і бронь водієві. Шанс успіху 25%.</div>'+RSQ.map(r=>'<div class="row"><span>'+(B.rs[r[0]]?'✅':'▫️')+' '+r[1]+'</span><button class="btn" data-act="brs" data-v="'+r[0]+'"'+(B.rs[r[0]]?' disabled':'')+'>₴ '+fmt(bCost(r[2]))+'</button></div>').join('')
   +'<div class="row"><span class="hint">Загін '+sqN()+'/3</span><button class="btn red" data-act="bresc"'+(S.tcc?'':' disabled')+'>🚗 Почати</button></div><button class="btn" data-act="bransom"'+(S.tcc?'':' disabled')+'>💰 Викуп — ₴ '+fmt(bCost(200))+'</button></div>';return h}
 function bEvents(){const B=S.bs;return EVS.map(e=>{const v=B.ev[e.id],dn=v.p>=e.g;return '<div class="card"><div class="row"><b>'+e.i+' '+e.n+'</b><span class="hint">'+v.p+'/'+e.g+'</span></div><div class="bar"><i style="width:'+(100*v.p/e.g)+'%;background:var(--green)"></i></div><div class="sub">Нагорода: ₴'+fmt(bCost(e.c))+' · 🪙'+e.s+(e.it?' · '+ITEM[e.it].name:'')+'. Друзі вкладаються самі.</div><div class="row"><button class="btn" data-act="bgive" data-v="'+e.id+'"'+(v.k||dn?' disabled':'')+'>Вкласти 5⚡</button><button class="btn red" data-act="bclaim" data-v="'+e.id+'"'+(dn&&!v.k?'':' disabled')+'>'+(v.k?'Знову через '+fmtT(v.k-now()):'Забрати')+'</button></div></div>'}).join('')}
-function shopBoss(){const B=S.bs;return '<div class="card"><div class="h">Зброя · кількість у запасі</div><p class="hint">Копії зберігаються в інвентарі. Урон одного удару не множиться на кількість.</p>'+BWP.map(w=>'<div class="weapon-row"><div><b>'+w.i+' '+w.n+'</b><small>'+w.d+' урону · у запасі '+(B.weaponCounts?.[w.id]??(B.wp.includes(w.id)?1:0))+'</small></div>'+(w.g?'<div class="weapon-buy">'+[1,5,'max'].map(n=>'<button class="btn gold" data-act="bwp" data-v="'+w.id+'" data-count="'+n+'">'+(n==='max'?'Макс.':'×'+n+' · '+w.g*n)+' зол.</button>').join('')+'</div>':'<small>Дроп із босів</small>')+'</div>').join('')+'<button class="btn gold" data-act="bme">+10 запасу енергії · 30 🪙</button></div>'}
+function shopBoss(){const B=S.bs;return '<div class="card"><div class="h">Зброя · запас ударів</div><p class="hint">Одна куплена бита, монтировка чи ланцюг дає один удар і ламається. Кулак, нога й цегла залишаються безкінечними.</p>'+BWP.map(w=>'<div class="weapon-row"><div><b>'+w.i+' '+w.n+'</b><small>'+w.d+' урону · ударів у запасі '+weaponCount(w.id)+'</small></div>'+(w.g?'<div class="weapon-buy">'+[1,5,'max'].map(n=>'<button class="btn gold" data-act="bwp" data-v="'+w.id+'" data-count="'+n+'">'+(n==='max'?'Макс.':'×'+n+' · '+w.g*n)+' зол.</button>').join('')+'</div>':'<small>Дроп із босів</small>')+'</div>').join('')+'<button class="btn gold" data-act="bme">+10 запасу енергії · 30 🪙</button></div>'}
 
 function viewShop(){return viewShop0()+shopBoss()}
 Object.assign(ACT,{bt:v=>{ui.bt=v;render()},bhit:v=>bHit(v),
@@ -2145,7 +2198,7 @@ function hh(s){let h=2166136261;s='vt$k9'+s;for(let i=0;i<s.length;i++){h^=s.cha
 function gear(){const r=gear0();S.up=S.up||{};Object.keys(S.eq).forEach(k=>{const n=S.up[S.eq[k]]||0;r.st+=n;r.ch+=n;r.en+=Math.floor(n/3)});return r}
 const upCost=n=>Math.round(basePay(tier())*3*Math.pow(1.3,n+1));
 function upCard(){S.up=S.up||{};return '<div class="card"><div class="h">Покращення ★ — без кінця</div><div class="hint">Кожна ★ дає +1 скритність і харизму, кожна третя — ще +1 витривалість. Ціна росте, а покращувати можна завжди.</div>'+SLOTS.map(sl=>{const id=S.eq[sl[0]],it=ITEM[id],n=S.up[id]||0;return '<div class="row"><div class="grow"><div class="name">'+esc(it.name)+' <span class="warn">'+'★'.repeat(Math.min(n,8))+(n>8?'+'+(n-8):'')+'</span></div><div class="sub">'+sl[1]+' · ★'+n+'</div></div><button class="btn" data-act="bup" data-v="'+id+'">₴ '+fmt(upCost(n))+'</button></div>'}).join('')+'</div>'}
-function viewGear(){return viewGear0()+upCard()}
+function viewGear(){return viewGear0()+'<div class="card"><div class="h">✨ Нові комплекти</div><div class="sub">Сім повних образів доступні у вкладці «Вулиця → Робота та спорядження». Бонус повного комплекту зберігається на сервері.</div><button class="btn amber block" data-act="openSets">Переглянути комплекти</button></div>'+upCard()}
 ACT.bup=v=>{const it=ITEM[v];if(!it||!S.inv.includes(v))return;S.up=S.up||{};const n=S.up[v]||0,c=upCost(n);if(S.uah<c){toast('Не вистачає гривень','bad');return}S.uah-=c;S.up[v]=n+1;toast('★'+(n+1)+' · '+it.name,'good');save();render()};
 /* ===== ОНЛАЙН: ID, ДРУЗІ, ЧЕСНИЙ ПРОГРЕС ===== */
 const NET={walletRevision:0,on:false,id:null,key:null,friends:[],inc:[],msg:''};
@@ -2235,6 +2288,8 @@ window.UHY={
  sync:async()=>{for(let i=0;i<4;i++){if(!await netSync(false))return false;if(!window.__vd)return true;}return false;},
  applyWallet:result=>{if(Number.isFinite(result.walletRevision))NET.walletRevision=result.walletRevision;if(Number.isFinite(result.walletCash)){S.uah=result.walletCash;save();render();}},
  editor:()=>{if(S.started){ui.cfirst=false;showCreator(false)}},
+ rename:()=>{if(S.started)renameOpen()},
+ previewSet:tier=>{const n=Number(tier);if(!Number.isInteger(n)||n<7||n>13)return '';const eq=Object.fromEntries(['head','body','legs','shoes','acc'].map(k=>[k,k+n]));return UHART.svg(UHART.cfgFor(S.look,eq,'ok'),'0 0 200 262')},
  locs:()=>{if(S.started)showLocs()},
  applyWheelSave:result=>{
   if(!result || !S.started)return;

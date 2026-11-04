@@ -1,0 +1,167 @@
+/* v27 — friendly rounded UI, large touch targets, Telegram header clearances, work scenes. */
+:root{--v27-header-clearance:0px;--v27-bottom-clearance:0px;--v27-radius:20px;--v27-frame:#9d7748}
+html body{padding-top:max(env(safe-area-inset-top,0px),var(--tg-safe-area-inset-top,0px),var(--v27-header-clearance,0px))!important}
+#audioControls{top:calc(max(env(safe-area-inset-top,0px),var(--v27-header-clearance,0px)) + 7px)!important;left:max(11px,env(safe-area-inset-left,0px))!important;z-index:17000!important;gap:9px!important}
+html.v27-telegram #audioControls{display:none!important}
+#audioControls button{min-width:79px!important;min-height:38px!important;height:auto!important;padding:7px 10px!important;font-size:13px!important;border-radius:14px!important;background:#3d3024!important;box-shadow:0 3px 0 #150d07!important;touch-action:manipulation}
+body .card,body .paper,body #socialPanel .world-card,body #socialPanel .uhy-profile-card,body #socialPanel .career-skill,body #socialPanel .career-training,body #socialPanel .career-road{border-radius:var(--v27-radius)!important;box-shadow:0 5px 0 #130b0770,0 9px 21px #0004!important;border:1px solid #a17849!important}
+body .card,body #socialPanel .world-card{padding:clamp(13px,1.8vw,19px)!important;gap:11px!important;background:linear-gradient(155deg,#383029,#28211b)!important}
+body #socialPanel .world-job{border-radius:17px!important;padding:15px!important;gap:10px!important;background:linear-gradient(135deg,#302922,#211b17)!important;box-shadow:inset 0 1px #ffffff19!important}
+body #socialPanel button:not(.uhy-feed-person),body #content button,body #socialDock button{border-radius:14px!important;min-height:45px!important}
+body #socialPanel .spbox{border-radius:24px!important;overflow:hidden!important}
+body #socialPanel .uhy-modal-scene{border-radius:18px!important;overflow:hidden!important}
+body #socialPanel #spBody{padding:18px clamp(12px,2.5vw,25px) calc(90px + env(safe-area-inset-bottom,0px))!important;scroll-padding-bottom:100px}
+body .scene{border-radius:19px!important}
+body .tabs{border-radius:16px!important}
+body .tabs .tab svg{width:clamp(22px,3vw,27px)!important;height:clamp(22px,3vw,27px)!important}
+body #socialPanel .world-card h3{font:800 clamp(16px,2vw,21px)/1.23 'Oswald','Arial Narrow',sans-serif!important;letter-spacing:.015em!important;color:#f1c783!important}
+body #socialPanel .world-card p,body #socialPanel .world-job small{font-size:clamp(12px,1.4vw,13.5px)!important;line-height:1.48!important}
+body #socialPanel .world-list{gap:12px!important}
+body #socialPanel .world-grid{gap:14px!important}
+body #socialPanel .world-actions{gap:10px!important}
+.v27-explain{color:#dfc6a6!important;line-height:1.55!important;max-width:74ch}
+.v27-jobs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.v27-job-choice{min-width:0}
+.v27-job-choice.v27-current{border-color:#d9b96a!important;outline:2px solid #d9b96a50}
+.v27-job-head{display:flex;align-items:flex-start;gap:11px;min-width:0}
+.v27-job-head>div{min-width:0;display:flex;flex-direction:column;gap:5px}
+.v27-job-head b{font-size:15px;color:#ffe0a4;line-height:1.3}
+.v27-job-icon{display:grid;place-items:center;flex:0 0 51px;width:51px;height:51px;font-size:30px;line-height:1;background:#5b3c23;border:1px solid #9d7444;border-radius:15px}
+.v27-job-tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.v27-job-tags>span,.v27-job-tags>strong{border:1px solid #6f583d;background:#483727;color:#f7deb9;border-radius:999px;padding:6px 9px;font-size:11px;font-weight:700}
+.v27-risk.low{background:#24402d!important;border-color:#579269!important;color:#b9efb8!important}
+.v27-risk.mid{background:#493620!important;border-color:#ab7948!important;color:#ffd390!important}
+.v27-risk.high{background:#51291f!important;border-color:#a95d48!important;color:#ffb5a0!important}
+.v27-current-work{background:#211913;border:1px solid #9e7541;border-radius:20px;padding:14px;margin-bottom:16px;display:flex;flex-direction:column;gap:11px}
+.v27-current-work h3{margin:0!important}
+.v27-current-work #uhyWorkTimer{font-size:16px!important;font-weight:800;color:#ebc77f!important}
+.v27-incident{padding:11px 13px;border:1px solid #dc674e;border-radius:13px;background:#59291e;color:#ffd4b7;font-weight:700;line-height:1.4}
+/* Individual hand-inked sprite actions use the player's currently equipped costume. */
+.v27-job-stage{position:relative;height:clamp(185px,30vw,246px);isolation:isolate;overflow:hidden;border:2px solid #86613f;border-radius:18px;background:linear-gradient(180deg,#5d5b4b 0%,#625442 62%,#282723 63%);box-shadow:inset 0 16px 50px #24180e44}
+.v27-job-backdrop{position:absolute;inset:0;z-index:0;background:repeating-linear-gradient(90deg,transparent 0 57px,#ffffff09 58px 60px)}
+.v27-job-window{position:absolute;width:112px;height:89px;left:6%;top:10%;border:7px solid #463b34;border-radius:12px;background:linear-gradient(#729fb3,#a8c7c3 60%,#e7b679);box-shadow:inset 0 0 15px #1e2929a0}
+.v27-job-window:after{content:'';position:absolute;inset:50% 0 auto;border-top:5px solid #4e3a2d}
+.v27-job-floor{position:absolute;inset:auto 0 0;height:25%;background:repeating-linear-gradient(100deg,#47362b 0 39px,#59412e 40px 44px)}
+.v27-job-avatar{position:absolute;left:12%;bottom:-11%;width:43%;height:125%;z-index:2;transform-origin:50% 94%;animation:v27HeroIdle 2.5s ease-in-out infinite alternate}
+.v27-job-avatar svg{width:100%;height:100%;display:block;filter:drop-shadow(3px 5px 3px #1b110b90)}
+.v27-job-prop{position:absolute;inset:0;width:100%;height:100%;z-index:3;overflow:visible;filter:drop-shadow(2px 3px 2px #15110d66)}
+.v27-job-badge{position:absolute;top:9px;right:9px;z-index:5;max-width:65%;background:#291c15df;border:1px solid #c09455;border-radius:999px;padding:7px 10px;color:#f5d6a4;font:800 11px system-ui}
+.v27-active .v27-job-avatar{animation:v27HeroWork .9s ease-in-out infinite alternate}
+.v27-active[data-job-motion=texts] .v27-typing{stroke-dasharray:6 5;animation:v27Text .6s linear infinite}
+.v27-active[data-job-motion=warehouse] .v27-crate{transform-origin:170px 180px;animation:v27Carry 1.4s ease-in-out infinite alternate}
+.v27-active[data-job-motion=courier] .v27-bike{animation:v27Ride 1s ease-in-out infinite alternate}
+.v27-active[data-job-motion=build] .v27-brick{animation:v27Carry 1.8s ease-in-out infinite alternate}
+.v27-active[data-job-motion=repair] .v27-tool,.v27-active[data-job-motion=clean] .v27-tool{transform-origin:160px 90px;animation:v27Sweep 1.1s ease-in-out infinite alternate}
+.v27-active[data-job-motion=guard] .v27-beam{transform-origin:180px 160px;animation:v27Beam 2s ease-in-out infinite alternate}
+.v27-active .v27-shine{animation:v27Shine 1.4s ease-in-out infinite alternate}
+@keyframes v27HeroIdle{to{transform:translateY(-2px)}}
+@keyframes v27HeroWork{to{transform:translateY(-5px) rotate(1.6deg)}}
+@keyframes v27Text{to{stroke-dashoffset:-22}}
+@keyframes v27Carry{to{transform:translateY(-17px) rotate(-4deg)}}
+@keyframes v27Ride{to{transform:translateX(12px)}}
+@keyframes v27Sweep{to{transform:rotate(-13deg)}}
+@keyframes v27Beam{to{transform:rotate(10deg);opacity:.7}}
+@keyframes v27Shine{to{opacity:.2}}
+.v27-outfit-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:12px}
+.v27-outfit{display:flex;flex-direction:column;min-width:0;overflow:hidden;border:1px solid #94724b;border-radius:19px;background:linear-gradient(150deg,#423328,#231c18)}
+.v27-outfit-hero{height:205px;display:grid;place-items:end center;overflow:hidden;background:radial-gradient(circle at 50% 40%,#6c6249,#2b2a28 73%);border-bottom:1px solid #756041}
+.v27-outfit-hero svg{height:112%;width:100%;max-width:170px;display:block;filter:drop-shadow(2px 4px 2px #0008)}
+.v27-outfit-desc{padding:12px;display:flex;flex-direction:column;gap:8px;flex:1}
+.v27-outfit-desc b{color:#ffe2a2;font-size:15px}
+.v27-outfit-desc small{color:#ccbaa4;line-height:1.4}
+.v27-outfit-desc button{margin-top:auto}
+.v27-food-meter{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-weight:700;color:#edcf94}
+.v27-meter{height:12px;border-radius:999px;background:#241913;flex:1 1 130px;overflow:hidden;border:1px solid #79573c}
+.v27-meter i{height:100%;display:block;background:linear-gradient(90deg,#c66840,#e2be64,#83ae71);border-radius:999px;transition:width .4s}
+.uhy-rename-inline{display:inline-flex!important;align-items:center;justify-content:center;min-width:30px!important;height:26px!important;padding:0 4px!important;font-size:17px!important;border:0!important;border-radius:9px!important;background:transparent!important;color:#e8b25f!important;box-shadow:none!important;vertical-align:middle!important;cursor:pointer}
+body .who-txt{display:block!important;max-width:clamp(95px,20vw,240px)!important}
+body .who-txt b{display:inline-block!important;max-width:calc(100% - 35px)!important;vertical-align:middle!important}
+body .who-txt small{display:block!important}
+body #socialPanel .uhy-profile-avatar{bottom:-5%!important;height:100%!important;width:min(34%,235px)!important}
+body .scene .lyr.hero{bottom:0!important;height:min(var(--hh),95%)!important}
+body #socialPanel .uhy-modal-scene .uhy-layer-avatar{bottom:0!important;height:100%!important}
+@media(max-width:700px){
+ body #socialPanel .spbox{border-radius:17px!important}
+ body #socialPanel .world-grid{grid-template-columns:minmax(0,1fr)!important;gap:13px!important}
+ .v27-jobs{grid-template-columns:minmax(0,1fr)}
+ body #socialPanel #spBody{padding-top:14px!important;padding-bottom:calc(90px + env(safe-area-inset-bottom,0px))!important}
+ body #socialPanel .world-job{padding:13px!important}
+ body #scene{height:clamp(105px,22dvh,202px)!important}
+ .v27-job-stage{height:201px}
+ .v27-outfit-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .v27-outfit-hero{height:158px}
+ .v27-outfit-desc{padding:8px}
+ body #socialPanel #spClose{top:5px!important;right:5px!important;border-radius:13px!important}
+}
+@media(max-width:370px){
+ .v27-outfit-list{grid-template-columns:minmax(0,1fr)}
+ .v27-outfit-hero{height:205px}
+ #audioControls button{min-width:74px!important;font-size:11px!important}
+ body .who-txt{max-width:95px!important}
+}
+@media(max-height:475px) and (orientation:landscape){
+ html body{padding-top:calc(34px + max(env(safe-area-inset-top,0px),var(--tg-safe-area-inset-top,0px)) + var(--v27-tg-top))!important}
+ #audioControls{top:calc(2px + var(--v27-tg-top))!important}
+ #audioControls button{min-height:29px!important;padding:4px 7px!important}
+ body #scene{height:80px!important}
+ .v27-job-stage{height:155px}
+}
+@media(prefers-reduced-motion:reduce){.v27-job-avatar,.v27-typing,.v27-crate,.v27-bike,.v27-tool,.v27-brick,.v27-beam,.v27-shine{animation:none!important}}
+#v27-action-flash{position:fixed;z-index:17050;top:calc(var(--v27-tg-top,0px) + 48px + env(safe-area-inset-top,0px));right:12px;pointer-events:none;display:flex;align-items:center;gap:8px;padding:10px 13px;border-radius:16px;border:1px solid #d1a45c;background:#302019ef;color:#ffdfae;box-shadow:0 10px 30px #0009;opacity:0;transform:translateY(-8px) scale(.95);max-width:min(300px,calc(100vw - 20px));font-size:13px}
+#v27-action-flash.v27-show{animation:v27Flash 1.25s ease-out forwards}
+.v27-effect-symbol{font-size:26px;filter:drop-shadow(0 2px 1px #0009)}
+.v27-effect-particles{color:#e4b460;letter-spacing:2px;animation:v27Particles .7s ease-in-out infinite alternate}
+@keyframes v27Flash{0%{opacity:0;transform:translateY(-10px) scale(.94)}13%,78%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-6px)}}
+@keyframes v27Particles{to{opacity:.2;transform:translateY(-6px)}}
+@media(prefers-reduced-motion:reduce){#v27-action-flash,.v27-effect-particles{animation:none!important}}
+
+/* Full-height captured-avatar event scene: the same player art, a moving cartoon minibus. */
+.v27-tcc-stage{height:190px;position:relative;isolation:isolate;overflow:hidden;border-radius:20px;border:2px solid #b37d4a;background:#373f37;box-shadow:inset 0 0 30px #0009}
+.v27-tcc-backdrop{position:absolute;inset:0;opacity:.6;z-index:0}
+.v27-tcc-backdrop svg{width:100%;height:100%;display:block;object-fit:cover}
+.v27-tcc-person{position:absolute;z-index:1;bottom:-18%;left:9%;height:134%;width:32%;animation:v27Caught 1s ease-in-out infinite alternate}
+.v27-tcc-person svg{width:100%;height:100%}
+.v27-tcc-van{position:absolute;z-index:3;right:1%;bottom:0;height:80%;width:min(69%,300px);animation:v27Van 1.1s cubic-bezier(.18,.76,.25,1) both;filter:drop-shadow(5px 7px 5px #0006)}
+.v27-tcc-marker{position:absolute;z-index:4;left:10px;top:10px;max-width:70%;font-weight:850;font-size:12px;color:#fff0d6;text-shadow:1px 2px #000b;background:#3b2219d6;border:1px solid #dc9b63;border-radius:10px;padding:6px 10px}
+@keyframes v27Van{from{transform:translateX(120%) rotate(1deg)}to{transform:translateX(0)}}
+@keyframes v27Caught{to{transform:translateX(-4px) rotate(-2deg)}}
+@media(prefers-reduced-motion:reduce){.v27-tcc-van,.v27-tcc-person{animation:none!important}}
+
+/* Illustrated per-action feedback with the CURRENT playable character, individual motions. */
+#v27-action-flash{min-height:65px}
+.v27-flash-hero{display:block;flex:0 0 42px;height:63px;overflow:hidden;transform-origin:50% 85%;animation:v27FlashIdle 1s ease-in-out infinite alternate}
+.v27-flash-hero svg{height:100%;width:100%;display:block;filter:drop-shadow(1px 3px 2px #0008)}
+#v27-action-flash[data-effect=work] .v27-flash-hero{animation:v27FlashWork .4s ease-in-out infinite alternate}
+#v27-action-flash[data-effect=walk] .v27-flash-hero{animation:v27FlashWalk .5s ease-in-out infinite alternate}
+#v27-action-flash[data-effect=food] .v27-flash-hero{animation:v27FlashFood .65s ease-in-out infinite alternate}
+#v27-action-flash[data-effect=tcc] .v27-flash-hero{animation:v27FlashCaught .16s ease-in-out infinite alternate}
+#v27-action-flash[data-effect=fight] .v27-flash-hero{animation:v27FlashFight .3s ease-in-out infinite alternate}
+#v27-action-flash[data-effect=outfit] .v27-flash-hero{animation:v27FlashOutfit .8s ease-in-out infinite alternate}
+#v27-action-flash[data-effect=casino] .v27-effect-symbol,#v27-action-flash[data-effect=wheel] .v27-effect-symbol{animation:v27FlashRotate .8s ease-in-out infinite alternate}
+@keyframes v27FlashIdle{to{transform:translateY(-2px)}}
+@keyframes v27FlashWork{to{transform:translateY(-3px) rotate(2deg)}}
+@keyframes v27FlashWalk{to{transform:translateX(7px) rotate(-2deg)}}
+@keyframes v27FlashFood{to{transform:rotate(5deg)}}
+@keyframes v27FlashCaught{to{transform:translateX(3px)}}
+@keyframes v27FlashFight{to{transform:rotate(-12deg) translateX(5px)}}
+@keyframes v27FlashOutfit{to{transform:scale(1.04)}}
+@keyframes v27FlashRotate{to{transform:rotate(25deg)}}
+@media(prefers-reduced-motion:reduce){.v27-flash-hero,#v27-action-flash .v27-effect-symbol{animation:none!important}}
+
+/* Telegram content safe areas are already complete in Bot API 8+. Keep one inset only. */
+html body{padding-bottom:calc(62px + max(env(safe-area-inset-bottom,0px),var(--tg-safe-area-inset-bottom,0px),var(--v27-bottom-clearance,0px)))!important}
+body #tabs #socialDock{bottom:max(env(safe-area-inset-bottom,0px),var(--v27-bottom-clearance,0px))!important;height:62px!important;padding:5px 6px!important}
+body #uhyMore{bottom:calc(66px + max(env(safe-area-inset-bottom,0px),var(--v27-bottom-clearance,0px)))!important}
+body #socialPanel{top:max(env(safe-area-inset-top,0px),var(--v27-header-clearance,0px))!important;bottom:calc(62px + max(env(safe-area-inset-bottom,0px),var(--v27-bottom-clearance,0px)))!important;height:auto!important;padding:6px max(6px,env(safe-area-inset-right,0px)) 6px max(6px,env(safe-area-inset-left,0px))!important}
+body #socialPanel .spbox{height:100%!important;max-height:100%!important}
+body .overlay{top:max(env(safe-area-inset-top,0px),var(--v27-header-clearance,0px))!important;bottom:calc(62px + max(env(safe-area-inset-bottom,0px),var(--v27-bottom-clearance,0px)))!important}
+body #hud{padding:5px 0!important;gap:4px!important}
+body .hud-top{gap:6px!important}
+body .lvl{min-width:40px!important;height:32px!important;font-size:17px!important}
+body .wallet .chip{min-height:30px!important;padding:4px 8px!important;font-size:12px!important}
+body #scene[data-section=home] .lyr.hero{bottom:0!important;height:100%!important}
+#v27-action-flash{top:auto!important;left:50%!important;right:auto!important;bottom:calc(70px + max(env(safe-area-inset-bottom,0px),var(--v27-bottom-clearance,0px)))!important;transform:translate(-50%,-8px) scale(.95)}
+#v27-action-flash.v27-show{animation:v27Flash 1.25s ease-out forwards}
+@keyframes v27Flash{0%{opacity:0;transform:translate(-50%,-10px) scale(.94)}13%,78%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-6px)}}
+@media(max-width:700px){body #scene{height:clamp(164px,22dvh,215px)!important}}
+@media(max-height:475px) and (orientation:landscape){body #scene{height:90px!important}}

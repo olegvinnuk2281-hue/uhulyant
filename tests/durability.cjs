@@ -2,12 +2,12 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const vm=require('node:vm'),fs=require('node:fs'),crypto=require('node:crypto');
 const {Readable}=require('node:stream');
-function boot(seed={},fail=false){
+function boot(seed={},fail=false,rand=null){
  const stored=structuredClone(seed), writes=[];
  let broken=fail;
  const client={from(){return {select(){return {range:async()=>({data:Object.entries(stored).map(([id,data])=>({id,data:structuredClone(data)}))})}},async upsert(rows){writes.push(structuredClone(rows));if(broken)return {error:{message:'simulated outage'}};for(const row of Array.isArray(rows)?rows:[rows])stored[row.id]=structuredClone(row.data);return {error:null}}}}};
  const module={exports:{}};
- const context={require:n=>n==='@supabase/supabase-js'?{createClient:()=>client}:require(n),module,exports:module.exports,__dirname:require('node:path').resolve(__dirname,'..'),Buffer,URL,console,structuredClone,setTimeout,clearTimeout,setInterval:()=>({unref(){}}),process:{env:{SUPABASE_URL:'mock',SUPABASE_KEY:'mock'},on(){}}};
+ const context={require:n=>n==='@supabase/supabase-js'?{createClient:()=>client}:(n==='crypto'&&rand!==null?{...crypto,randomInt:rand}:require(n)),module,exports:module.exports,__dirname:require('node:path').resolve(__dirname,'..'),Buffer,URL,console,structuredClone,setTimeout,clearTimeout,setInterval:()=>({unref(){}}),process:{env:{SUPABASE_URL:'mock',SUPABASE_KEY:'mock'},on(){}}};
  vm.runInNewContext(fs.readFileSync(require('node:path').join(__dirname,'../server.js'),'utf8'),context);
  async function call(route,data,id='PLAYER01'){
   const req=Readable.from(data?[JSON.stringify(data)]:[]);req.url='/api/'+route;req.method=data?'POST':'GET';req.headers={'x-id':id,'x-key':'secret'};req.socket={remoteAddress:'test'};
@@ -58,13 +58,13 @@ test('brigade hit persists owner and updates damage in the same commit',async()=
 });
 test('work uses persisted deadline, survives restart and pays only once',async()=>{
  const p=player();p.economyV26=true;p.world={cash:150,xp:0,items:[],equipped:{},employment:{id:'courier',name:'Курʼєр'}};
- const a=boot({PLAYER01:p});const started=await a.call('world',{action:'shift'});assert.equal(started.data.ok,true);
+ const a=boot({PLAYER01:p},false,max=>Math.floor(max/2));const started=await a.call('world',{action:'shift'});assert.equal(started.data.ok,true);
  const deadline=a.stored.PLAYER01.world.workShift.endsAt;assert.ok(deadline>Date.now());
  const b=boot(a.stored);assert.equal((await b.call('world')).data.world.workShift.endsAt,deadline);
  assert.equal((await b.call('world',{action:'workCollect'})).data.ok,false);
  const later=structuredClone(a.stored);later.PLAYER01.world.workShift.endsAt=Date.now()-1;
- const c=boot(later);const collected=await c.call('world',{action:'workCollect'});assert.equal(collected.data.ok,true);assert.equal(collected.data.walletCash,215);assert.equal(c.stored.PLAYER01.world.cash,215);
- assert.equal((await c.call('world',{action:'workCollect'})).data.ok,false);assert.equal(c.stored.PLAYER01.save.uah,215);
+ const c=boot(later);const collected=await c.call('world',{action:'workCollect'});assert.equal(collected.data.ok,true);assert.equal(collected.data.walletCash,250);assert.equal(c.stored.PLAYER01.world.cash,250);
+ assert.equal((await c.call('world',{action:'workCollect'})).data.ok,false);assert.equal(c.stored.PLAYER01.save.uah,250);
 });
 test('daily wheel persists outcome before reply and prevents a second spin after restart',async()=>{
  const p=player();p.save.started=true;
@@ -103,6 +103,18 @@ test('weapon stacks preserve legacy copy, max spends only affordable gold, survi
  const b=boot(a.stored);assert.equal((await b.call('me')).data.save.bs.weaponCounts.bat,7);
  assert.equal((await b.call('weapon-buy',{weapon:'bat',count:1})).code,400);
  assert.equal((await b.call('weapon-buy',{weapon:'toString',count:1})).code,400);
+});
+test('paid weapons lose one copy per hit while the three standard attacks remain free',async()=>{
+ const p=player();p.save.started=true;p.save.gold=200;const a=boot({PLAYER01:p});
+ const bought=await a.call('weapon-buy',{weapon:'bat',count:3});assert.equal(bought.data.save.bs.weaponCounts.bat,3);
+ for(let left=2;left>=0;left--){const hit=await a.call('hit',{dmg:260,b:0,weapon:'bat'});assert.equal(hit.data.ok,true);assert.equal(hit.data.save.bs.weaponCounts.bat,left)}
+ const broken=await a.call('hit',{dmg:260,b:0,weapon:'bat'});assert.equal(broken.data.ok,false);assert.match(broken.data.err,/зламалася/);
+ const free=await a.call('hit',{dmg:50,b:0});assert.equal(free.data.ok,true);assert.equal(a.stored.PLAYER01.save.bs.weaponCounts.bat,0);
+});
+test('brigade may start any boss when it has that boss key cost',async()=>{
+ const p=player();p.world={cash:150,xp:0,items:[],equipped:{},brigade:{id:'TEST',name:'Team',owner:p.id,members:[p.id],keys:4,wins:{},fight:null}};
+ const a=boot({PLAYER01:p},false,max=>Math.floor(max/2));const result=await a.call('world',{action:'fight',boss:'ce'});
+ assert.equal(result.data.ok,true);assert.equal(result.data.brigade.fight.boss,'ce');assert.equal(result.data.brigade.fight.keysSpent,4);assert.equal(result.data.brigade.keys,0);
 });
 test('failed weapon purchase rolls back both charge and stack',async()=>{
  const p=player();p.save.started=true;p.welcomeRC4=true;p.save.gold=100;p.save.bs.wp=[];
