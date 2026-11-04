@@ -1,13 +1,14 @@
 {
   "name": "uhylyant-telegram-miniapp",
-  "version": "16.0.0",
+  "version": "18.0.0",
   "private": true,
-  "description": "Uhylyant Telegram Mini App: illustrated scenes, curfew street events, compact responsive controls, earned currencies",
+  "description": "Uhylyant Telegram Mini App: responsive comic scenes, timed work, boss keys, original opt-in sound, and full-screen safe areas",
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
     "check": "node --check server.js && node --check uhylyant-account.js && node --check uhylyant-ui.js && node --check uhylyant-social.js",
-    "verify": "node scripts/verify-project.js"
+    "verify": "node scripts/verify-project.js",
+    "test:release": "python3 tests/test_v18_release.py"
   },
   "engines": {
     "node": ">=20"

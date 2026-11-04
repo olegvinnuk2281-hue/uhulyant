@@ -650,7 +650,7 @@ async function api(req, res, route) {
   }
   if (route === 'world') {
     const w=worldOf(p);
-    const bosses=[{id:'zh',name:'Жадовський',hp:30000},{id:'my',name:'Миколаївський',hp:60000},{id:'ce',name:'Центровий',hp:100000}];
+    const bosses=[{id:'zh',name:'Старший району',hp:12000,tier:1,keyCost:0,keyDrop:1,description:'Перший бос. Без ключів. Перемога дає 1 ключ бригаді.'},{id:'my',name:'Начальник патруля',hp:28000,tier:2,keyCost:2,keyDrop:2,description:'Потрібні 2 ключі та перемога над Старшим. Дасть 2 ключі.'},{id:'ce',name:'Комендант міста',hp:60000,tier:3,keyCost:4,keyDrop:4,description:'Потрібні 4 ключі й перемога над Начальником.'}];
     const houses=HOUSE_LIST;
     const care=()=>careState(w);
     if(!w.housing||!Array.isArray(w.housing.owned))w.housing={current:'shack',owned:['shack'],awarded:[]};
@@ -894,7 +894,7 @@ async function api(req, res, route) {
     } else if(b.action==='look'){
       const allowed={hair:['short','buzz','long'],beard:['none','stubble','full'],skin:['light','medium','dark']};for(const k of Object.keys(allowed))if(b[k]!==undefined){if(!allowed[k].includes(b[k]))return fail('Некоректний вигляд');w.look[k]=b[k]}w.message='Зовнішність збережено';
     } else if(b.action==='create'){
-      if(w.brigade)return fail('Ви вже у бригаді');const name=String(b.name||'').trim();if(name.length<3||name.length>24||/[<>]/.test(name))return fail('Назва 3–24 символи');const id=crypto.randomBytes(4).toString('hex').toUpperCase();w.brigade={id,name,owner:p.id,members:[p.id],fight:null};w.message='Бригаду створено, код '+id;
+      if(w.brigade)return fail('Ви вже у бригаді');const name=String(b.name||'').trim();if(name.length<3||name.length>24||/[<>]/.test(name))return fail('Назва 3–24 символи');const id=crypto.randomBytes(4).toString('hex').toUpperCase();w.brigade={id,name,owner:p.id,members:[p.id],fight:null,keys:0,cleared:[],raidWins:0};w.message='Бригаду створено, код '+id;
     } else if(b.action==='leave'){
       const br=get();if(!br)return fail('Ти не в бригаді');
       if(br.owner===p.id&&br.members.length>1)return fail('Власник не може піти, поки в бригаді є інші гравці');
@@ -903,7 +903,47 @@ async function api(req, res, route) {
     } else if(b.action==='join'){
       if(w.brigade)return fail('Ви вже у бригаді');const id=String(b.id||'').trim().toUpperCase();const target=Object.values(DB.players).map(x=>x.world?.brigade).find(x=>x&&x.id===id);if(!target)return fail('Бригаду не знайдено');if(target.members.length>=8)return fail('У бригаді максимум 8 гравців');target.members.push(p.id);const owner=DB.players[target.owner];if(owner)dirtyPlayerIds.add(owner.id);w.brigade=id;w.message='Ви вступили в '+target.name;
     } else if(b.action==='fight'){
-      const br=get();if(!br||!br.members.includes(p.id))return fail('Потрібна бригада');const boss=bosses.find(x=>x.id===b.boss);if(!boss)return fail('Немає боса');if(!br.fight||br.fight.hp<=0){if(br.fight&&t-br.fight.finishedAt<10*MIN)return fail('Новий рейд через 10 хвилин');br.fight={boss:boss.id,hp:boss.hp,maxHp:boss.hp,hits:{},damage:{},finishedAt:0}}if(br.fight.boss!==boss.id)return fail('Спочатку завершіть поточного боса');if(t-(br.fight.hits[p.id]||0)<30*1000)return fail('Атака раз на 30 секунд');br.fight.hits[p.id]=t;const weapon=gear[w.equipped.weapon];const dmg=200+Math.min(300,Math.floor(w.xp/10))+(weapon?.attack||0)*20+(houses.find(x=>x.id===w.housing.current)?.energy||0)*3; br.fight.hp=Math.max(0,br.fight.hp-dmg);br.fight.damage=br.fight.damage||{};br.fight.damage[p.id]=(br.fight.damage[p.id]||0)+dmg;w.message=`Удар по ${boss.name}: ${dmg} шкоди`;if(!br.fight.hp){br.fight.finishedAt=t;for(const id of br.members){const m=DB.players[id];if(!m)continue;const mw=m.world||(m.world={cash:0,xp:0,items:[],equipped:{}});mw.items=Array.isArray(mw.items)?mw.items:[];mw.xp+=boss.hp/30;mw.cash+=boss.hp/60;mw.bossVictories=(mw.bossVictories||0)+1;const loot=boss.id==='ce'?'legend':boss.id==='my'?'storm':'shadow';if(crypto.randomInt(100)<35&&!mw.items.includes(loot))mw.items.push(loot);dirtyPlayerIds.add(id)}publishNews({type:'brigade',text:`Бригада ${br.name} перемогла боса ${boss.name}!`})}
+      const br=get();if(!br||!br.members.includes(p.id))return fail('Потрібна бригада');
+      const boss=bosses.find(x=>x.id===b.boss);if(!boss)return fail('Немає такого боса');
+      br.keys=Math.max(0,Math.floor(num(br.keys)));
+      br.cleared=Array.isArray(br.cleared)?br.cleared.filter(id=>bosses.some(x=>x.id===id)):[];
+      const starting=!br.fight||br.fight.hp<=0;
+      if(starting){
+        if(br.owner!==p.id)return fail('Тільки лідер бригади може відкрити новий рейд');
+        if(br.fight&&t-Math.max(0,num(br.fight.finishedAt))<10*MIN)return fail('Новий рейд через 10 хвилин');
+        if(boss.tier===2&&!br.cleared.includes('zh'))return fail('Спершу переможіть Старшого району');
+        if(boss.tier===3&&!br.cleared.includes('my'))return fail('Спершу переможіть Начальника патруля');
+        if(br.keys<boss.keyCost)return fail('Потрібно '+boss.keyCost+' ключі бригади. Зараз '+br.keys);
+        br.keys-=boss.keyCost;
+        br.fight={boss:boss.id,hp:boss.hp,maxHp:boss.hp,hits:{},damage:{},startedAt:t,finishedAt:0,keyPaid:boss.keyCost};
+      }
+      if(br.fight.boss!==boss.id)return fail('Спочатку завершіть поточного боса');
+      if(t-Math.max(0,num(br.fight.hits[p.id]))<30*1000)return fail('Атака раз на 30 секунд');
+      br.fight.hits[p.id]=t;
+      const weapon=gear[w.equipped.weapon],dmg=220+Math.min(330,Math.floor(w.xp/8))+(weapon?.attack||0)*20+(houses.find(x=>x.id===w.housing.current)?.energy||0)*3;
+      br.fight.hp=Math.max(0,br.fight.hp-dmg);br.fight.damage=br.fight.damage||{};
+      br.fight.damage[p.id]=(br.fight.damage[p.id]||0)+dmg;
+      w.message=`Удар по ${boss.name}: ${dmg} шкоди`;
+      // The owner stores the shared brigade; every strike must persist its world.
+      if(br.owner&&DB.players[br.owner])dirtyPlayerIds.add(br.owner);
+      if(!br.fight.hp){
+        br.fight.finishedAt=t;
+        br.raidWins=(br.raidWins||0)+1;
+        br.keys+=boss.keyDrop;
+        if(!br.cleared.includes(boss.id))br.cleared.push(boss.id);
+        for(const id of br.members){
+          const m=DB.players[id];if(!m)continue;
+          const mw=worldOf(m);mw.cash=Math.max(0,num(mw.cash))+Math.floor(boss.hp/60);
+          mw.xp=Math.max(0,num(mw.xp))+Math.floor(boss.hp/30);
+          mw.bossVictories=(mw.bossVictories||0)+1;
+          mw.items=Array.isArray(mw.items)?mw.items:[];
+          const loot=boss.id==='ce'?'legend':boss.id==='my'?'storm':'shadow';
+          if(crypto.randomInt(100)<35&&!mw.items.includes(loot))mw.items.push(loot);
+          dirtyPlayerIds.add(id);
+        }
+        w.message=`🏆 Боса переможено! +${boss.keyDrop} ключ(ів) у скарбницю бригади`;
+        publishNews({type:'brigade',text:`Бригада ${br.name} перемогла ${boss.name}! Отримано ${boss.keyDrop} ключ(ів).`});
+      }
     } else return fail('Невідома дія');
     dirtyPlayerIds.add(p.id);return send(res,200,state());
   }
@@ -1029,13 +1069,13 @@ const server = http.createServer(async (req, res) => {
     if (u.pathname.startsWith('/api/')) return await api(req, res, u.pathname.slice(5));
     if (u.pathname.startsWith('/assets/')) {
       const name = u.pathname.slice('/assets/'.length);
-      if (!['game-icon.webp','noir-courtyard-day.webp','noir-courtyard-night.webp',...['yard','street','park','home'].flatMap(x=>['day','night'].map(t=>'location-'+x+'-'+t+'.webp')),...['yard','street','roof','forest'].flatMap(x=>['day','night'].map(t=>'comic-'+x+'-'+t+'.svg')),...['work','tcc0','tcc1','tcc2','boss','hospital','casino','workshop','transit'].flatMap(x=>['day','night'].map(t=>'comic-'+x+'-'+t+'.svg')),...['shack','room','flat','loft','lux'].flatMap(x=>['day','night'].map(t=>'comic-home-'+x+'-'+t+'.svg'))].includes(name)) {res.writeHead(404);return res.end('Not found')}
+      if (!['boss-zh.svg','boss-my.svg','boss-ce.svg','game-icon.webp','noir-courtyard-day.webp','noir-courtyard-night.webp',...['yard','street','park','home'].flatMap(x=>['day','night'].map(t=>'location-'+x+'-'+t+'.webp')),...['yard','street','roof','forest'].flatMap(x=>['day','night'].map(t=>'comic-'+x+'-'+t+'.svg')),...['work','tcc0','tcc1','tcc2','boss','hospital','casino','workshop','transit'].flatMap(x=>['day','night'].map(t=>'comic-'+x+'-'+t+'.svg')),...['shack','room','flat','loft','lux'].flatMap(x=>['day','night'].map(t=>'comic-home-'+x+'-'+t+'.svg'))].includes(name)) {res.writeHead(404);return res.end('Not found')}
       return fs.readFile(path.join(__dirname,'assets',name),(err,data)=>{
         if(err){res.writeHead(404);return res.end('Not found')}
         res.writeHead(200,{'content-type':name.endsWith('.svg')?'image/svg+xml':'image/webp','cache-control':name.startsWith('comic-')?'no-cache':'public, max-age=3600','x-content-type-options':'nosniff'});res.end(data)
       });
     }
-    if (u.pathname === '/uhylyant-social.js' || u.pathname === '/uhylyant-comic.js' || u.pathname === '/uhylyant-ui.js' || u.pathname === '/uhylyant-3d.js' || u.pathname === '/uhylyant-account.js') { const f=path.join(__dirname,u.pathname.slice(1)); return fs.readFile(f,(err,data)=>{if(err){res.writeHead(404);return res.end('Not found')}res.writeHead(200,{'content-type':'application/javascript; charset=utf-8','cache-control':'no-cache'});res.end(data)}); }
+    if (u.pathname === '/uhylyant-extras.js' || u.pathname === '/uhylyant-social.js' || u.pathname === '/uhylyant-comic.js' || u.pathname === '/uhylyant-ui.js' || u.pathname === '/uhylyant-3d.js' || u.pathname === '/uhylyant-account.js') { const f=path.join(__dirname,u.pathname.slice(1)); return fs.readFile(f,(err,data)=>{if(err){res.writeHead(404);return res.end('Not found')}res.writeHead(200,{'content-type':'application/javascript; charset=utf-8','cache-control':'no-cache'});res.end(data)}); }
     const primaryHtml = path.join(__dirname, 'uhylyant.html');
     const htmlPath = fs.existsSync(primaryHtml) ? primaryHtml : path.join(__dirname, 'uhylyant (1).html');
     fs.readFile(htmlPath, 'utf8', (err, html) => {
@@ -1074,7 +1114,7 @@ let token=(()=>{try{return JSON.parse(localStorage.getItem('vt_net')||'null')}ca
 const api=async(path,data,auth=true)=>{try{const r=await fetch('/api/'+path,{method:data?'POST':'GET',headers:{'content-type':'application/json',...(auth?{'x-id':token.id||'','x-key':token.key||''}:{})},body:data?JSON.stringify(data):undefined});return await r.json()}catch(e){return {ok:false,err:'Немає зв’язку із сервером'}}};
 function open(){panel.style.display='flex'}function close(){panel.style.display='none';window.UHY_SCENE?.setSection?.(null)}$('#spClose').onclick=close;panel.addEventListener('click',e=>{if(e.target===panel)close()});
 function dock(){let nav=$('#tabs');if(!nav||$('#socialDock'))return;let d=document.createElement('div');d.id='socialDock';d.innerHTML='<button data-sp="account">👤 Акаунт</button><button data-sp="leaderboard">🏆 Топ-100</button><button data-sp="friends">👥 Друзі</button><button data-sp="news">📰 Новини</button><button data-sp="career">🎖 Кар’єра / резерв</button><button data-sp="world">🏙 Вулиця</button><button data-sp="housing">🏠 Хати</button><button data-sp="health">🩺 Здоровʼя</button><button data-sp="casino">🎰 Казино</button>';nav.appendChild(d);d.addEventListener('click',e=>{let b=e.target.closest('[data-sp]');if(b)show(b.dataset.sp)});}
-async function show(which){active=which;window.UHY_SCENE?.setSection?.(which);open();body.innerHTML='<h2>Завантаження…</h2>';
+async function show(which){active=which;window.UHY_SCENE?.setSection?.(which);open();window.UHYUI?.ensurePanelNav?.();window.UHYUI?.markView?.(which);body.innerHTML='<h2>Завантаження…</h2>';
  if(which==='account'){await window.UHYACCOUNT.render(body,api,token,()=>show('account'));return;}
  if(which==='leaderboard'){
   let modes=[['level','Рівень'],['boss','Боси'],['casino','Виграші казино'],['jackpots','Джекпоти'],['wealth','Капітал'],['work','Досвід роботи'],['housing','Нерухомість'],['street','Вулиця'],['crowns','Корони']];
@@ -1100,7 +1140,7 @@ async function show(which){active=which;window.UHY_SCENE?.setSection?.(which);op
   return;
  }
  if(which==='news'){let r=await api('news',null,false);body.innerHTML='<h2>Новини сервера</h2>'+(r.list||[]).map(x=>'<div class="spitem"><b>'+ (x.type==='donation'?'💰 Донат':x.type==='damage'?'⚔ Рекорд шкоди':'📣 Подія')+'</b><div>'+esc(x.text||x.name)+'</div><div class="muted">'+new Date(x.t).toLocaleString()+'</div></div>').join('')||'<p>Гучних подій поки немає.</p>';return;}
- if(which==='world'||which==='casino'||which==='housing'||which==='health'){await window.UHYUI.show(which);return;}
+ if(['world','casino','housing','health','raids','work','shop'].includes(which)){await window.UHYUI.show(which);return;}
  if(which==='career'){
   if(!token.id){body.innerHTML='<h2>Кар’єра</h2><p>Увійди в акаунт, щоб зберігати навички.</p>';return}
   const r=await api('career');if(!r.ok){body.textContent=r.err||'Помилка';return}
@@ -1125,7 +1165,7 @@ async function show(which){active=which;window.UHY_SCENE?.setSection?.(which);op
 const observer=new MutationObserver(dock);observer.observe($('#tabs'),{childList:true});dock();
 })();
 </script>`;
-      const extras = '<script src="/uhylyant-ui.js"></script><script src="/uhylyant-account.js"></script><script src="/uhylyant-social.js"></script>';
+      const extras = '<script src="/uhylyant-ui.js"></script><script src="/uhylyant-account.js"></script><script src="/uhylyant-social.js"></script><script src="/uhylyant-extras.js"></script>';
       // Patch the original client's detention handler in-memory; source HTML and old saves remain compatible.
       const oldCatch = `S.tcc={stage:0,nextAt:0,busy:false};S.st.caught++;`;
       const newCatch = `S.tcc={stage:0,nextAt:0,busy:false};S.st.caught++;

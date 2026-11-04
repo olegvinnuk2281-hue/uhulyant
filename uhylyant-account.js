@@ -106,22 +106,23 @@ const oldActions=originalTabs.map((b,i)=>({
  label:['🏠 Дім','⚔ Бої','🚶 Маршрути','🧥 Одяг','🧭 Шлях','💎 Донат'][i]||b.textContent.trim(),
  action:()=>document.querySelectorAll('#tabs > .tab')[i]?.click(),key:'tab'+i
 }));
-const newActions=social.map(b=>({label:b.textContent.trim(),action:()=>window.UHY_NAV?.open?.(b.dataset.sp),key:b.dataset.sp}));
+const newActions=[...social.map(b=>({label:b.textContent.trim(),action:()=>window.UHY_NAV?.open?.(b.dataset.sp),key:b.dataset.sp})),{label:'⚔ Боси й ключі',action:()=>window.UHY_NAV?.open?.('raids'),key:'raids'},{label:'💼 Робота',action:()=>window.UHY_NAV?.open?.('work'),key:'work'},{label:'🛒 Магазин',action:()=>window.UHY_NAV?.open?.('shop'),key:'shop'}];
 const entries=[...oldActions,...newActions];
 const find=key=>entries.find(x=>x.key===key);
 let menu=document.getElementById('uhyMore');
 if(!menu){menu=document.createElement('div');menu.id='uhyMore';document.body.append(menu)}
 menu.replaceChildren();menu.hidden=true;
 const make=(parent,label,action)=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=()=>{menu.hidden=true;action()};parent.append(b);return b};
-const primary=[['tab0','🏠 Дім'],['tab1','⚔ Бої'],['world','🏙 Вулиця'],['casino','🎰 Казино']];
+const primary=[['tab0','🏠 Дім'],['raids','⚔ Боси'],['world','🏙 Вулиця'],['casino','🎰 Казино']];
 dock.replaceChildren();
 primary.forEach(([id,label])=>{const item=find(id);if(item)make(dock,label,item.action)});
 const more=make(dock,'☰ Меню',()=>{});more.onclick=()=>{menu.hidden=!menu.hidden};
 const groups=[
  ['👤 ПЕРСОНАЖ',[['tab3','🧥 Одяг'],['housing','🏠 Хати'],['health','🩺 Здоровʼя'],['account','👤 Акаунт']]],
- ['🌆 СВІТ',[['tab2','🚶 Маршрути'],['tab4','🧭 Шлях'],['career','🎖 Карʼєра']]],
+ ['🌆 СВІТ',[['tab2','🚶 Маршрути'],['tab4','🧭 Шлях'],['career','🎖 Карʼєра'],['work','💼 Робота']]],
+ ['⚔ АРЕНА',[['tab1','🥊 Соло-бій'],['raids','🔑 Боси та ключі']]],
  ['🏆 СПІЛЬНОТА',[['leaderboard','🏆 Рейтинг'],['friends','👥 Друзі'],['news','📰 Новини']]],
- ['💎 МАГАЗИН',[['tab5','💎 Донат']]]
+ ['💎 МАГАЗИН',[['tab5','💎 Донат'],['shop','🛒 Ігровий магазин']]]
 ];
 groups.forEach(([title,items])=>{
  const h=document.createElement('div');h.className='uhyMoreHeader';h.textContent=title;menu.append(h);
