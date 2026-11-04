@@ -1,8 +1,8 @@
 {
   "name": "uhylyant-telegram-miniapp",
-  "version": "15.0.0",
+  "version": "16.0.0",
   "private": true,
-  "description": "Uhylyant Telegram Mini App: contextual comic scenes, compact mobile HUD and timed work shifts",
+  "description": "Uhylyant Telegram Mini App: illustrated scenes, curfew street events, compact responsive controls, earned currencies",
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
