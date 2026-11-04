@@ -96,12 +96,13 @@ const originalTabs=[...original.querySelectorAll(':scope > .tab')];
 const raw=document.createElement('div');raw.hidden=true;raw.dataset.uhyRaw='1';
 const extra=[...dock.querySelectorAll('[data-sp]')].map(b=>{raw.append(b);return {label:b.textContent,action:()=>b.click(),key:b.dataset.sp}});
 const menu=document.getElementById('uhyMore')||document.createElement('div');menu.id='uhyMore';menu.hidden=true;menu.replaceChildren();if(!menu.isConnected)document.body.append(menu);
-const entries=originalTabs.map((b,i)=>({label:b.textContent.trim()||'Розділ '+(i+1),
+const entries=originalTabs.map((b,i)=>({label:b.dataset.v==='street'?'Підробітки та вакансії':(b.textContent.trim()||'Розділ '+(i+1)),
  action:()=>{const current=document.querySelector('#tabs>.tab[data-act="tab"][data-v="'+b.dataset.v+'"]');if(current)current.click()},key:'tab'+i})).concat(extra);
 const find=(needle)=>entries.find(x=>x.key===needle)||entries.find(x=>x.label.toLowerCase().includes(needle));
 const primary=[find('tab0'),find('tab1'),find('world'),find('casino')].filter(Boolean);
 dock.replaceChildren(raw);
-const make=(parent,label,action)=>{const b=document.createElement('button');b.textContent=label;b.onclick=()=>{menu.hidden=true;action()};parent.append(b);return b};
+entries.push({label:'🏅 Тижнева ліга',key:'weekly',action:()=>window.UHYWeekly.open()});
+const make=(parent,label,action)=>{const b=document.createElement('button');b.textContent=label;b.onclick=()=>{menu.hidden=true;const panel=document.getElementById('socialPanel');if(panel)panel.style.display='none';action()};parent.append(b);return b};
 primary.forEach(x=>make(dock,x.label,x.action));
 const more=make(dock,'☰ Меню',()=>{menu.hidden=!menu.hidden});
 more.onclick=()=>{menu.hidden=!menu.hidden};

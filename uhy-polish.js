@@ -1,7 +1,7 @@
 /* Claude-style game finish: shared scene for every secondary tab.
    Gameplay, economy and authentication stay inside the existing client/server. */
 (()=>{'use strict';
- const map={wheel:'КОЛЕСО БОНУСІВ',housing:'МОЯ ХАТА',casino:'ВОРОНЯЧИЙ ФАРТ',world:'ВУЛИЦЯ ТА РОБОТА',career:'КАРʼЄРА',leaderboard:'ТОП ГРАВЦІВ',friends:'ДРУЗІ',news:'НОВИНИ МІСТА',account:'МІЙ АКАУНТ',brigade:'БИТВА З БОСАМИ'};
+ const map={weekly:'ТИЖНЕВА ЛІГА',profile:'ПРОФІЛЬ ГРАВЦЯ',wheel:'КОЛЕСО БОНУСІВ',housing:'МОЯ ХАТА',casino:'ВОРОНЯЧИЙ ФАРТ',world:'ВУЛИЦЯ ТА РОБОТА',career:'КАРʼЄРА',leaderboard:'ТОП ГРАВЦІВ',friends:'ДРУЗІ',news:'НОВИНИ МІСТА',account:'МІЙ АКАУНТ',brigade:'БИТВА З БОСАМИ'};
  const $=s=>document.querySelector(s);
  let active='housing',stamp='',queued=false,lastDisplayedSection='';
  function openSection(sec){
@@ -13,6 +13,8 @@
  function detect(){
   const body=$('#spBody');if(!body)return active;
   const title=(body.querySelector('h2')?.textContent||'').toLowerCase();
+  if(/ліга|лігу/.test(title))return 'weekly';
+  if(/профіль/.test(title))return 'profile';
   if(/колесо|бонус/.test(title))return 'wheel';
   if(/казино|вороняч/.test(title))return 'casino';
   if(/хати|нерухом|житло/.test(title))return 'housing';

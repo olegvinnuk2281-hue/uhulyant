@@ -100,11 +100,13 @@ async function loadDB() {
 }
 
 const dbReady = loadDB();
+let requestQueue=Promise.resolve();
+let transactionActive=false;
 
 let dirtyPlayerIds = new Set();
 let flushing=false;
 async function flush() {
-  if (!supabase || flushing || (!dirtyPlayerIds.size && !newsDirty)) return;
+  if (transactionActive || !supabase || flushing || (!dirtyPlayerIds.size && !newsDirty)) return;
   flushing=true;
   try {
     const ids=Array.from(dirtyPlayerIds);
@@ -126,8 +128,8 @@ async function flush() {
   }catch(e){console.error('❌ Збереження:',e.message);newsDirty=true;}
   finally{flushing=false;}
 }
-setInterval(flush, 3000).unref();
-['SIGTERM', 'SIGINT'].forEach(s => process.on(s, async () => { await flush(); process.exit(0); }));
+setInterval(()=>{requestQueue=requestQueue.then(flush,flush)}, 10000).unref();
+['SIGTERM', 'SIGINT'].forEach(s => process.on(s, async () => { server.close();await requestQueue;await flush();process.exit(0); }));
 
 const sha = s => crypto.createHash('sha256').update(s).digest('hex');
 const passwordHash = (password, salt) => crypto.scryptSync(String(password), salt, 64).toString('hex');
@@ -162,6 +164,7 @@ function publishNews(item) {
   newsEvents.unshift(event);
   if(newsEvents.length>200)newsEvents.length=200;
   newsDirty=true;
+  if(transactionActive)return event;
   const packet='data: '+JSON.stringify(event)+'\n\n';
   for(const subscriber of newsSubscribers){
     try{subscriber.write(packet)}catch(e){newsSubscribers.delete(subscriber)}
@@ -396,7 +399,7 @@ function validate(p, nx) {
 }
 
 /* ---------- API ---------- */
-const send = (res, code, obj) => { res.writeHead(code, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(JSON.stringify(obj)); };
+const send = (res, code, obj) => { if(res.capture){res.captured={code,obj};return;}  res.writeHead(code, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(JSON.stringify(obj)); };
 const body = req => new Promise(r => {
   let d = '', done = false; const fin = v => { if (!done) { done = true; r(v); } };
   req.on('data', c => { d += c; if (d.length > 2e5) { fin(null); req.destroy(); } });
@@ -450,10 +453,28 @@ function starterTelegramSave(name) {
 }
 const pub = p => ({ id: p.id, name: p.name, level: p.save ? p.save.level : 1, b: p.save && p.save.bs ? num(p.save.bs.b) : 0, on: Date.now() - (p.seen || 0) < 90000 });
 
+function weekClock(at=Date.now()){
+ const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Kyiv',year:'numeric',month:'2-digit',day:'2-digit',weekday:'short'}).formatToParts(new Date(at));
+ const get=k=>parts.find(p=>p.type===k).value;const date=get('year')+'-'+get('month')+'-'+get('day');
+ const day=new Date(date+'T12:00:00Z');const dow=day.getUTCDay();day.setUTCDate(day.getUTCDate()-((dow+6)%7));
+ return {id:day.toISOString().slice(0,10),date,active:dow!==0};
+}
+function weeklyScore(p,kind){
+ const clock=weekClock();if(!clock.active)return;
+ if(p.weekly?.id!==clock.id)p.weekly={id:clock.id,score:0,days:{}};
+ const day=p.weekly.days[clock.date]||(p.weekly.days[clock.date]={work:0,fight:0});
+ const cap=kind==='work'?5:10;if(day[kind]>=cap)return;
+ day[kind]++;p.weekly.score+=kind==='work'?20:10;
+}
 async function api(req, res, route) {
   await dbReady;
   const ip = clientIp(req);
   if (route === 'ping') return send(res, 200, { ok: 1 });
+  if(route==='weekly'){
+    const clock=weekClock(),player=auth(req);if(!player)return send(res,401,{ok:false,err:'auth'});
+    const list=Object.values(DB.players).filter(p=>p.weekly?.id===clock.id).sort((a,b)=>b.weekly.score-a.weekly.score||a.id.localeCompare(b.id)).slice(0,50).map((p,i)=>({rank:i+1,name:p.name,id:p.id,score:p.weekly.score}));
+    return send(res,200,{ok:true,...clock,serverNow:Date.now(),score:player.weekly?.id===clock.id?player.weekly.score:0,list:clock.active?list:[]});
+  }
   if (route === 'leaderboard') {
     const mode=String(new URL(req.url,'http://localhost').searchParams.get('mode')||'level');
     const modes=['level','boss','casino','jackpots','wealth','work','housing'];
@@ -507,7 +528,7 @@ async function api(req, res, route) {
       player=DB.players[created.id];player.save=starterTelegramSave(name);
       logPlayer(player,'join','приєднався до міста');
       dirtyPlayerIds.add(player.id);
-      await flush();
+      // The request transaction persists all changed players before responding.
       return send(res,200,{ok:true,...created,fresh:true});
     }
     const existing = auth(req);
@@ -515,7 +536,7 @@ async function api(req, res, route) {
     const key=crypto.randomBytes(32).toString('hex');
     player.sessionHashes=[...new Set([...(player.sessionHashes||[]),sha(key)])].slice(-12);
     player.seen=Date.now();dirtyPlayerIds.add(player.id);
-    await flush();
+    // The request transaction persists all changed players before responding.
     return send(res,200,{ok:true,id:player.id,key,fresh:false});
   }
   if (route === 'account/register') {
@@ -589,28 +610,26 @@ async function api(req, res, route) {
       // Legacy daily cooldown is unified with the new, server-authoritative wheel.
       const oldAt=Number(p.save.dailyAt||0);
       if(oldAt>t-WHEEL_COOLDOWN)return send(res,200,{ok:false,err:'Щоденний бонус уже забрано. Зачекай 24 години',remainingMs:Math.max(0,oldAt+WHEEL_COOLDOWN-t)});
-      const previous={save:structuredClone(p.save),world:p.world?structuredClone(p.world):undefined,wheel:p.dailyWheel?structuredClone(p.dailyWheel):undefined};
       const draw=crypto.randomInt(10000);let x=draw,chosen=WHEEL_REWARDS[0];
       for(const reward of WHEEL_REWARDS){if(x<reward.weight){chosen=reward;break;}x-=reward.weight}
-      const w=p.world||(p.world={cash:500,xp:0,items:[],equipped:{},lastDaily:0,lastWork:0,brigade:null,look:{hair:'short',beard:'stubble',skin:'medium'}});
+      const w=p.world||(p.world={cash:Number(p.save?.uah)||0,xp:0,items:[],equipped:{},lastDaily:0,lastWork:0,brigade:null,look:{hair:'short',beard:'stubble',skin:'medium'}});
       if(!Array.isArray(w.items))w.items=[];
       let prize={id:chosen.id,label:chosen.label,emoji:chosen.emoji,type:chosen.type,tier:chosen.tier,amount:chosen.amount||0,item:chosen.item||null};
-      if(chosen.type==='cash') {w.cash=(Number(w.cash)||0)+chosen.amount;p.save.uah=(Number(p.save.uah)||0)+chosen.amount;}
+      if(chosen.type==='cash') {w.cash=(Number(w.cash)||0)+chosen.amount;}
       else if(chosen.type==='xp') {w.xp=(Number(w.xp)||0)+chosen.amount;}
       else if(chosen.type==='gear'){
         if(!w.items.includes(chosen.item))w.items.push(chosen.item);
-        else {prize={...prize,label:'Повторна річ → 200 ₴',emoji:'💵',type:'cash',amount:200};w.cash=(Number(w.cash)||0)+200;p.save.uah=(Number(p.save.uah)||0)+200;}
+        else {prize={...prize,label:'Повторна річ → 200 ₴',emoji:'💵',type:'cash',amount:200};w.cash=(Number(w.cash)||0)+200;}
       } else if(chosen.type==='premium'){
         if(!Array.isArray(p.save.inv))p.save.inv=['head0','body0','legs0','shoes0','acc0'];
         if(!p.save.inv.includes(chosen.item)){p.save.inv.push(chosen.item);w.premiumCosmetics=w.premiumCosmetics||[];if(!w.premiumCosmetics.includes(chosen.item))w.premiumCosmetics.push(chosen.item);}
-        else {prize={...prize,label:'Дублікат → 2500 ₴',emoji:'💰',type:'cash',amount:2500};w.cash=(Number(w.cash)||0)+2500;p.save.uah=(Number(p.save.uah)||0)+2500;}
+        else {prize={...prize,label:'Дублікат → 2500 ₴',emoji:'💰',type:'cash',amount:2500};w.cash=(Number(w.cash)||0)+2500;}
       }
       p.save.dailyAt=t;w.lastDaily=t;
       const lastSpin={id:crypto.randomUUID(),at:t,reward:prize,originalId:chosen.id};
       p.dailyWheel={lastAt:t,lastSpin};
       // Persist before responding so closing Telegram during animation cannot lose the outcome.
-      const {error}=await supabase.from('players').upsert({id:p.id,data:p});
-      if(error){p.save=previous.save;if(previous.world)p.world=previous.world;else delete p.world;if(previous.wheel)p.dailyWheel=previous.wheel;else delete p.dailyWheel;return send(res,503,{ok:false,err:'Не вдалося зберегти бонус, повтори пізніше'});}
+
       dirtyPlayerIds.add(p.id);
       if(prize.tier==='legendary'||prize.tier==='epic')logPlayer(p,'bonus',`виграв ${prize.label} на щоденному колесі!`);
       else logPlayer(p,'bonus',`отримав бонус ${prize.label}`,30000);
@@ -651,7 +670,7 @@ async function api(req, res, route) {
     const key=crypto.randomBytes(32).toString('hex');
     old.sessionHashes=[...new Set([...(old.sessionHashes||[]),sha(key)])].slice(-12);
     dirtyPlayerIds.add(p.id);dirtyPlayerIds.add(old.id);
-    await flush();
+    // The request transaction persists all changed players before responding.
     return send(res,200,{ok:true,id:old.id,key,restored:true});
   }
   if (route === 'account/email') {
@@ -694,7 +713,7 @@ async function api(req, res, route) {
     dirtyPlayerIds.add(p.id);return send(res,200,response());
   }
   if (route === 'world') {
-    const w=p.world || (p.world={cash:500,xp:0,items:[],equipped:{},lastDaily:0,lastWork:0,brigade:null,look:{hair:'short',beard:'stubble',skin:'medium'}});
+    const w=p.world || (p.world={cash:Number(p.save?.uah)||0,xp:0,items:[],equipped:{},lastDaily:0,lastWork:0,brigade:null,look:{hair:'short',beard:'stubble',skin:'medium'}});
     const bosses=[{id:'zh',name:'Жадовський',hp:30000},{id:'my',name:'Миколаївський',hp:60000},{id:'ce',name:'Центровий',hp:100000}];
     const houses=[
       {id:'shack',name:'Обшарпана халупа',price:0,bonus:'Стартове житло',energy:0,stealth:0,level:1},
@@ -724,7 +743,6 @@ async function api(req, res, route) {
     const jobOffers=()=>{const cycle=Math.floor(Date.now()/(20*MIN));return jobPool.filter((j,i)=>j.minDays===0||((cycle+i*3)%5)<3).map(j=>({...j,locked:(w.workDays||[]).length<j.minDays||w.xp<j.minXP}));};
     if(req.method==='GET')return send(res,200,state());
     const b=await body(req);if(!b||typeof b.action!=='string')return send(res,400,{ok:false,err:'Некоректна дія'});
-    const worldBefore=(b.action==='shift'||b.action==='workCollect')?structuredClone(w):null;
     const t=Date.now(), fail=err=>send(res,200,{ok:false,err});
     if(b.action==='daily'){
       return fail('Колесо перенесено до /api/daily-wheel — відкрий анімацію та прокрути його');
@@ -749,7 +767,7 @@ async function api(req, res, route) {
       if(t<sh.endsAt)return fail('Зміна ще триває '+Math.ceil((sh.endsAt-t)/1000)+' с');
       const amount=Math.max(0,Math.floor(Number(sh.cash)||0)),xp=Math.max(0,Math.floor(Number(sh.xp)||0));
       w.cash=(Number(w.cash)||0)+amount;w.xp=(Number(w.xp)||0)+xp;
-      w.workShifts=(w.workShifts||0)+1;
+      w.workShifts=(w.workShifts||0)+1;weeklyScore(p,'work');
       const gameDay=new Date(sh.startedAt+2*3600000).toISOString().slice(0,10);
       w.workDays=Array.isArray(w.workDays)?w.workDays:[];
       if(!w.workDays.includes(gameDay))w.workDays.push(gameDay);
@@ -823,7 +841,7 @@ async function api(req, res, route) {
     } else if(b.action==='join'){
       if(w.brigade)return fail('Ви вже у бригаді');const id=String(b.id||'').trim().toUpperCase();const target=Object.values(DB.players).map(x=>x.world?.brigade).find(x=>x&&x.id===id);if(!target)return fail('Бригаду не знайдено');if(target.members.length>=8)return fail('У бригаді максимум 8 гравців');target.members.push(p.id);const owner=DB.players[target.owner];if(owner)dirtyPlayerIds.add(owner.id);w.brigade=id;w.message='Ви вступили в '+target.name;
     } else if(b.action==='fight'){
-      const br=get();if(!br||!br.members.includes(p.id))return fail('Потрібна бригада');const boss=bosses.find(x=>x.id===b.boss);if(!boss)return fail('Немає боса');if(!br.fight||br.fight.hp<=0){if(br.fight&&t-br.fight.finishedAt<10*MIN)return fail('Новий рейд через 10 хвилин');br.keys=Math.max(0,Math.floor(Number(br.keys)||0));br.wins=br.wins||{};const stage=bosses.findIndex(x=>x.id===boss.id);const needed=[0,2,4][stage];if(stage>0&&!br.wins[bosses[stage-1].id])return fail('Спочатку переможіть попереднього боса');if(br.keys<needed)return fail('Для відкриття потрібно '+needed+' ключів');br.keys-=needed;br.fight={boss:boss.id,hp:boss.hp,maxHp:boss.hp,hits:{},finishedAt:0,keysSpent:needed}}if(br.fight.boss!==boss.id)return fail('Спочатку завершіть поточного боса');if(t-(br.fight.hits[p.id]||0)<30*1000)return fail('Атака раз на 30 секунд');br.fight.hits[p.id]=t;const weapon=gear[w.equipped.weapon];const dmg=200+Math.min(300,Math.floor(w.xp/10))+(weapon?.attack||0)*20+(houses.find(x=>x.id===w.housing.current)?.energy||0)*3; br.fight.hp=Math.max(0,br.fight.hp-dmg);w.message=`Удар по ${boss.name}: ${dmg} шкоди`;if(!br.fight.hp){br.fight.finishedAt=t;br.wins=br.wins||{};br.wins[boss.id]=(Number(br.wins[boss.id])||0)+1;br.keys=(Number(br.keys)||0)+([1,2,4][bosses.findIndex(x=>x.id===boss.id)]||1);for(const id of br.members){const m=DB.players[id];if(!m)continue;const mw=m.world||(m.world={cash:0,xp:0,items:[],equipped:{}});mw.xp+=boss.hp/30;mw.cash+=boss.hp/60;const loot=boss.id==='ce'?'legend':boss.id==='my'?'storm':'shadow';if(crypto.randomInt(100)<35)mw.items.push(loot);dirtyPlayerIds.add(id)}logPlayer(p,'brigade',`із бригадою «${br.name}» переміг боса ${boss.name}!`)}
+      const br=get();if(!br||!br.members.includes(p.id))return fail('Потрібна бригада');const boss=bosses.find(x=>x.id===b.boss);if(!boss)return fail('Немає боса');if(!br.fight||br.fight.hp<=0){if(br.fight&&t-br.fight.finishedAt<10*MIN)return fail('Новий рейд через 10 хвилин');br.keys=Math.max(0,Math.floor(Number(br.keys)||0));br.wins=br.wins||{};const stage=bosses.findIndex(x=>x.id===boss.id);const needed=[0,2,4][stage];if(stage>0&&!br.wins[bosses[stage-1].id])return fail('Спочатку переможіть попереднього боса');if(br.keys<needed)return fail('Для відкриття потрібно '+needed+' ключів');br.keys-=needed;br.fight={boss:boss.id,hp:boss.hp,maxHp:boss.hp,hits:{},finishedAt:0,keysSpent:needed}}if(br.fight.boss!==boss.id)return fail('Спочатку завершіть поточного боса');if(t-(br.fight.hits[p.id]||0)<30*1000)return fail('Атака раз на 30 секунд');br.fight.hits[p.id]=t;weeklyScore(p,'fight');const weapon=gear[w.equipped.weapon];const dmg=200+Math.min(300,Math.floor(w.xp/10))+(weapon?.attack||0)*20+(houses.find(x=>x.id===w.housing.current)?.energy||0)*3; br.fight.hp=Math.max(0,br.fight.hp-dmg);w.message=`Удар по ${boss.name}: ${dmg} шкоди`;if(!br.fight.hp){br.fight.finishedAt=t;br.wins=br.wins||{};br.wins[boss.id]=(Number(br.wins[boss.id])||0)+1;br.keys=(Number(br.keys)||0)+([1,2,4][bosses.findIndex(x=>x.id===boss.id)]||1);for(const id of br.members){const m=DB.players[id];if(!m)continue;const mw=m.world||(m.world={cash:Number(m.save?.uah)||0,xp:0,items:[],equipped:{}});mw.xp+=boss.hp/30;mw.cash+=boss.hp/60;const loot=boss.id==='ce'?'legend':boss.id==='my'?'storm':'shadow';if(crypto.randomInt(100)<35)mw.items.push(loot);dirtyPlayerIds.add(id)}logPlayer(p,'brigade',`із бригадою «${br.name}» переміг боса ${boss.name}!`)}
     } else if(b.action==='hospital'){
       w.health=clamp(Math.floor(num(w.health,100)),0,100);
       if(w.cash<320)return fail('Для лікування потрібно 320 ігрових ₴');
@@ -841,16 +859,12 @@ async function api(req, res, route) {
       fight:['attack','атакував боса',60000],hospital:['hospital','відвідав лікарню та відновив здоровʼя',10000]};
     const item=msgs[b.action];
     if(item && !(b.action==='slots'&&w.lastSpin?.jackpot))logPlayer(p,item[0],item[1],item[2]);
-    if(worldBefore){
-      if(!supabase||!dbLoaded){p.world=worldBefore;return fail('Сервер збережень недоступний');}
-      const {error}=await supabase.from('players').upsert({id:p.id,data:p});
-      if(error){p.world=worldBefore;return fail('Зміну не вдалося зберегти, спробуй ще раз');}
-    }
     dirtyPlayerIds.add(p.id);return send(res,200,state());
   }
   if (route === 'me') return send(res, 200, { ok: true, id: p.id, name: p.name, save: p.save });
   if (route === 'save') {
     const b = await body(req); if (!b) return send(res, 400, { ok: false });
+    if(b.walletRevision!==Number(p.walletRevision||0))return send(res,409,{ok:false,why:'Баланс змінився на сервері. Оновлено профіль.',save:p.save});
     const nx = b.save, v = validate(p, nx);
     if (!v.ok) { console.log('відхилено', p.id, v.why); return send(res, 200, { ok: false, why: v.why, save: p.save || undefined }); }
     v.commit();
@@ -861,7 +875,7 @@ async function api(req, res, route) {
       const w = p.world;
       const n = Math.min(10, currentCaught - previousCaught);
       for (let i=0;i<n;i++) {
-        w.cash = Math.max(0, Math.floor(num(w.cash) * .70));
+        // The primary save already includes the detention cash penalty.
         const pool = Array.isArray(w.items) ? w.items : (w.items=[]);
         for (let j=0;j<Math.min(2,pool.length);j++) {
           const idx = crypto.randomInt(pool.length), lost=pool.splice(idx,1)[0];
@@ -953,11 +967,78 @@ async function api(req, res, route) {
   return send(res, 404, { ok: false });
 }
 
+// One process owns the in-memory game. Serialize requests and commit a single
+// Postgres upsert statement for all participants before acknowledging any action.
+async function durableApi(req,res,route){
+  if(route==='news/stream')return api(req,res,route);
+  const run=async()=>{
+    await dbReady;
+    if(!supabase||!dbLoaded)return send(res,503,{ok:false,err:'База збережень недоступна'});
+    const before=JSON.stringify(DB.players), oldNews=JSON.stringify(newsEvents);
+    const oldDirty=new Set(dirtyPlayerIds), oldNewsDirty=newsDirty, oldCooldowns=new Map(activityCooldowns);
+    const oldPlayers=JSON.parse(before);
+    const captured={capture:true};
+    transactionActive=true;
+    try{
+      for(const p of Object.values(DB.players)){
+        if(!p.save)continue;
+        if(!p.economyV26){
+          // Preserve both legacy balances once; never award the old 500 starter again.
+          p.save.uah=Math.max(0,Number(p.save.uah)||0)+Math.max(0,Number(p.world?.cash)||0);
+          p.economyV26=true;
+        }
+        if(p.world)p.world.cash=p.save.uah;
+      }
+      const baseline=JSON.parse(JSON.stringify(DB.players));
+      await api(req,captured,route);
+      if(!captured.captured)throw Error('Missing API response');
+      const {code,obj}=captured.captured;
+      if(code>=400||obj.ok===false){
+        DB.players=JSON.parse(before);newsEvents=JSON.parse(oldNews);
+        dirtyPlayerIds=oldDirty;newsDirty=oldNewsDirty;activityCooldowns.clear();for(const [k,v] of oldCooldowns)activityCooldowns.set(k,v);
+        const current=auth(req);if(current)obj.walletRevision=Number(current.walletRevision||0);
+        return send(res,code,obj);
+      }
+      for(const p of Object.values(DB.players)){
+        if(!p.save)continue;
+        const base=baseline[p.id];
+        if(!base?.save&&!p.economyV26){
+          p.save.uah+=Math.max(0,Number(base?.world?.cash)||0);
+          p.economyV26=true;
+        }
+        if((route==='world'||route==='daily-wheel')&&p.world){
+          const delta=Number(p.world.cash||0)-Number(base?.world?.cash??base?.save?.uah??p.save.uah);
+          p.save.uah=Math.max(0,Number(p.save.uah||0)+delta);
+        }
+        if(p.world)p.world.cash=p.save.uah;
+        if(p.save.uah!==oldPlayers[p.id]?.save?.uah)p.walletRevision=Number(p.walletRevision||0)+1;
+      }
+      const rows=Object.values(DB.players).filter(p=>JSON.stringify(p)!==JSON.stringify(oldPlayers[p.id])).map(p=>({id:p.id,data:p}));
+      if(newsDirty)rows.push({id:NEWS_ROW_ID,data:{events:newsEvents.slice(0,200),updated:Date.now()}});
+      if(rows.length){const {error}=await supabase.from('players').upsert(rows);if(error)throw error;}
+      rows.forEach(row=>dirtyPlayerIds.delete(row.id));newsDirty=false;
+      const known=new Set(JSON.parse(oldNews).map(e=>e.id));
+      for(const event of newsEvents.filter(e=>!known.has(e.id)).reverse()){
+        for(const sub of newsSubscribers){try{sub.write('data: '+JSON.stringify(event)+'\n\n')}catch{newsSubscribers.delete(sub)}}
+      }
+      const current=auth(req)||DB.players[obj.id];
+      if(current){obj.walletRevision=Number(current.walletRevision||0);if(current.save){obj.walletCash=current.save.uah;if(obj.save&&route==='daily-wheel')obj.save.uah=current.save.uah;}}
+      return send(res,code,obj);
+    }catch(e){
+      DB.players=JSON.parse(before);newsEvents=JSON.parse(oldNews);
+      dirtyPlayerIds=oldDirty;newsDirty=oldNewsDirty;activityCooldowns.clear();for(const [k,v] of oldCooldowns)activityCooldowns.set(k,v);
+      console.error('Commit failed:',e.message);
+      return send(res,503,{ok:false,err:'Не вдалося підтвердити збереження. Оновіть профіль перед повторною дією.'});
+    }finally{transactionActive=false;}
+  };
+  const pending=requestQueue.then(run,run);requestQueue=pending.catch(()=>{});return pending;
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     const u = new URL(req.url, 'http://x');
     if (u.pathname === '/healthz') { res.writeHead(200); return res.end('ok'); }
-    if (u.pathname.startsWith('/api/')) return await api(req, res, u.pathname.slice(5));
+    if (u.pathname.startsWith('/api/')) return await durableApi(req, res, u.pathname.slice(5));
     if (u.pathname.startsWith('/assets/')) {
       const name = u.pathname.slice('/assets/'.length);
       if (!['noir-courtyard-day.webp','noir-courtyard-night.webp',...['yard','street','park','home'].flatMap(x=>['day','night'].map(t=>'location-'+x+'-'+t+'.webp')),...['cherry','lemon','star','medal','diamond','seven'].map(x=>'casino-'+x+'.svg')].includes(name)) {res.writeHead(404);return res.end('Not found')}
@@ -966,7 +1047,7 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(200,{'content-type':name.endsWith('.svg')?'image/svg+xml; charset=utf-8':'image/webp','cache-control':'public, max-age=3600','x-content-type-options':'nosniff'});res.end(data)
       });
     }
-    if (u.pathname === '/uhy-polish.css' || u.pathname === '/uhy-polish.js' || u.pathname === '/uhy-live.css') {
+    if (u.pathname === '/uhy-polish.css' || u.pathname === '/uhy-polish.js' || u.pathname === '/uhy-live.css' || u.pathname === '/weekly.js' || u.pathname === '/motion.js') {
       const f=path.join(__dirname,u.pathname.slice(1));
       return fs.readFile(f,(err,data)=>{if(err){res.writeHead(404);return res.end('Not found')}
         res.writeHead(200,{'content-type':u.pathname.endsWith('.css')?'text/css; charset=utf-8':'application/javascript; charset=utf-8','cache-control':'no-cache','x-content-type-options':'nosniff'});res.end(data)});
@@ -1116,7 +1197,7 @@ async function show(which){stopNews();active=which;panel.classList.remove('uhy-v
 const observer=new MutationObserver(dock);observer.observe($('#tabs'),{childList:true});dock();
 })();
 </script>`;
-      const extras = '<script src="/uhylyant-ui.js"></script><script src="/uhylyant-account.js"></script><link rel="stylesheet" href="/uhy-live.css">';
+      const extras = '<script src="/uhylyant-ui.js"></script><script src="/uhylyant-account.js"></script><link rel="stylesheet" href="/uhy-live.css"><script src="/weekly.js"></script><script src="/motion.js"></script>';
       // Patch the original client's detention handler in-memory; source HTML and old saves remain compatible.
       const oldCatch = `S.tcc={stage:0,nextAt:0,busy:false};S.st.caught++;`;
       const newCatch = `S.tcc={stage:0,nextAt:0,busy:false};S.st.caught++;
@@ -1143,4 +1224,4 @@ const observer=new MutationObserver(dock);observer.observe($('#tabs'),{childList
 process.on('uncaughtException', e => console.error('uncaught', e));
 
 if (require.main === module) server.listen(PORT, () => console.log('Ухилянт: http://localhost:' + PORT));
-module.exports = { validate, fresh, DB, basePay, xpNeed, tierOf, totalXP, hpOf, FOOD_CD, FOOD_EN, REGEN };
+module.exports = { weekClock, weeklyScore, server, durableApi, dbReady, validate, fresh, DB, basePay, xpNeed, tierOf, totalXP, hpOf, FOOD_CD, FOOD_EN, REGEN };

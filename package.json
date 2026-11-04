@@ -1,11 +1,12 @@
 {
   "name": "uhylyant",
-  "version": "1.1.0",
+  "version": "1.2.0-rc.3",
   "private": true,
   "description": "Ухилянт — гра з онлайн-друзями",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test tests/*.cjs"
   },
   "engines": {
     "node": ">=18"

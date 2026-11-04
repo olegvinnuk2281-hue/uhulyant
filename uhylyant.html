@@ -491,8 +491,8 @@ function hairFront(c,hasHat){
   if(h===1)o+=fc(`M65 58 C58 22 140 14 136 56 C132 42 126 36 112 36 C102 44 84 40 74 46 C70 50 67 54 65 58Z`)+shine(`M90 34 Q104 30 120 36`);
   if(h===2)o+=fc(`M64 56 C54 10 146 4 137 52 C134 36 124 28 100 28 C84 28 72 36 64 56Z`)+shine(`M80 22 Q100 14 124 24`)+ln(`M76 30 Q100 22 128 32`,1,INK,'opacity=".6"');
   if(h===3)o+=fc(`M64 58 C54 18 146 14 138 58 C134 40 122 32 100 32 C82 32 70 40 64 58Z`)+fc(`M66 52 C58 80 60 112 72 124 L80 106 C74 92 72 72 74 54Z`)+fc(`M134 52 C142 80 140 112 128 124 L120 106 C126 92 128 72 126 54Z`)+shine(`M72 90 Q72 106 76 116`);
-  if(h===5){const bl=[[72,40],[84,32],[98,29],[112,32],[126,40],[68,54],[132,54],[78,46],[120,45],[100,38]];o+=bl.map(b=>fc(`M${b[0]-10} ${b[1]+6} a10 10 0 1 1 20 0 a10 10 0 1 1 -20 0Z`)).join('')+shine(`M82 30 Q100 24 118 30`);}
-  if(h===6)o+=`<path d="M68 52 C66 34 134 34 132 52 C128 44 118 40 100 40 C82 40 72 44 68 52Z" fill="url(#uh-stub)" stroke="${INK}" stroke-width="1.4"/>`+fc(`M90 40 L92 6 Q100 -2 108 6 L110 40 Q100 34 90 40Z`);
+  if(h===5)o+=fc(`M65 58 Q57 48 65 40 Q61 28 75 26 Q78 15 90 20 Q100 10 111 20 Q125 16 128 28 Q143 30 136 43 Q143 53 134 59 L129 48 Q117 40 100 43 Q82 40 71 49Z`)+shine(`M78 31 Q98 23 120 32`);
+  if(h===6)o+=`<path d="M68 52 C66 34 134 34 132 52 C128 44 118 40 100 40 C82 40 72 44 68 52Z" fill="url(#uh-stub)" stroke="${INK}" stroke-width="1.4"/>`+fc(`M90 40 L92 12 Q100 4 108 12 L110 40 Q100 34 90 40Z`);
   if(h===7)o+=fc(`M65 58 C58 22 140 16 136 56 C132 42 126 36 112 36 C102 44 84 40 74 46 C70 50 67 54 65 58Z`)+fc(`M88 22 a13 13 0 1 1 26 0 a13 13 0 1 1 -26 0Z`)+ln(`M94 14 q6 -3 12 0`,1.2,lite(hc,.4),'opacity=".5"');
   return o;
 }
@@ -656,6 +656,7 @@ function person(cfg){
   o+=wb.body;
   /* руки: шкіра + тату, потім рукав */
   ar.forEach((a,i)=>{
+    o+=`<g class="uhy-arm uhy-arm-${i}" style="transform-origin:${a.sx}px 126px">`;
     const s=i?1:-1;
     const full=B.look!=='tee';
     o+=hand(a.sx+s*4,a.wy-4,sk,a.w,s);
@@ -667,6 +668,7 @@ function person(cfg){
     o+=wb.sleeves[i];
     if(full&&c.tat>=2){/* кисть із тату */
       const id=uid();o+=`<clipPath id="${id}"><rect x="${a.sx-12}" y="228" width="24" height="12"/></clipPath><g clip-path="url(#${id})" opacity=".0"></g>`;}
+    o+='</g>';
   });
   /* аксесуари на тілі */
   if(A.look==='backpack')o+=fi(`M${100-b.bw+4} 114 Q${100-b.bw+2} 160 ${100-b.ww+4} 190 L${100-b.ww+14} 190 Q${100-b.bw+14} 156 ${100-b.bw+14} 118Z`,dark(A.col,.25),2)+fi(`M${100+b.bw-4} 114 Q${100+b.bw-2} 160 ${100+b.ww-4} 190 L${100+b.ww-14} 190 Q${100+b.bw-14} 156 ${100+b.bw-14} 118Z`,dark(A.col,.25),2);
@@ -1473,7 +1475,8 @@ function load(){
   }catch(e){}
   return S0();
 }
-function save(){window.__vd=1;try{const d=JSON.stringify(S);localStorage.setItem(KEY,JSON.stringify({d:S,h:hh(d)}))}catch(e){}}
+let saveSyncTimer;
+function save(){window.__vd=1;clearTimeout(saveSyncTimer);saveSyncTimer=setTimeout(()=>{if(typeof netSync==='function')netSync(false)},450);try{const d=JSON.stringify(S);localStorage.setItem(KEY,JSON.stringify({d:S,h:hh(d)}))}catch(e){}}
 const ui={tab:'home',slot:'head',lastSig:'',ov:'',ct:'pre',sk:'',house:'shack'}; // Персональне житло синхронізується з world.housing.current
 
 /* ---------- характеристики ---------- */
@@ -1754,6 +1757,8 @@ function sceneKind(){
   if(ui.tab==='boss')return'boss';
   // Головний екран завжди показує придбану й обрану хату гравця.
   if(ui.tab==='home')return'home';
+  if(ui.tab==='gear'||ui.tab==='shop')return'market';
+  if(ui.tab==='path'&&!S.end)return'station';
   if(S.end==='eu'&&(ui.tab==='street'||ui.tab==='path'))return'eu';
   if(S.end==='ua'&&ui.tab==='path')return'office';
   if(ui.tab==='street')return locOK(S.look.loc)==='home'?'street':(locOK(S.look.loc)||'street');
@@ -1769,7 +1774,7 @@ const BOSSCFG=[
 ];
 function bossSVG(i){const c=Object.assign({tat:0,mood:'ok',smoke:false,A:{look:'none',col:'#000'}},BOSSCFG[i%BOSSCFG.length]);return UHART.svg(c,'0 0 200 262')}
 function renderScene(){
-  const sc=$('#scene');if(!sc)return;
+  const sc=$('#scene');if(!sc)return;sc.dataset.section=ui.tab;
   const kind=sceneKind(),ph=phaseNow(),mood=S.tcc?'scared':'ok',bi=S.bs?S.bs.b:0;
   const key=[kind,ph,ui.house,JSON.stringify(S.look),JSON.stringify(S.eq),mood,kind==='boss'?bi:''].join('|');
   if(ui.sk!==key||!sc.querySelector('.lyr')){
@@ -2130,11 +2135,11 @@ function upCard(){S.up=S.up||{};return '<div class="card"><div class="h">Пок�
 function viewGear(){return viewGear0()+upCard()}
 ACT.bup=v=>{const it=ITEM[v];if(!it||!S.inv.includes(v))return;S.up=S.up||{};const n=S.up[v]||0,c=upCost(n);if(S.uah<c){toast('Не вистачає гривень','bad');return}S.uah-=c;S.up[v]=n+1;toast('★'+(n+1)+' · '+it.name,'good');save();render()};
 /* ===== ОНЛАЙН: ID, ДРУЗІ, ЧЕСНИЙ ПРОГРЕС ===== */
-const NET={on:false,id:null,key:null,friends:[],inc:[],msg:''};
+const NET={walletRevision:0,on:false,id:null,key:null,friends:[],inc:[],msg:''};
 try{const t=JSON.parse(localStorage.getItem('vt_net')||'null');if(t){NET.id=t.id;NET.key=t.key}}catch(e){}
 const lsNet=()=>{try{localStorage.setItem('vt_net',JSON.stringify({id:NET.id,key:NET.key}))}catch(e){}};
 const sqN=()=>NET.on?NET.friends.length:S.bs.sq.length;
-async function api(path,body){const c=new AbortController(),to=setTimeout(()=>c.abort(),6000);try{const r=await fetch('/api/'+path,{method:body?'POST':'GET',headers:{'content-type':'application/json','x-id':NET.id||'','x-key':NET.key||''},body:body?JSON.stringify(body):undefined,signal:c.signal});clearTimeout(to);return await r.json()}catch(e){clearTimeout(to);return null}}
+async function api(path,body){const c=new AbortController(),to=setTimeout(()=>c.abort(),6000);try{const r=await fetch('/api/'+path,{method:body?'POST':'GET',headers:{'content-type':'application/json','x-id':NET.id||'','x-key':NET.key||''},body:body?JSON.stringify(body):undefined,signal:c.signal});clearTimeout(to);const data=await r.json();if(Number.isFinite(data.walletRevision)&&(path==='save'||path==='me'))NET.walletRevision=data.walletRevision;return data}catch(e){clearTimeout(to);return null}}
 function adopt(sv){S=Object.assign(S0(),sv);S.bs=Object.assign(defBs(),S.bs||{});S.bs.demo=0;S.up=S.up||{};if(S.tcc)S.tcc.busy=false;save();if(S.started&&document.querySelector('#overlay')&&!document.querySelector('#overlay').hidden)hideOv();ui.lastSig='';render()}
 async function netReg(){if(NET.busy)return;NET.busy=1;const r=await api('register',{name:S.name||'Ухилянт'});NET.busy=0;if(r&&r.ok){NET.id=r.id;NET.key=r.key;lsNet();const k={name:S.name,look:S.look,started:true,say:S.say};S=Object.assign(S0(),k);S.bs=defBs();S.up={};save();toast('Онлайн-акаунт створено. Твій ID: '+r.id,'good');netSync(true);render()}}
 async function syncMyHouse(){
@@ -2146,7 +2151,19 @@ const awaitingTelegram=()=>!!(window.Telegram?.WebApp?.initData||/[&#?]tgWebApp(
 async function netInit(){const p=await api('ping');if(!p||!p.ok)return;NET.on=true;
  if(NET.id){const m=await api('me');if(m&&m.ok){if(m.save)adopt(m.save);netPollF();await syncMyHouse()}else if(m&&m.err==='auth'){NET.id=NET.key=null;lsNet()}}
  if(!NET.id&&S.started&&!awaitingTelegram()){await netReg();await syncMyHouse()}render()}
-async function netSync(force){if(!NET.on||!NET.id||!S.started)return;if(!force&&!window.__vd)return;window.__vd=0;const r=await api('save',{save:S});if(r&&r.ok===false&&r.save){adopt(r.save);toast('Сервер повернув чесний прогрес: '+(r.why||''),'bad')}}
+let syncPending=null;
+async function netSync(force){
+ if(syncPending){await syncPending;if(!window.__vd)return true;}
+ if(!NET.on||!NET.id||!S.started)return false;
+ if(!force&&!window.__vd)return true;
+ syncPending=(async()=>{
+  const snapshot=JSON.stringify(S);window.__vd=0;
+  const r=await api('save',{save:JSON.parse(snapshot),walletRevision:NET.walletRevision});
+  if(!r||!r.ok){window.__vd=1;if(r?.save){adopt(r.save);toast(r.why||'Оновлено серверний профіль','bad')}return false;}
+  if(JSON.stringify(S)!==snapshot)window.__vd=1;
+  return true;
+ })();try{return await syncPending}finally{syncPending=null;}
+}
 async function netPollF(){const f=await api('friends');if(f&&f.ok){NET.friends=f.friends;NET.inc=f.incoming}}
 let ntk=0;async function netPoll(){if(!NET.on||!NET.id||!S.started)return;const B=S.bs;const e=await api('events');
  if(e&&e.ok&&e.list&&e.list.length&&!S.tcc){let ch=0;e.list.slice(0,10).forEach(x=>{const d=Math.round(Math.min(+x.dmg||0,1e9)*.5);if(d<=0)return;if(!B.fs)B.fs=now();B.hp=Math.max(0,B.hp-d);toast('🤝 '+x.name+' б’є боса: −'+fmt(d));if(B.hp<=0)bWin();ch=1});if(ch){save();render()}}
@@ -2165,6 +2182,7 @@ Object.assign(ACT,{
  fcopy:()=>{try{navigator.clipboard.writeText(NET.id);toast('ID скопійовано','good')}catch(e){toast('ID: '+NET.id)}}});
 setInterval(netPoll,8000);setInterval(()=>netSync(false),15000);setInterval(()=>{if(NET.on&&!NET.id&&S.started&&!awaitingTelegram())netReg()},4000);
 document.addEventListener('visibilitychange',()=>{if(document.hidden){window.__vd=1;netSync(false)}});
+window.addEventListener('pagehide',()=>{if(NET.id&&S.started&&window.__vd)fetch('/api/save',{method:'POST',keepalive:true,headers:{'content-type':'application/json','x-id':NET.id,'x-key':NET.key},body:JSON.stringify({save:S,walletRevision:NET.walletRevision})}).catch(()=>{});});
 netInit();
 /* ===== ГРАФІКА ВСІХ СЦЕН ===== */
 function decor(r,kind){const h=new Date().getHours(),night=h<6||h>=21,dusk=(h>=18&&h<21)||(h>=5&&h<7),W=kind==='street'||kind==='eu';
@@ -2199,6 +2217,8 @@ setInterval(save,10000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.started){render()}});
 
 window.UHY={
+ sync:async()=>{for(let i=0;i<4;i++){if(!await netSync(false))return false;if(!window.__vd)return true;}return false;},
+ applyWallet:result=>{if(Number.isFinite(result.walletRevision))NET.walletRevision=result.walletRevision;if(Number.isFinite(result.walletCash)){S.uah=result.walletCash;save();render();}},
  editor:()=>{if(S.started){ui.cfirst=false;showCreator(false)}},
  locs:()=>{if(S.started)showLocs()},
  applyWheelSave:result=>{
@@ -2216,7 +2236,7 @@ window.UHY={
  // Artwork only: reuses the SAME in-game sprite layers used on the primary screen.
  snapshot:(section='home',house=null)=>{
    const id=['shack','room','flat','loft','lux'].includes(house)?house:ui.house;
-   const route={housing:'home',casino:'market',world:'street',career:'office',leaderboard:'roof',friends:'yard',news:'street',account:'home',brigade:'boss',boss:'boss',health:'home',work:'office'};
+   const route={housing:'home',casino:'market',world:'street',career:'office',leaderboard:'roof',friends:'yard',news:'street',account:'home',brigade:'boss',boss:'boss',health:'home',work:'office',weekly:'roof',wheel:'market',profile:'yard'};
    const scene=S.tcc?'tcc'+Math.min(2,S.tcc.stage|0):(route[section]||'home');
    const painter=UHART.paint(scene,{phase:phaseNow(),house:id,seed:7});
    const av=UHART.svg(UHART.cfgFor(S.look,S.eq,S.tcc?'scared':'ok'),'0 0 200 262');
