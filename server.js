@@ -672,14 +672,15 @@ async function api(req, res, route) {
       {id:'stealth',name:'Тіньовий маршрут',cost:{scrap:18},desc:'+2 до скритності на вулиці'},
       {id:'luck',name:'Фартовий жетон',cost:{crowns:3},desc:'+6% до шансів знайти лут'},
       {id:'smoke',name:'Пачка цигарок',cost:{scrap:12,cash:120},desc:'Вмикає атмосферу: герой курить у сцені'},
-      {id:'vip',name:'VIP перепустка',cost:{crowns:8},desc:'Ще -2% до ризику патруля під час комендантської години'}
+      {id:'vip',name:'VIP перепустка',cost:{crowns:8},desc:'Ще -2% до ризику патруля під час комендантської години'},
+      {id:'papers',name:'Фальшиві документи',cost:{crowns:4,scrap:10},desc:'Постійно -3% до ризику перевірки ТЦК на вулиці'}
     ];
     const streetMeta=(t=Date.now())=>{
       const st=ensureStreet(),cur=curfewClock(),house=houseNow(),stealth=(house.stealth||0)+(w.boosts.stealth?2:0)+(w.boosts.vip&&cur.active?2:0);
       if(st.mode==='patrol'&&st.until&&t>=st.until){st.mode='idle';st.until=0;st.loot=null;st.reason='';}
       if((st.mode==='detained'||st.mode==='trench')&&st.until&&t>=st.until)st.ready=true; else st.ready=false;
       const risk=Math.max(cur.active?2:5,(cur.active?7:14)-stealth);
-      return {...st,curfewActive:cur.active,curfewStart:cur.start,curfewEnd:cur.end,curfewText:cur.active?'Комендантська година активна':'Денний режим',risk,cooldownMs:Math.max(0,(st.cooldownUntil||0)-t),boosts:w.boosts||{}};
+      return {...st,curfewActive:cur.active,curfewStart:cur.start,curfewEnd:cur.end,curfewText:cur.active?'Комендантська година активна':'Денний режим',risk,cooldownMs:Math.max(0,(st.cooldownUntil||0)-t),hideMs:Math.max(0,(st.hideUntil||0)-t),boosts:w.boosts||{}};
     };
     const nightTasks=[{id:'delivery',name:'Нічна доставка',cash:165,xp:38,risk:7,drop:'tracksuit',desc:'Доставити пакунок через тихі двори'},{id:'watch',name:'Нічний сторож',cash:140,xp:44,risk:4,drop:'vest',desc:'Перевірити склад та освітлення'},{id:'radio',name:'Радіомайстерня',cash:120,xp:55,risk:2,drop:'chain',desc:'Полагодити старий приймач'},{id:'taxi',name:'Нічне таксі',cash:195,xp:35,risk:9,drop:'uniform',desc:'Довезти пасажира до вокзалу'}];
     const state=()=>{const br=get();const c=care(),street=streetMeta(Date.now());dirtyPlayerIds.add(p.id);return {ok:true,world:w,care:c,stars:{enabled:starsActive()&&!!p.telegramId,prices:STARS_PRICES},skills:{days:(w.workDays||[]).length,shifts:w.workShifts||0,xp:w.xp||0},houses,gear,bosses,jobs:jobOffers(),night:{...nightClock(),tasks:nightTasks,cooldownMs:Math.max(0,4*MIN-(Date.now()-(w.lastNight||0)))},street,premium:{offers:premiumOffers,currencies:{cash:Math.floor(w.cash||0),crowns:Math.floor(w.crowns||0),scrap:Math.floor(w.scrap||0)}},brigade:br?{...br,members:br.members.map(id=>({id,name:DB.players[id]?.name||id}))}:null}};
@@ -788,6 +789,31 @@ async function api(req, res, route) {
         st.mode='patrol';st.until=t+18*1000;st.reason=meta.curfewActive?'Тиха вилазка під час комендантської години пройшла успішно.':'Вулична вилазка пройшла без пригод.';st.loot={cash,xp,scrap,crowns:crown};
         w.message='Вулиця: +'+cash+' ₴, +'+xp+' XP, +'+scrap+' скрап'+(crown?' і +1 crown':'');
       }
+    } else if(b.action==='streetHide'){
+      const st=ensureStreet(),meta=streetMeta(t);
+      if(st.mode==='detained'||st.mode==='trench')return fail('Під час затримання або бою сховатися вже пізно');
+      if(meta.hideMs>0)return fail('Схованка вже активна ще '+Math.ceil(meta.hideMs/1000)+' с');
+      if((w.scrap||0)<6)return fail('Потрібно 6 scrap на схованку');
+      w.scrap-=6;st.hideUntil=t+20*MIN;w.message='Ти організував схованку. Наступні 20 хв ризик перевірки нижчий.';
+    } else if(b.action==='streetBribe'){
+      const st=ensureStreet();
+      if(st.mode!=='detained')return fail('Дати на лапу можна лише під час затримання');
+      if((w.cash||0)<480)return fail('Потрібно 480 ₴');
+      w.cash-=480;st.mode='idle';st.until=0;st.ready=false;st.loot=null;st.reason='';
+      w.message='Ти домовився на місці й вийшов без подальших наслідків.';
+    } else if(b.action==='streetLawyer'){
+      const st=ensureStreet();
+      if(st.mode!=='detained')return fail('Адвокат потрібен лише при затриманні');
+      if((w.crowns||0)<1)return fail('Потрібно 1 crown');
+      w.crowns-=1;st.until=Math.min(st.until||t,t+10*1000);st.ready=false;
+      w.message='Адвокат уже в дорозі. Перевірка завершиться значно швидше.';
+    } else if(b.action==='streetEscape'){
+      const st=ensureStreet(),v=vitalsOf(w,t);
+      if(st.mode!=='trench')return fail('Екстрена евакуація доступна лише на нулі');
+      if((w.crowns||0)<2||(w.scrap||0)<8)return fail('Потрібно 2 crowns і 8 scrap');
+      w.crowns-=2;w.scrap-=8;v.health=Math.max(1,v.health-6);
+      st.mode='idle';st.until=0;st.ready=false;st.loot=null;st.reason='';
+      w.message='Тебе евакуювали знайомі. Живий, але виснажений.';
     } else if(b.action==='streetCollect'){
       const st=ensureStreet(),meta=streetMeta(t);
       if(st.mode==='trench'){
