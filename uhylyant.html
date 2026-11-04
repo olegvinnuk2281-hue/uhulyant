@@ -1620,10 +1620,11 @@ function food(){
   S.uah-=c;S.foodAt=now();syncEnergy();S.energy=Math.min(maxEnergy(),S.energy+20);
   say('Борщ зроблений. Сили повертаються.');save();render();
 }
-const dailyReady=()=>now()-S.dailyAt>20*HOUR;
+// The original local 20h reward is disabled. One 24h wheel is authoritative on the server.
+const dailyReady=()=>now()-S.dailyAt>=24*HOUR;
 function daily(){
-  if(!dailyReady())return;
-  const v=basePay(tier())*5;S.dailyAt=now();gainMoney(v);say('Щоденний бонус: +₴'+fmt(v));toast('Бонус ₴'+fmt(v),'good');save();render();
+  if(window.UHYUI?.openWheel)return window.UHYUI.openWheel();
+  toast('Колесо доступне після підключення сервера','bad');
 }
 
 /* ---------- одяг ---------- */
@@ -1841,7 +1842,7 @@ function viewHome(){
   let h='<div class="card uhy-home-card"><div class="h">🏠 МОЯ ХАТА</div><div class="row"><div class="grow"><div class="name">'+esc(ht[ui.house]||ht.shack)+'</div><div class="sub">Це твій особистий інтерʼєр. Вся нерухомість зберігається за ігровим акаунтом.</div></div><button class="btn sm amber" data-act="myHouse">Мої хати</button></div></div>';
   h+='<div class="card"><div class="h">Вдома безпечно</div><div class="sub">Штори зачинені, світло вимкнено. Сюди ніхто не прийде, але гроші самі не зʼявляться.</div></div>';
   h+='<div class="card"><div class="row"><div class="grow"><div class="name">Приготувати вечерю</div><div class="sub">+20 енергії · ₴'+fmt(foodCost())+'</div></div><button class="btn sm" data-act="food"'+(fcd>0?' disabled':'')+'>'+(fcd>0?'<span class="cd" data-until="'+(S.foodAt+30000)+'"></span>':'Їсти')+'</button></div>'
-    +'<div class="row"><div class="grow"><div class="name">Щоденний бонус</div><div class="sub">₴'+fmt(basePay(t)*5)+' раз на 20 годин</div></div><button class="btn sm amber" data-act="daily"'+(dailyReady()?'':' disabled')+'>'+(dailyReady()?'Забрати':'<span class="cd" data-until="'+(S.dailyAt+20*HOUR)+'"></span>')+'</button></div></div>';
+    +'<div class="row"><div class="grow"><div class="name">🎡 Щоденне колесо</div><div class="sub">Випадкова серверна нагорода раз на 24 години. Відлік не скидається.</div></div><button class="btn sm amber" data-act="daily">Відкрити колесо</button></div></div>';
   if(S.job&&JOBS[S.job.ji].remote)h+=jobCard();
   const pool=JOBS.filter(j=>j.remote&&j.t<=t&&j.t>=Math.max(0,t-1));
   h+='<div class="card"><div class="h">Робота вдома · без ризику</div>'+pool.map(j=>'<div class="row"><div class="grow"><div class="name">'+esc(j.n)+'</div><div class="sub">₴'+fmt(gigPay(j,.7))+' · 8 енергії</div></div><button class="btn sm amber" data-act="gig" data-v="'+j.i+'" data-w="1">Працювати</button></div>').join('')+'</div>';
@@ -1951,9 +1952,30 @@ function showLocs(){
   const ph=phaseNow(),cur=S.look.loc||'yard';
   showOv('<h2>Локація</h2><p>Показується на всіх екранах, окрім затримання, боїв і фіналів. Нові відкриваються з рівнем.</p><div class="locg">'+UHART.LOCS.map(k=>{const need=UHART.LOC_LVL[k]||1,ok=S.level>=need,o=UHART.paint(k,{phase:ph,house:ui.house,thumb:1});return '<button class="loc'+(cur===k?' on':'')+(ok?'':' lock')+'" data-act="setloc" data-v="'+k+'">'+o.bg+'<span>'+o.name+(ok?'':' · 🔒 рів. '+need)+'</span></button>'}).join('')+'</div><button class="btn big" data-act="'+(S.started?'closeOv':'back')+'">Готово</button>');
 }
+// Original four-note ambient motif generated in Web Audio. Nothing plays until enabled.
+const UHY_AUDIO={ctx:null,music:false,sounds:false,timer:null,step:0};
+function soundTone(freq,len=.10,vol=.025,kind='triangle'){
+ try{if(!UHY_AUDIO.ctx){const T=window.AudioContext||window.webkitAudioContext;if(!T)return;UHY_AUDIO.ctx=new T();}
+ const ac=UHY_AUDIO.ctx,t=ac.currentTime+.012,o=ac.createOscillator(),g=ac.createGain();
+ o.type=kind;o.frequency.setValueAtTime(freq,t);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+len);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+len+.02);
+ }catch(e){}
+}
+function audioMusicStep(){
+ if(!UHY_AUDIO.music)return;
+ const notes=[220,262,330,294,220,247,330,392,330,294,262,196,220,262,294,247];
+ soundTone(notes[UHY_AUDIO.step++%notes.length],.28,.013);
+}
+function setMusicSound(kind){
+ if(kind==='music'){
+ UHY_AUDIO.music=!UHY_AUDIO.music;
+ if(UHY_AUDIO.music){audioMusicStep();UHY_AUDIO.timer=setInterval(audioMusicStep,480)}else{clearInterval(UHY_AUDIO.timer);UHY_AUDIO.timer=null}
+ }else{UHY_AUDIO.sounds=!UHY_AUDIO.sounds;if(UHY_AUDIO.sounds)soundTone(523,.09,.024,'sine')}
+ showSettings();
+}
+document.addEventListener('click',e=>{if(!UHY_AUDIO.sounds)return;const btn=e.target?.closest?.('button[data-act]');if(!btn)return;const action=btn.dataset.act;if(['audioMusic','audioSounds'].includes(action))return;soundTone(action==='daily'?784:396,.05,.013,'square')},true);
 function showSettings(){
   let low=false;try{low=localStorage.getItem('uhy_gfx')==='low'}catch(e){}
-  showOv('<h2>Налаштування</h2><div class="list"><button class="btn block" data-act="editHero">✎ Персонаж</button><button class="btn block" data-act="locs">📍 Локація</button><button class="btn block" data-act="gfx">Графіка: '+(low?'спрощена (економить батарею)':'висока')+'</button><button class="btn block" data-act="help">Правила гри</button><button class="btn red block" data-act="reset">Скинути гру</button></div><button class="btn big" data-act="closeOv">Закрити</button>');
+  showOv('<h2>Налаштування</h2><div class="list"><button class="btn block" data-act="editHero">✎ Персонаж</button><button class="btn block" data-act="locs">📍 Локація</button><button class="btn block" data-act="gfx">Графіка: '+(low?'спрощена (економить батарею)':'висока')+'</button><button class="btn block" data-act="audioMusic">♫ Музика: '+(UHY_AUDIO.music?'увімкнена':'вимкнена')+'</button><button class="btn block" data-act="audioSounds">🔊 Звуки: '+(UHY_AUDIO.sounds?'увімкнені':'вимкнені')+'</button><button class="btn block" data-act="help">Правила гри</button><button class="btn red block" data-act="reset">Скинути гру</button></div><button class="btn big" data-act="closeOv">Закрити</button>');
 }
 function showHelp(){
   showOv('<h2>Правила</h2><div class="list"><p>Енергія відновлюється сама. Працюй вдома без ризику або виходь на вулицю за кращими грошима.</p><p>Кожен вихід на вулицю ризикований. Якщо тебе затримали, спробуй втекти: <b style="color:var(--ink)">30%</b> в обласному ТЦК, <b style="color:var(--ink)">20%</b> по дорозі на навчання, <b style="color:var(--ink)">10%</b> на позиціях.</p><p>Одяг знижує ризик і підвищує заробіток. Бронь за золото працює справді, а бронь від роботодавця може виявитись липовою.</p><p>Мета: рівень '+MAXLVL+'. Там обереш: Європа чи карʼєра в Україні.</p></div><button class="btn amber big" data-act="closeOv">Зрозуміло</button>');
@@ -1966,6 +1988,8 @@ function showCountry(){
 }
 /* ---------- події ---------- */
 const ACT={
+  audioMusic:()=>setMusicSound('music'),
+  audioSounds:()=>setMusicSound('sounds'),
   editHero:()=>{ui.cfirst=false;showCreator(false)},
   ct:v=>{ui.ct=v;showCreator()},
   lk:(v,a)=>{const k=a.dataset.k,n=+v,L=S.look;if(k==='hc'){L.hc=n;L.hair=n}else L[k]=n;if(S.started){save();ui.sk='';renderScene()}showCreator()},
@@ -2177,6 +2201,16 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.started
 window.UHY={
  editor:()=>{if(S.started){ui.cfirst=false;showCreator(false)}},
  locs:()=>{if(S.started)showLocs()},
+ applyWheelSave:result=>{
+  if(!result || !S.started)return;
+  const prev=Number(S.dailyAt)||0, next=Number(result.dailyAt)||0;
+  if(next<prev)return;
+  if(Number.isFinite(Number(result.uah)))S.uah=Math.max(0,Number(result.uah));
+  if(next)S.dailyAt=next;
+  if(Array.isArray(result.inv))S.inv=result.inv.slice();
+  // This updates only the local view of an already committed server result.
+  save();render();
+ },
  setHouse:id=>{if(!['shack','room','flat','loft','lux'].includes(id))return;if(id!==ui.house){ui.house=id;ui.sk='';if(S.started)render()}},
  getHouse:()=>ui.house,
  // Artwork only: reuses the SAME in-game sprite layers used on the primary screen.

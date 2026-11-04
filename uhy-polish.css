@@ -178,3 +178,307 @@ body #uhyMore button{min-width:0;min-height:35px;border:1px solid #926b40;border
  body .tabs:has(#socialDock) #socialDock button{min-height:38px!important}
  body #uhyMore:not([hidden]){bottom:59px}
 }
+
+
+/* v23.1 · CASINO LAYOUT REPAIR — only the casino modal is modified.
+   All other game views retain the Claude-style layout and gameplay. */
+body #socialPanel.uhy-casino-mode .spbox{
+  width:min(1020px,calc(100vw - 20px))!important;
+  height:min(94dvh,780px)!important;
+  max-height:calc(100dvh - 12px)!important;
+}
+body #socialPanel.uhy-casino-mode .uhy-modal-scene{
+  flex:0 0 clamp(88px,13.5dvh,118px)!important;
+  border-bottom:2px solid #9c7448!important;
+}
+/* The original enlarged avatar escaped above the scene, cutting off its head. */
+body #socialPanel.uhy-casino-mode .uhy-modal-scene .uhy-layer-avatar{
+  left:5%!important;bottom:-1%!important;height:100%!important;
+  width:min(23%,136px)!important;
+  max-width:136px!important;animation:uhy-breathe 3s ease-in-out infinite alternate;
+}
+body #socialPanel.uhy-casino-mode .uhy-modal-scene .uhy-layer-avatar svg{
+  display:block;width:100%!important;height:100%!important;
+  overflow:visible;
+}
+body #socialPanel.uhy-casino-mode .uhy-modal-scene .uhy-modal-caption{
+  right:15px!important;bottom:12px!important;max-width:72%!important;
+  font-size:clamp(18px,2.8vw,25px)!important;
+}
+body #socialPanel.uhy-casino-mode .spclose{
+  top:6px!important;right:7px!important;min-height:29px!important;padding:5px 8px!important;
+}
+body #socialPanel.uhy-casino-mode .uhy-modal-quick{
+  padding:5px 8px!important;gap:5px!important;
+}
+body #socialPanel.uhy-casino-mode .uhy-modal-quick button{
+  min-height:30px!important;font-size:11px!important;
+}
+body #socialPanel.uhy-casino-mode #spBody{
+  padding:8px 11px 13px!important;
+  scroll-behavior:auto!important;
+  overscroll-behavior:contain;
+}
+/* Casino has its own masthead, so the global H2 is not repeated. */
+body #socialPanel.uhy-casino-mode #spBody>h2{display:none!important}
+body #socialPanel.uhy-casino-mode #spBody>.world-stat,
+body #socialPanel.uhy-casino-mode #spBody>.world-muted{display:none!important}
+body #socialPanel.uhy-casino-mode .world-card:has(.casino-stage){
+  width:100%!important;max-width:none!important;margin:0!important;
+  grid-column:1/-1!important;padding:0!important;border:0!important;
+  background:transparent!important;box-shadow:none!important;outline:none!important;
+}
+body #socialPanel.uhy-casino-mode .world-card:has(.casino-stage)>h3{display:none!important}
+body #socialPanel.uhy-casino-mode .world-grid{display:block!important;margin:0!important}
+body #socialPanel.uhy-casino-mode .casino-stage{
+  width:100%!important;max-width:100%!important;min-width:0!important;
+  margin:0!important;padding:12px!important;border:2px solid #a87c42!important;
+  border-radius:11px!important;box-shadow:inset 0 0 24px #0006!important;
+}
+body #socialPanel.uhy-casino-mode .casino-banner{margin:0 0 11px!important;gap:1px!important}
+body #socialPanel.uhy-casino-mode .casino-banner strong{
+  font:900 clamp(25px,3vw,34px)/1.04 Oswald,Impact,sans-serif!important;
+}
+body #socialPanel.uhy-casino-mode .casino-banner small{font-size:9px!important;letter-spacing:.18em!important}
+body #socialPanel.uhy-casino-mode .casino-banner span{font-size:10px!important;letter-spacing:.07em!important}
+body #socialPanel.uhy-casino-mode .casino-layout{
+  display:grid!important;grid-template-columns:minmax(0,1.35fr) minmax(230px,.9fr)!important;
+  align-items:start!important;gap:12px!important;
+}
+body #socialPanel.uhy-casino-mode .casino-main{min-width:0!important}
+body #socialPanel.uhy-casino-mode .slot-machine{
+  padding:13px 12px!important;border:3px solid #b18a4d!important;border-radius:10px!important;
+  min-width:0!important;height:auto!important;
+  box-shadow:inset 0 0 0 2px #1b120d,0 3px 0 #140b05!important;
+}
+body #socialPanel.uhy-casino-mode .slot-topline{font-size:15px!important;letter-spacing:.1em!important}
+body #socialPanel.uhy-casino-mode .slot-reels{
+  display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  max-width:395px!important;width:100%!important;
+  margin:10px auto!important;padding:6px!important;gap:6px!important;
+  border:3px solid #72502c!important;border-radius:8px!important;
+}
+body #socialPanel.uhy-casino-mode .slot-reel{
+  position:relative!important;display:block!important;min-width:0!important;
+  height:clamp(82px,11vw,118px)!important;
+  overflow:hidden!important;border:2px solid #7a5b35!important;
+  border-radius:7px!important;background:linear-gradient(#b9aa89,#fff3cf 36%,#fdf7e3 51%,#d9c59d 77%,#938166)!important;
+}
+/* Each reel contains THREE server-controlled symbols. Exactly one—the
+   middle symbol—must be centered and visible at rest. */
+body #socialPanel.uhy-casino-mode .slot-reel .reel-strip{
+  position:absolute!important;inset:-100% 0 auto!important;
+  width:100%!important;height:300%!important;
+  display:grid!important;grid-template-rows:repeat(3,minmax(0,1fr))!important;
+  justify-items:stretch!important;align-items:stretch!important;
+  gap:0!important;transform:translateY(0);
+  filter:none!important;animation:none!important;
+}
+body #socialPanel.uhy-casino-mode .slot-reel .reel-strip>span{
+  min-width:0!important;min-height:0!important;width:100%!important;height:100%!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  padding:3px!important;flex:none!important;
+  font:normal clamp(34px,4vw,61px)/1 system-ui,sans-serif!important;
+  filter:drop-shadow(1px 3px 1px #0004)!important;
+  overflow:hidden!important;
+}
+body #socialPanel.uhy-casino-mode .slot-reel.spinning .reel-strip{
+  animation:uhyCasinoCenterSpin .12s linear infinite!important;
+  filter:blur(1.2px)!important;
+}
+@keyframes uhyCasinoCenterSpin{
+  0%{transform:translateY(-33.333%)}
+  100%{transform:translateY(33.333%)}
+}
+body #socialPanel.uhy-casino-mode .slot-result{
+  min-height:28px!important;margin:3px auto 7px!important;
+  font:900 clamp(15px,2vw,19px)/1.25 Oswald,Impact,sans-serif!important;
+  color:#edc57c!important;text-align:center;
+}
+body #socialPanel.uhy-casino-mode .slot-result.winner{
+  color:#ffe479!important;animation:uhyCasinoPrize .65s cubic-bezier(.2,.8,.2,1)!important;
+  text-shadow:0 0 13px #f8b94399!important;
+}
+@keyframes uhyCasinoPrize{
+  0%{transform:translateY(-12px) scale(.91);opacity:.3}
+  65%{transform:translateY(3px) scale(1.04);opacity:1}
+  100%{transform:none;opacity:1}
+}
+body #socialPanel.uhy-casino-mode .slot-balance{margin:6px 0 5px!important;font-size:13px!important}
+body #socialPanel.uhy-casino-mode .bet-label{margin:3px auto!important;font-size:10px!important}
+body #socialPanel.uhy-casino-mode .slot-controls{
+  display:grid!important;grid-template-columns:minmax(42px,70px) minmax(65px,100px) minmax(42px,70px)!important;
+  align-items:center!important;justify-content:center!important;
+  gap:8px!important;margin:6px auto 9px!important;
+}
+body #socialPanel.uhy-casino-mode .slot-controls input{
+  min-width:0!important;width:100%!important;max-width:none!important;
+  height:39px!important;min-height:39px!important;margin:0!important;padding:0 4px!important;
+  text-align:center!important;font-size:20px!important;
+}
+body #socialPanel.uhy-casino-mode .slot-controls button{
+  width:100%!important;min-width:0!important;min-height:39px!important;padding:5px!important;font-size:17px!important;
+}
+body #socialPanel.uhy-casino-mode .spin-line{margin-top:3px!important}
+body #socialPanel.uhy-casino-mode .spin-line button{
+  min-height:43px!important;width:100%!important;padding:8px!important;font-size:14px!important;
+}
+body #socialPanel.uhy-casino-mode .casino-note{font-size:10px!important;margin-top:8px!important}
+body #socialPanel.uhy-casino-mode .paytable{
+  min-width:0!important;max-width:none!important;width:100%!important;
+  padding:11px!important;border:3px double #634421!important;border-radius:8px!important;
+  background:linear-gradient(155deg,#ead6aa,#c9ab7b)!important;
+  color:#322414!important;
+}
+body #socialPanel.uhy-casino-mode .paytable h3{
+  font-size:19px!important;color:#302014!important;margin:0 0 6px!important;
+}
+body #socialPanel.uhy-casino-mode .pay-header,
+body #socialPanel.uhy-casino-mode .pay-row{
+  padding:5px 1px!important;gap:5px!important;
+}
+body #socialPanel.uhy-casino-mode .pay-symbol{font-size:clamp(20px,2.25vw,26px)!important;line-height:1!important}
+body #socialPanel.uhy-casino-mode .pay-row b{font-size:20px!important}
+body #socialPanel.uhy-casino-mode .pay-foot{padding-top:8px!important;font-size:10px!important;line-height:1.35!important}
+@media(max-width:700px){
+ body #socialPanel.uhy-casino-mode .spbox{
+  width:100%!important;height:calc(100dvh - 8px)!important;max-height:calc(100dvh - 8px)!important;
+ }
+ body #socialPanel.uhy-casino-mode .uhy-modal-scene{flex-basis:78px!important}
+ body #socialPanel.uhy-casino-mode .uhy-modal-scene .uhy-layer-avatar{
+  width:74px!important;max-width:74px!important;left:12px!important;height:96%!important;
+ }
+ body #socialPanel.uhy-casino-mode .uhy-modal-scene .uhy-modal-caption{
+  right:8px!important;bottom:10px!important;max-width:65%!important;font-size:18px!important;
+ }
+ body #socialPanel.uhy-casino-mode .uhy-modal-scene .uhy-modal-caption small{font-size:9px!important;margin-top:2px!important}
+ body #socialPanel.uhy-casino-mode .uhy-modal-quick{gap:3px!important;padding:4px!important}
+ body #socialPanel.uhy-casino-mode .uhy-modal-quick button{min-width:56px!important;font-size:9.5px!important;padding:4px!important}
+ body #socialPanel.uhy-casino-mode #spBody{padding:7px 8px 15px!important}
+ body #socialPanel.uhy-casino-mode .casino-stage{padding:8px!important}
+ body #socialPanel.uhy-casino-mode .casino-layout{grid-template-columns:minmax(0,1fr)!important;gap:10px!important}
+ body #socialPanel.uhy-casino-mode .slot-machine{padding:10px 8px!important}
+ body #socialPanel.uhy-casino-mode .slot-reel{height:clamp(70px,21vw,98px)!important}
+ body #socialPanel.uhy-casino-mode .slot-reel .reel-strip>span{font-size:clamp(34px,12vw,53px)!important}
+ body #socialPanel.uhy-casino-mode .paytable{padding:9px!important}
+}
+@media(max-height:430px) and (orientation:landscape){
+ body #socialPanel.uhy-casino-mode .uhy-modal-scene{flex-basis:48px!important}
+ body #socialPanel.uhy-casino-mode .uhy-modal-scene .uhy-layer-avatar{height:100%!important;width:60px!important}
+ body #socialPanel.uhy-casino-mode .uhy-modal-quick{padding:3px!important}
+ body #socialPanel.uhy-casino-mode .uhy-modal-quick button{min-height:25px!important}
+ body #socialPanel.uhy-casino-mode .casino-layout{
+  grid-template-columns:minmax(0,1.25fr) minmax(155px,.85fr)!important;gap:7px!important;
+ }
+ body #socialPanel.uhy-casino-mode .slot-reel{height:58px!important}
+ body #socialPanel.uhy-casino-mode .slot-reel .reel-strip>span{font-size:31px!important}
+ body #socialPanel.uhy-casino-mode .pay-header,body #socialPanel.uhy-casino-mode .pay-row{padding:3px!important}
+ body #socialPanel.uhy-casino-mode .paytable h3{font-size:15px!important}
+ body #socialPanel.uhy-casino-mode .pay-symbol{font-size:16px!important}
+ body #socialPanel.uhy-casino-mode .pay-row b{font-size:16px!important}
+ body #socialPanel.uhy-casino-mode .pay-foot{font-size:9px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ body #socialPanel.uhy-casino-mode .slot-reel.spinning .reel-strip,
+ body #socialPanel.uhy-casino-mode .slot-result.winner{animation:none!important}
+}
+
+/* Explicit sizing avoids overflowing/brass table cropping in narrow views. */
+body #socialPanel.uhy-casino-mode .casino-stage,
+body #socialPanel.uhy-casino-mode .casino-layout,
+body #socialPanel.uhy-casino-mode .casino-layout > *,
+body #socialPanel.uhy-casino-mode .paytable,
+body #socialPanel.uhy-casino-mode .paytable *{box-sizing:border-box!important;min-width:0}
+body #socialPanel.uhy-casino-mode .pay-row{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:6px!important}
+body #socialPanel.uhy-casino-mode .pay-row b{flex:0 0 auto!important;white-space:nowrap!important}
+body #socialPanel.uhy-casino-mode .pay-row .pay-symbol{flex:0 1 auto!important;white-space:nowrap!important}
+body #socialPanel.uhy-casino-mode .uhy-casino-payouts{margin:10px 0 0!important;padding:0!important;border:1px solid #a87e43!important;border-radius:7px!important;background:#35271b!important;overflow:hidden!important}
+body #socialPanel.uhy-casino-mode .uhy-casino-payouts summary{cursor:pointer;list-style:none;text-align:center;color:#f5d49c;padding:10px 14px;font:800 13px Oswald,Impact,sans-serif;letter-spacing:.04em}
+body #socialPanel.uhy-casino-mode .uhy-casino-payouts summary::-webkit-details-marker{display:none}
+body #socialPanel.uhy-casino-mode .uhy-casino-payouts summary::after{content:" ▾"}
+body #socialPanel.uhy-casino-mode .uhy-casino-payouts[open] summary::after{content:" ▴"}
+body #socialPanel.uhy-casino-mode .uhy-casino-payouts .paytable{border:0!important;border-top:1px solid #aa7c4c!important;border-radius:0!important;margin:0!important;box-shadow:none!important}
+/* Casino panel hugs its content instead of leaving a large empty rectangle. */
+body #socialPanel.uhy-casino-mode .spbox{
+  height:fit-content!important;min-height:0!important;
+  max-height:calc(100dvh - 12px)!important;
+}
+@media(max-width:700px){
+ body #socialPanel.uhy-casino-mode .spbox{
+  height:fit-content!important;max-height:calc(100dvh - 8px)!important;
+ }
+}
+/* Keep utility clock from overlapping the casino dialog. */
+body:has(#socialPanel.uhy-casino-mode[style*="display: flex"]) #gameClockBadge,
+body:has(#socialPanel.uhy-casino-mode[style*="display:flex"]) #gameClockBadge{display:none!important}
+@media(max-height:430px) and (orientation:landscape){
+ body #socialPanel.uhy-casino-mode .uhy-modal-scene .uhy-modal-caption{
+  bottom:4px!important;right:8px!important;max-width:68%!important;
+  font-size:15px!important;line-height:1!important;
+ }
+ body #socialPanel.uhy-casino-mode .uhy-modal-scene .uhy-modal-caption small{
+  margin-top:0!important;font-size:8px!important;line-height:1!important;
+ }
+ body #socialPanel.uhy-casino-mode .spclose{
+  top:3px!important;right:4px!important;min-height:23px!important;
+  padding:2px 6px!important;font-size:10px!important;
+ }
+}
+
+/* v25: Consistent illustration icons on all systems — no emoji font baseline shifts. */
+body #socialPanel .slot-reel{display:grid!important;place-items:center!important;min-width:0!important;overflow:hidden!important}
+body #socialPanel .slot-reel .reel-strip{
+ display:grid!important;place-items:center!important;width:100%!important;height:100%!important;
+ min-width:0!important;line-height:1!important;gap:0!important;transform:none;
+}
+body #socialPanel .uhy-slot-icon{display:block;max-width:100%;max-height:100%;width:min(76%,88px);height:auto;aspect-ratio:1;object-fit:contain;flex:none;margin:0 auto;filter:drop-shadow(2px 3px 1px #21140e50);user-select:none;pointer-events:none}
+body #socialPanel .pay-row .pay-symbol{display:flex!important;align-items:center;gap:clamp(1px,.6vw,4px)!important;justify-content:flex-start;min-width:0!important;white-space:nowrap!important}
+body #socialPanel .pay-row .pay-symbol .uhy-slot-icon{width:clamp(24px,2.5vw,33px)!important;height:clamp(24px,2.5vw,33px)!important;margin:0!important;flex:none!important;filter:none}
+body #socialPanel .slot-reel.spinning .reel-strip{animation:uhyIconSpin .12s linear infinite!important;filter:blur(.8px)!important}
+@keyframes uhyIconSpin{0%{transform:translateY(-15%) scale(.92)}50%{transform:translateY(15%) scale(1.03)}100%{transform:translateY(-15%) scale(.92)}}
+body #socialPanel .slot-reel .reel-strip>span{display:none!important}
+@media(max-width:700px){body #socialPanel .pay-row .pay-symbol .uhy-slot-icon{width:29px!important;height:29px!important}}
+@media(max-height:430px) and (orientation:landscape){body #socialPanel .pay-row .pay-symbol .uhy-slot-icon{width:24px!important;height:24px!important}body #socialPanel .slot-reel .uhy-slot-icon{width:50px!important}}
+
+/* v25: The daily wheel uses weighted visual sectors, not equal-size fake odds. */
+body #socialPanel.uhy-wheel-mode .uhy-modal-scene{flex-basis:clamp(74px,12dvh,105px)!important}
+body #socialPanel.uhy-wheel-mode #spBody>h2{font-size:clamp(18px,3vw,24px)!important}
+body #socialPanel .uhy-wheel-page{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(220px,.92fr);align-items:start;gap:14px;min-width:0}
+body #socialPanel .uhy-wheel-main{min-width:0;display:flex;align-items:center;flex-direction:column;gap:10px;position:relative;background:linear-gradient(145deg,#473124,#261a13);border:2px solid #986c35;border-radius:12px;padding:18px 10px 16px;overflow:hidden}
+body #socialPanel .uhy-wheel-disc{width:min(100%,295px);aspect-ratio:1;border:9px solid #e3ac4c;outline:3px solid #221610;position:relative;border-radius:50%;box-shadow:0 12px 22px #0008,inset 0 0 0 4px #281b13;will-change:transform}
+body #socialPanel .uhy-wheel-disc::after{content:'';position:absolute;inset:4px;border:2px dashed #24140799;border-radius:50%;pointer-events:none}
+body #socialPanel .uhy-wheel-dots{position:absolute;inset:18px;border:1px solid #2e1a1166;border-radius:50%}
+body #socialPanel .uhy-wheel-center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:39%;aspect-ratio:1;background:radial-gradient(#ffe6b5,#d89b42);border:5px solid #211409;box-shadow:0 4px 10px #0008;border-radius:50%;display:flex;align-items:center;flex-direction:column;justify-content:center;text-align:center;color:#39200c}
+body #socialPanel .uhy-wheel-center strong{font:900 clamp(14px,2vw,19px) Oswald,Impact,sans-serif;letter-spacing:.035em}
+body #socialPanel .uhy-wheel-center small{font:800 8px Oswald,Impact,sans-serif;letter-spacing:.06em}
+body #socialPanel .uhy-wheel-pointer{position:absolute;z-index:6;top:10px;left:50%;transform:translateX(-50%);height:34px;width:34px;clip-path:polygon(50% 100%,4% 4%,96% 4%);background:#ffedaa;filter:drop-shadow(0 2px 2px #000);border:2px solid #1e140b}
+body #socialPanel #uhyWheelNext{font:800 13px Oswald,Impact,sans-serif;color:#ffe4a1!important;text-align:center}
+body #socialPanel #uhyWheelSpin{width:min(100%,320px);min-height:40px!important;font-size:17px!important}
+body #socialPanel .uhy-wheel-result{text-align:center;min-height:50px;font-size:13px;color:#ffe6b0!important}
+body #socialPanel .uhy-wheel-result p{margin-top:5px!important;font-size:11px}
+body #socialPanel .uhy-wheel-award{font:900 clamp(20px,3vw,30px) Oswald,Impact,sans-serif;color:#ffe187;animation:uhyAwardDrop .7s cubic-bezier(.14,.82,.4,1.1) both}
+body #socialPanel .uhy-wheel-recent{font-size:12px}
+body #socialPanel .uhy-wheel-odds{min-width:0;background:#ddc79e;color:#332314;border:2px solid #a17a40;border-radius:10px;padding:13px}
+body #socialPanel .uhy-wheel-odds h3{color:#3b2617!important;border-bottom:2px solid #6d4a25;padding-bottom:8px}
+body #socialPanel .uhy-wheel-prize{display:flex;align-items:center;gap:9px;padding:5px 0;border-bottom:1px solid #aa8756;min-width:0}
+body #socialPanel .uhy-wheel-prize span{width:32px;text-align:center;font-size:22px}
+body #socialPanel .uhy-wheel-prize b{color:#352514;font:800 13px Oswald,Impact,sans-serif;flex:1}
+body #socialPanel .uhy-wheel-prize small{white-space:nowrap;color:#6a3e1d;font-weight:800}
+body #socialPanel .uhy-wheel-prize.legendary b{color:#984f0d}
+body #socialPanel .uhy-wheel-odds .world-muted{color:#63452a!important;font-size:10px!important;margin-top:8px!important}
+@keyframes uhyAwardDrop{0%{transform:translateY(-25px) scale(.7);opacity:0}64%{transform:translateY(5px) scale(1.05);opacity:1}100%{transform:none;opacity:1}}
+@media(max-width:730px){body #socialPanel .uhy-wheel-page{grid-template-columns:minmax(0,1fr)}body #socialPanel .uhy-wheel-disc{width:min(65vw,255px)}body #socialPanel .uhy-wheel-odds{padding:10px}body #socialPanel .uhy-wheel-prize{padding:4px 0}}
+@media(max-height:450px) and (orientation:landscape){body #socialPanel .uhy-wheel-page{grid-template-columns:minmax(0,1fr) minmax(200px,.9fr)}body #socialPanel .uhy-wheel-disc{width:min(37vh,170px)}body #socialPanel .uhy-wheel-center strong{font-size:12px}body #socialPanel .uhy-wheel-center small{font-size:7px}}
+@media(prefers-reduced-motion:reduce){body #socialPanel .slot-reel.spinning .reel-strip,body #socialPanel .uhy-wheel-award{animation:none!important}}
+
+/* Critical compatibility: v23.1 triple-row reel transform must not move the new SVG out of view. */
+body #socialPanel.uhy-casino-mode .slot-reel{display:grid!important;place-items:center!important}
+body #socialPanel.uhy-casino-mode .slot-reel .reel-strip{
+ position:relative!important;inset:auto!important;left:auto!important;top:auto!important;right:auto!important;bottom:auto!important;
+ height:100%!important;width:100%!important;display:grid!important;grid-template-rows:minmax(0,1fr)!important;
+ align-content:center!important;align-items:center!important;justify-items:center!important;
+ transform:none!important;animation:none!important;filter:none!important;
+}
+body #socialPanel.uhy-casino-mode .slot-reel.spinning .reel-strip{
+ animation:uhyIconSpin .12s linear infinite!important;filter:blur(.8px)!important;
+}

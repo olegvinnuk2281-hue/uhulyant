@@ -1,18 +1,19 @@
 /* Claude-style game finish: shared scene for every secondary tab.
    Gameplay, economy and authentication stay inside the existing client/server. */
 (()=>{'use strict';
- const map={housing:'МОЯ ХАТА',casino:'ВОРОНЯЧИЙ ФАРТ',world:'ВУЛИЦЯ ТА РОБОТА',career:'КАРʼЄРА',leaderboard:'ТОП ГРАВЦІВ',friends:'ДРУЗІ',news:'НОВИНИ МІСТА',account:'МІЙ АКАУНТ',brigade:'БИТВА З БОСАМИ'};
+ const map={wheel:'КОЛЕСО БОНУСІВ',housing:'МОЯ ХАТА',casino:'ВОРОНЯЧИЙ ФАРТ',world:'ВУЛИЦЯ ТА РОБОТА',career:'КАРʼЄРА',leaderboard:'ТОП ГРАВЦІВ',friends:'ДРУЗІ',news:'НОВИНИ МІСТА',account:'МІЙ АКАУНТ',brigade:'БИТВА З БОСАМИ'};
  const $=s=>document.querySelector(s);
- let active='housing',stamp='',queued=false;
+ let active='housing',stamp='',queued=false,lastDisplayedSection='';
  function openSection(sec){
   const dock=$('#socialDock [data-sp="'+sec+'"]');
   if(dock){dock.click();return}
   if(sec==='brigade'){hideOverlay();const boss=$('#tabs [data-act="tab"][data-v="boss"]');if(boss)boss.click()}
  }
- function hideOverlay(){const close=$('#spClose');if(close)close.click();else{const panel=$('#socialPanel');if(panel)panel.style.display='none'}}
+ function hideOverlay(){lastDisplayedSection='';const close=$('#spClose');if(close)close.click();else{const panel=$('#socialPanel');if(panel)panel.style.display='none'}}
  function detect(){
   const body=$('#spBody');if(!body)return active;
   const title=(body.querySelector('h2')?.textContent||'').toLowerCase();
+  if(/колесо|бонус/.test(title))return 'wheel';
   if(/казино|вороняч/.test(title))return 'casino';
   if(/хати|нерухом|житло/.test(title))return 'housing';
   if(/кар.єра|навички/.test(title))return 'career';
@@ -43,12 +44,30 @@
   }
   return art;
  }
+ function tidyCasinoPaytable(){
+  const body=$('#spBody');if(!body)return;
+  const table=body.querySelector('.paytable');if(!table)return;
+  const old=body.querySelector('.uhy-casino-payouts');
+  const mobile=window.matchMedia('(max-width:700px) and (orientation:portrait)').matches;
+  if(mobile&&!old){
+   const wrap=document.createElement('details');wrap.className='uhy-casino-payouts';
+   const summary=document.createElement('summary');summary.textContent='📜 Таблиця виплат і джекпотів';
+   table.before(wrap);wrap.append(summary,table);
+  }else if(!mobile&&old){old.replaceWith(table)}
+ }
  function refresh(){
   queued=false;
   const panel=$('#socialPanel'),body=$('#spBody');
   if(!panel||!body||panel.style.display==='none')return;
   const art=ensureArt();if(!art||!window.UHY?.snapshot)return;
   active=detect();
+  // Only change layout for casino; other screens remain untouched.
+  panel.classList.toggle('uhy-casino-mode',active==='casino');
+  if(active==='casino')tidyCasinoPaytable();
+  if(active!==lastDisplayedSection){
+   body.scrollTop=0;
+   lastDisplayedSection=active;
+  }
   const house=window.UHY.getHouse?.()||'shack';
   const key=active+'|'+house+'|'+(new Date().getHours()>=20?'night':'day')+'|'+(body.querySelector('h2')?.textContent||'');
   if(stamp!==key){
@@ -79,6 +98,8 @@
     const nav=e.target.closest?.('[data-sp]');if(nav){active=nav.dataset.sp;stamp='';queue()}
     const button=e.target.closest?.('[data-act="tab"]');if(button){stamp='';queue()}
    },true);
+   document.addEventListener('click',e=>{if(e.target?.closest?.('#spClose'))lastDisplayedSection='';},true);
+   window.addEventListener('resize',()=>{stamp='';queue()},{passive:true});
    window.addEventListener('focus',()=>{stamp='';queue()});
    document.addEventListener('visibilitychange',()=>{if(!document.hidden){stamp='';queue()}});
    setInterval(()=>{if($('#socialPanel')?.style.display==='flex'){stamp='';queue()}},60000);
