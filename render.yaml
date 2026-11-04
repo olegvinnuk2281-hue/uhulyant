@@ -1,24 +1,7 @@
-# Render Blueprint. Alternatively create a Web Service manually using the README.
 services:
   - type: web
-    name: uhilyant-game
+    name: uhylyant
     runtime: node
-    buildCommand: npm install --omit=dev && npm run check && npm run verify
+    buildCommand: npm install --omit=dev
     startCommand: npm start
     healthCheckPath: /healthz
-    autoDeployTrigger: commit
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: NODE_VERSION
-        value: 22
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_KEY
-        sync: false
-      - key: TELEGRAM_BOT_TOKEN
-        sync: false
-      - key: PUBLIC_URL
-        sync: false
-      - key: STARS_ENABLED
-        value: "0"

@@ -20,17 +20,6 @@ body{padding-bottom:calc(75px + env(safe-area-inset-bottom))!important}
 #uhyAuth .auth-msg,#spBody .auth-msg{min-height:25px;color:#ffd07a}
 #uhyAuth .auth-switch{display:flex;flex-wrap:wrap;gap:4px;margin:12px 0}
 #uhyAuth small{color:#c6b69d;display:block;margin-top:12px}
-\n/* Telegram secure single-tap login status. Never show password entry in Mini App. */
-#uhyAuth .tg-state{width:min(420px,100%);padding:28px 22px;text-align:center;box-shadow:0 18px 60px #000;background:linear-gradient(140deg,#30261d,#141716);border:2px solid #d7a046;border-radius:18px}
-#uhyAuth .tg-state h2{letter-spacing:.07em;margin:12px 0}
-#uhyAuth .tg-state p{margin:10px 0 12px;line-height:1.5;white-space:pre-line;overflow-wrap:anywhere}
-#uhyAuth .tg-state .tg-icon{font-size:47px;display:block;filter:drop-shadow(0 3px #0008)}
-#uhyAuth .tg-state .tg-spinner{width:35px;height:35px;border:3px solid #725433;border-top-color:#f6ba4e;border-radius:50%;animation:uhy-auth-spin .7s linear infinite;margin:15px auto}
-#uhyAuth .tg-state .tg-actions{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin-top:14px}
-#uhyAuth .tg-state .tg-actions button,#uhyAuth .tg-state .tg-actions a{display:inline-flex;justify-content:center;align-items:center;padding:12px 15px;margin:0;border-radius:8px;border:1px solid #987345;background:#f6b33f;color:#24170a;font-weight:800;text-decoration:none;cursor:pointer}
-#uhyAuth .tg-state .tg-actions a{background:#44362a;color:#ffe6b9}
-@keyframes uhy-auth-spin{to{transform:rotate(360deg)}}
-@media(prefers-reduced-motion:reduce){#uhyAuth .tg-state .tg-spinner{animation:none}}
 `;
 const st=document.createElement('style');st.textContent=css;document.head.append(st);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -83,16 +72,6 @@ body.innerHTML=`<h2>👤 Мій акаунт</h2><p>${st?.username?'Логін: 
 if(legacy)attachForm(body.querySelector('.account-form'),'claim','pf',token,refresh);
 else if(st?.username)attachForm(body.querySelector('.account-form'),'change','pf',token);
 if(st?.username)attachForm(body.querySelector('#emailForm'),'email','em',token,refresh);
-if(st?.telegram){
-const box=document.createElement('div');box.className='account-form';box.innerHTML='<h3>🔗 Повернути старий акаунт</h3><p>Якщо раніше грав на сайті з логіном та паролем, привʼяжи його до Telegram. Прогрес старого акаунта буде відкрито замість новоствореного Telegram-профілю.</p><input id="telegramOldUser" placeholder="Старий логін" autocomplete="username"><input id="telegramOldPass" type="password" placeholder="Старий пароль" autocomplete="current-password"><button id="telegramOldLink" type="button">Привʼязати старий акаунт</button><p class="auth-msg" id="telegramOldMsg"></p>';
-body.append(box);box.querySelector('#telegramOldLink').onclick=async()=>{
-const button=box.querySelector('#telegramOldLink'),msg=box.querySelector('#telegramOldMsg');button.disabled=true;
-const r=await request('telegram/link',{username:box.querySelector('#telegramOldUser').value,password:box.querySelector('#telegramOldPass').value},token);
-button.disabled=false;
-if(!r.ok){msg.textContent=r.err||'Помилка';return}
-localStorage.setItem('vt_net',JSON.stringify({id:r.id,key:r.key,telegram:true}));location.reload();
-};
-}
 body.querySelector('#pfForgot').onclick=()=>showGate('forgot');
 body.querySelector('#pfLogout').onclick=()=>{localStorage.removeItem('vt_net');location.reload()};
 }
@@ -101,121 +80,36 @@ const original=document.querySelector('#tabs'),dock=document.querySelector('#soc
 if(!original||!dock||dock.dataset.unified)return;
 dock.dataset.unified='1';
 const originalTabs=[...original.querySelectorAll(':scope > .tab')];
-const social=[...dock.querySelectorAll('[data-sp]')];
-const oldActions=originalTabs.map((b,i)=>({
- label:['🏠 Дім','⚔ Бої','🚶 Маршрути','🧥 Одяг','🧭 Шлях','💎 Донат'][i]||b.textContent.trim(),
- action:()=>document.querySelectorAll('#tabs > .tab')[i]?.click(),key:'tab'+i
-}));
-const newActions=[...social.map(b=>({label:b.textContent.trim(),action:()=>window.UHY_NAV?.open?.(b.dataset.sp),key:b.dataset.sp})),{label:'⚔ Боси й ключі',action:()=>window.UHY_NAV?.open?.('raids'),key:'raids'},{label:'💼 Робота',action:()=>window.UHY_NAV?.open?.('work'),key:'work'},{label:'🛒 Магазин',action:()=>window.UHY_NAV?.open?.('shop'),key:'shop'}];
-const entries=[...oldActions,...newActions];
-const find=key=>entries.find(x=>x.key===key);
-let menu=document.getElementById('uhyMore');
-if(!menu){menu=document.createElement('div');menu.id='uhyMore';document.body.append(menu)}
-menu.replaceChildren();menu.hidden=true;
-const make=(parent,label,action)=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=()=>{menu.hidden=true;action()};parent.append(b);return b};
-const primary=[['tab0','🏠 Дім'],['raids','⚔ Боси'],['world','🏙 Вулиця'],['casino','🎰 Казино']];
-dock.replaceChildren();
-primary.forEach(([id,label])=>{const item=find(id);if(item)make(dock,label,item.action)});
-const more=make(dock,'☰ Меню',()=>{});more.onclick=()=>{menu.hidden=!menu.hidden};
-const groups=[
- ['👤 ПЕРСОНАЖ',[['tab3','🧥 Одяг'],['housing','🏠 Хати'],['health','🩺 Здоровʼя'],['account','👤 Акаунт']]],
- ['🌆 СВІТ',[['tab2','🚶 Маршрути'],['tab4','🧭 Шлях'],['career','🎖 Карʼєра'],['work','💼 Робота']]],
- ['⚔ АРЕНА',[['tab1','🥊 Соло-бій'],['raids','🔑 Боси та ключі']]],
- ['🏆 СПІЛЬНОТА',[['leaderboard','🏆 Рейтинг'],['friends','👥 Друзі'],['news','📰 Новини']]],
- ['💎 МАГАЗИН',[['tab5','💎 Донат'],['shop','🛒 Ігровий магазин']]]
-];
-groups.forEach(([title,items])=>{
- const h=document.createElement('div');h.className='uhyMoreHeader';h.textContent=title;menu.append(h);
- items.forEach(([id,label])=>{const item=find(id);if(item)make(menu,label,item.action)});
-});
-window.__uhyNavClose=()=>{menu.hidden=true};
+// Keep original server-owned [data-sp] controls connected to the dock.
+// The server's delegated click handler needs them as event targets.
+const raw=document.createElement('div');raw.hidden=true;raw.dataset.uhyRaw='1';
+const extra=[...dock.querySelectorAll('[data-sp]')].map(b=>{raw.append(b);return {label:b.textContent,action:()=>b.click(),key:b.dataset.sp}});
+const menu=document.getElementById('uhyMore')||document.createElement('div');menu.id='uhyMore';menu.hidden=true;menu.replaceChildren();if(!menu.isConnected)document.body.append(menu);
+const entries=originalTabs.map((b,i)=>({label:b.textContent.trim()||'Розділ '+(i+1),
+ action:()=>{const current=document.querySelector('#tabs>.tab[data-act="tab"][data-v="'+b.dataset.v+'"]');if(current)current.click()},key:'tab'+i})).concat(extra);
+const find=(needle)=>entries.find(x=>x.key===needle)||entries.find(x=>x.label.toLowerCase().includes(needle));
+const primary=[find('tab0'),find('tab1'),find('world'),find('casino')].filter(Boolean);
+dock.replaceChildren(raw);
+const make=(parent,label,action)=>{const b=document.createElement('button');b.textContent=label;b.onclick=()=>{menu.hidden=true;action()};parent.append(b);return b};
+primary.forEach(x=>make(dock,x.label,x.action));
+const more=make(dock,'☰ Меню',()=>{menu.hidden=!menu.hidden});
+more.onclick=()=>{menu.hidden=!menu.hidden};
+entries.filter(x=>!primary.includes(x)).forEach(x=>make(menu,x.label,x.action));
+if(!document.body.dataset.uhyEscapeBound){document.body.dataset.uhyEscapeBound='1';document.addEventListener('keydown',e=>{if(e.key==='Escape'){const m=document.getElementById('uhyMore');if(m)m.hidden=true}})}
 }
+// The original client redraws #tabs on every game update.
+// Restore the unified launcher after EACH redraw instead of reverting to 14 buttons.
+const tabHost=document.querySelector('#tabs');
+if(tabHost){new MutationObserver(()=>{const dock=tabHost.querySelector('#socialDock');if(dock&&!dock.dataset.unified)nav()}).observe(tabHost,{childList:true})}
 window.UHYACCOUNT={render:renderAccount};
-const TELEGRAM_APP_LINK='https://t.me/Uhilyant_UAbot?startapp';
-function getTelegramInitData(){
- const raw=window.Telegram?.WebApp?.initData;
- if(typeof raw==='string'&&raw.length>0)return raw;
- // SDK may fail to initialize; Telegram also passes initData in launch hash.
- // This is NEVER trusted directly: /api/telegram/auth checks the HMAC signature.
- const search=new URLSearchParams(location.hash.replace(/^#/,''));
- return search.get('tgWebAppData')||new URLSearchParams(location.search).get('tgWebAppData')||'';
-}
-function telegramLaunchHint(){
- if(getTelegramInitData())return true;
- const params=String(location.hash||'')+'&'+String(location.search||'');
- if(/(?:^|[&#?])tgWebApp(?:Platform|Version|Data|StartParam)=/i.test(params))return true;
- const platform=window.Telegram?.WebApp?.platform;
- return !!(platform&&platform!=='unknown');
-}
-function telegramGate(){
- if(!gate){gate=document.createElement('div');gate.id='uhyAuth';document.body.append(gate)}
- gate.hidden=false;return gate;
-}
-function telegramState(mode,message){
- const root=telegramGate();
- root.innerHTML='<section class="tg-state" role="status" aria-live="polite"><span class="tg-icon" aria-hidden="true">🎮</span><h2>УХИЛЯНТ</h2><p id="tgStatus"></p><div id="tgProgress"></div><div id="tgActions" class="tg-actions"></div></section>';
- root.querySelector('#tgStatus').textContent=message;
- if(mode==='loading')root.querySelector('#tgProgress').innerHTML='<div class="tg-spinner" aria-label="Завантаження"></div>';
- else{
-  const retry=document.createElement('button');retry.type='button';retry.textContent='🔄 Спробувати ще раз';retry.onclick=()=>init();
-  const launch=document.createElement('a');launch.href=TELEGRAM_APP_LINK;launch.target='_blank';launch.rel='noopener noreferrer';launch.textContent='🚀 Відкрити гру в боті';
-  root.querySelector('#tgActions').append(retry,launch);
- }
-}
-async function waitForTelegramInitData(){
- for(let i=0;i<7;i++){
-  const data=getTelegramInitData();if(data)return data;
-  await new Promise(resolve=>setTimeout(resolve,180));
- }
- return '';
-}
-let initializing=false;
 async function init(){
- if(initializing)return;
- initializing=true;
- try{
-  nav();
-  let token;try{token=JSON.parse(localStorage.getItem('vt_net')||'null')}catch{token=null}
-  if(new URLSearchParams(location.search).has('reset')){showGate('reset');return}
-  if(telegramLaunchHint()){
-   telegramState('loading','Підключаємося через Telegram…');
-   try{window.Telegram?.WebApp?.ready?.();window.Telegram?.WebApp?.expand?.()}catch(e){}
-   const data=await waitForTelegramInitData();
-   if(!data){
-    telegramState('error','Telegram не передав дані входу. Запусти гру кнопкою «Відкрити застосунок» у @Uhilyant_UAbot, а не звичайним посиланням на сайт.');
-    return;
-   }
-   const r=await request('telegram/auth',{initData:data},token);
-   if(!r.ok||!r.id||!r.key){
-    telegramState('error','Автоматичний вхід недоступний. '+(r.err||'Помилка сервера')+'\nПеревір TELEGRAM_BOT_TOKEN у Render та кнопку Mini App у BotFather.');
-    return;
-   }
-   if(!token||token.id!==r.id||token.key!==r.key){
-    localStorage.setItem('vt_net',JSON.stringify({id:r.id,key:r.key,telegram:true}));
-    // Original game reads vt_net during its first JS execution. Reload once so
-    // all subsystems receive the same verified account and cached world state.
-    location.reload();return;
-   }
-   if(gate)gate.hidden=true;
-   return;
-  }
-  // Direct website mode retains normal login; never fabricate a Telegram user.
-  if(!token?.id||!token?.key){showGate('login');return}
-  const r=await request('account/status',null,token);
-  if(!r.ok){showGate('login');return}
-  if(r.legacy){showGate('claim');return}
-  if(gate)gate.hidden=true;
- }finally{initializing=false}
+nav();
+const token=(()=>{try{return JSON.parse(localStorage.getItem('vt_net')||'null')}catch{return null}})();
+if(new URLSearchParams(location.search).has('reset')){showGate('reset');return}
+if(!token?.id||!token?.key){showGate('login');return}
+const r=await request('account/status',null,token);
+if(!r.ok){showGate('login');return}
+if(r.legacy){showGate('claim');return}
 }
-// The main game recreates #tabs on each render. Rebuild the 5-button dock
-// whenever that happens, including after character creation or changing tabs.
-function watchNav(){
- const tabs=document.querySelector('#tabs');if(!tabs)return;
- const observer=new MutationObserver(()=>{
-  if(document.querySelector('#socialDock')&&!document.querySelector('#socialDock[data-unified]'))nav();
- });
- observer.observe(tabs,{childList:true});
- nav();
-}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{watchNav();init()});else{watchNav();init()}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();

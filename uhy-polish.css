@@ -1,0 +1,180 @@
+/* УХИЛЯНТ 23 · Claude-style refinement
+   The user's uploaded game remains the foundation. Only alignment, visual modules,
+   and the illustration system already present in UHART are polished here. */
+:root{--uh-copper:#a37b45;--uh-amber:#f4b33b;--uh-ink:#140e09;--uh-surface:#30231b;--uh-mid:#483425;--uh-text:#f2dfbf;}
+html{overflow:hidden}
+body{min-width:0;max-width:1500px;isolation:isolate}
+body .hud,body .scene,body .content,body .tabs{min-width:0}
+body .hud{border:2px solid #a27a47!important;box-shadow:0 3px 0 #100a08!important;background:#30231b!important;border-radius:9px!important}
+body .scene{outline:1px solid #b0854c!important;border:3px solid #17100c!important;border-radius:9px!important;box-shadow:0 4px 0 #100a07,0 9px 24px #0006!important}
+body .scene .lyr.hero{filter:drop-shadow(3px 5px 1px #130e0ac9)!important}
+body .scene .lyr.boss{filter:drop-shadow(-4px 5px 1px #130e0acc)!important}
+body .scene .lyr svg{min-width:0;max-width:100%}
+body .scene-tag{border:1px solid #c09659!important;background:#19120de3!important;color:#ffce75!important;line-height:1.2}
+body .scene-btns button{font-size:12px!important;min-height:30px!important;padding:5px 9px!important}
+body .scene-btns{gap:5px!important}
+body .content{scrollbar-width:thin;scrollbar-color:#967040 #241b15}
+body .content .card,body .content .paper{border-radius:7px!important;border:2px solid #8c6a3e!important;box-shadow:0 3px 0 #100b08!important;background:#30231b;min-width:0}
+body .content .paper{background:linear-gradient(#e8d4ac,#c7ae7d)!important;color:#281c11!important}
+body .content .card .h{color:#d9b27a!important;letter-spacing:.07em;font-size:13px!important}
+body .content .card .name{font-size:13.5px!important}
+body .content .row{gap:8px;min-width:0;flex-wrap:wrap}
+body .content .row .grow{min-width:130px;flex:1}
+body .content .btn{min-width:0;min-height:35px!important;padding:6px 11px!important;border-radius:7px!important;font-size:12px!important;box-shadow:0 2px 0 #130c08!important;white-space:normal;line-height:1.1}
+body .content .btn.amber{background:linear-gradient(#f8be50,#e7a234)!important;color:#271807!important;border:2px solid #7b4e1b!important}
+body .content .btn.red{background:linear-gradient(#dc765e,#ae4536)!important;border:2px solid #742d22!important}
+body .content .stats3{grid-template-columns:repeat(3,minmax(0,1fr))}
+body .tabs{border:2px solid #967145!important;border-radius:8px!important;box-shadow:0 3px 0 #110b08!important;min-width:0;overflow-x:hidden!important}
+body .tabs .tab{min-width:0!important;padding:6px 2px!important;font-size:11px!important}
+body .tabs .tab.on{background:linear-gradient(#f7c35b,#e6a435)!important;color:#28170c!important}
+body .tabs .tab svg{width:19px;height:19px}
+body #socialDock{max-width:100%;overflow:visible!important}
+body #socialDock button{min-height:32px!important;padding:5px 6px!important;line-height:1.1!important;font-size:11px!important}
+/* Combat roster: actual existing boss sprites, not placeholder emoji portraits. */
+body .uhy-roster-card{gap:8px}
+body .uhy-boss-roster{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+body .uhy-boss-tile{min-width:0;display:flex;align-items:center;gap:8px;min-height:73px;padding:6px;background:linear-gradient(135deg,#4b3628,#251b14);border:1px solid #795938;border-radius:6px;overflow:hidden}
+body .uhy-boss-tile.is-current{border:2px solid #e8ad47;box-shadow:inset 0 0 15px #e7a13a33}
+body .uhy-boss-tile.is-locked{opacity:.67}
+body .uhy-boss-portrait{width:55px;height:62px;flex:0 0 55px;position:relative;overflow:hidden;background:linear-gradient(#b5a188,#6b5e4b);border:2px solid #28190c;border-radius:5px}
+body .uhy-boss-portrait svg{position:absolute;inset:-6% -13%;width:126%;height:126%;object-fit:contain}
+body .uhy-boss-meta{display:flex;min-width:0;flex-direction:column;gap:2px;font-size:11px;line-height:1.1}
+body .uhy-boss-meta b{font:800 13px Oswald,Impact,sans-serif;color:#efcca0;white-space:normal}
+body .uhy-boss-meta small{font-size:10px;color:#c3aa8a}
+body .uhy-boss-meta span{font:800 9px Oswald,Impact,sans-serif;color:#f1b849}
+body .uhy-home-card{border-color:#cb9250!important}
+/* Secondary screens: keep the character / scene, leave existing mechanics untouched. */
+body #socialPanel{padding:8px max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))!important;background:#0e0a08e9!important;backdrop-filter:blur(4px)!important}
+body #socialPanel .spbox{display:flex!important;flex-direction:column!important;gap:0!important;width:min(1140px,100%)!important;height:min(94dvh,900px)!important;max-height:100%!important;overflow:hidden!important;position:relative;background:#241a14!important;border:2px solid #9a703e!important;border-radius:10px!important;padding:0!important;box-shadow:0 12px 45px #000b!important}
+body #socialPanel .spclose{position:absolute!important;right:10px!important;top:9px!important;z-index:30!important;float:none!important;margin:0!important;padding:7px 11px!important;min-height:33px!important;background:linear-gradient(#f2b84b,#e19830)!important;color:#27180c!important;border:2px solid #654018!important;border-radius:6px!important;font:700 12px Oswald,Impact,sans-serif!important;box-shadow:0 2px 0 #180d08!important}
+body #socialPanel .uhy-modal-scene{position:relative;flex:0 0 clamp(110px,19dvh,175px);min-height:0;overflow:hidden;border-bottom:3px solid #9c7448;background:#75644e;isolation:isolate}
+body #socialPanel .uhy-modal-scene .uhy-layer-bg,body #socialPanel .uhy-modal-scene .uhy-layer-fg{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+body #socialPanel .uhy-modal-scene .uhy-layer-bg svg,body #socialPanel .uhy-modal-scene .uhy-layer-fg svg{height:100%;width:100%;display:block}
+body #socialPanel .uhy-modal-scene .uhy-layer-bg{z-index:0}
+body #socialPanel .uhy-modal-scene .uhy-layer-fg{z-index:3}
+body #socialPanel .uhy-modal-scene .uhy-layer-avatar{position:absolute;z-index:2;left:3%;bottom:-14%;height:137%;width:min(34%,195px);filter:drop-shadow(2px 3px 1px #110c0999);animation:uhy-breathe 3s ease-in-out infinite alternate}
+body #socialPanel .uhy-modal-scene .uhy-layer-avatar svg{width:100%;height:100%}
+body #socialPanel .uhy-modal-scene::after{content:'';z-index:4;position:absolute;inset:0;background:linear-gradient(90deg,transparent 23%,#17100a0d 39%,#17100ac4 97%);pointer-events:none}
+body #socialPanel .uhy-modal-scene .uhy-modal-caption{position:absolute;z-index:5;right:56px;bottom:12px;text-align:right;max-width:60%;color:#ffe1a0;font:900 clamp(18px,3vw,26px)/1.05 Oswald,Impact,sans-serif;letter-spacing:.045em;text-shadow:2px 2px 0 #1b110b}
+body #socialPanel .uhy-modal-scene .uhy-modal-caption small{display:block;font:600 11px IBM Plex Sans,system-ui;color:#eecb8d;letter-spacing:0;margin-top:6px}
+body #socialPanel .uhy-modal-quick{flex:none;display:flex;flex-wrap:nowrap;gap:5px;padding:7px 10px;background:#33251b;border-bottom:1px solid #7b5c3c;overflow-x:auto;scrollbar-width:thin}
+body #socialPanel .uhy-modal-quick button{flex:1 0 auto;min-width:65px!important;margin:0!important;min-height:30px!important;padding:5px 9px!important;border:1px solid #82633e!important;border-radius:5px!important;background:#4b3728!important;color:#f6ddb4!important;font:700 11px Oswald,Impact,sans-serif!important;box-shadow:none!important}
+body #socialPanel #spBody{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;padding:12px 13px 24px!important;scrollbar-color:#a47c4d #241b15!important}
+body #socialPanel h2{font:900 clamp(18px,2.5vw,25px) Oswald,Impact,sans-serif!important;letter-spacing:.05em;color:#f6c46b!important;margin:0 65px 10px 0!important}
+body #socialPanel h3{font:800 16px Oswald,Impact,sans-serif!important;letter-spacing:.02em;color:#edbd78!important;margin:0 0 8px!important}
+body #socialPanel p{line-height:1.4}
+body #socialPanel .world-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;margin:9px 0!important}
+body #socialPanel .world-card{min-width:0!important;padding:11px!important;gap:8px!important;border:2px solid #7b5c39!important;border-radius:8px!important;background:#30231b!important;box-shadow:0 3px 0 #100c08!important}
+body #socialPanel .world-wide{grid-column:1/-1!important}
+body #socialPanel .world-list{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+body #socialPanel .world-job{min-width:0!important;padding:9px!important;border:1px solid #755838!important;border-radius:6px!important;background:#241a14!important;display:flex;flex-direction:column;gap:6px}
+body #socialPanel .world-job b{font:800 13px Oswald,Impact,sans-serif!important;color:#f1c781!important}
+body #socialPanel .world-job small{font-size:10px!important;color:#c7b18f!important;line-height:1.35!important}
+body #socialPanel .world-actions{display:flex;gap:6px!important;flex-wrap:wrap}
+body #socialPanel button:not(.spclose):not(.uhy-modal-quick button){min-width:0;min-height:33px!important;padding:6px 10px!important;border:1px solid #8a602c!important;border-radius:6px!important;background:linear-gradient(#f0b546,#db9530)!important;color:#27190e!important;font:800 12px Oswald,Impact,sans-serif!important;letter-spacing:.02em;line-height:1.1;box-shadow:0 2px 0 #140c08!important}
+body #socialPanel button.secondary{background:#4c3929!important;color:#f3ddb6!important;border-color:#a57c46!important}
+body #socialPanel .world-stat{display:flex;flex-wrap:wrap;gap:6px!important}
+body #socialPanel .world-stat span{font-size:12px;padding:6px 10px!important;background:#261b15!important;border:1px solid #795734!important;border-radius:5px!important}
+body #socialPanel .world-muted{color:#c7b191!important;font-size:11px!important}
+body #socialPanel .uhy-house-tile.is-current{border:2px solid #ebad45!important}
+body #socialPanel .uhy-house-preview{width:100%;height:80px;overflow:hidden;border:2px solid #52391f;border-radius:6px;background:#a58d6e}
+body #socialPanel .uhy-house-preview svg{width:100%;height:100%;display:block}
+body #socialPanel .uhy-raid-boss{display:flex;align-items:center;gap:8px;border:1px solid #806039;border-radius:6px;background:#241a14;padding:5px;min-width:0}
+body #socialPanel .uhy-raid-art{width:58px;height:63px;flex:0 0 58px;overflow:hidden;border:2px solid #3c2818;border-radius:5px;background:#776653}
+body #socialPanel .uhy-raid-art svg{width:100%;height:100%}
+body #socialPanel .uhy-raid-boss>div:nth-child(2){flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+body #socialPanel .uhy-raid-boss small{color:#c9ae8a;font-size:10px}
+body #socialPanel .uhy-raid-boss button{flex:none!important;width:auto!important;margin:0!important}
+body #socialPanel .casino-stage{padding:clamp(8px,1.6vw,13px)!important;background:linear-gradient(#241b14,#15100c)!important;border:2px solid #b28648!important;border-radius:9px!important}
+body #socialPanel .casino-banner{margin-bottom:10px!important}
+body #socialPanel .casino-banner strong{font:900 clamp(25px,3.5vw,40px) Oswald,Impact,sans-serif!important;letter-spacing:.06em;color:#f4bc58!important}
+body #socialPanel .casino-layout{display:grid!important;grid-template-columns:minmax(0,1.5fr) minmax(190px,.9fr)!important;gap:10px!important}
+body #socialPanel .slot-machine{padding:12px!important;border:3px solid #946e36!important;border-radius:9px!important;background:#32241b!important}
+body #socialPanel .slot-reels{max-width:390px!important;margin:7px auto!important;padding:7px!important;gap:6px!important;border:3px solid #5b3e1c!important;border-radius:7px!important;background:#15100c!important}
+body #socialPanel .slot-reel{min-width:0;height:clamp(75px,12vw,116px)!important;border:2px solid #7d633a!important;border-radius:6px!important}
+body #socialPanel .slot-controls{flex-wrap:nowrap!important;gap:7px!important}
+body #socialPanel .slot-controls input{width:90px!important;max-width:100px!important;min-height:35px!important;padding:4px!important;font-size:20px!important}
+body #socialPanel .slot-controls button{flex:1;min-width:0!important}
+body #socialPanel .slot-result{min-height:25px!important;font-size:16px!important}
+body #socialPanel .spin-line button{width:100%;min-height:42px!important;font-size:16px!important}
+body #socialPanel .paytable{padding:10px!important;border:2px solid #9d7847!important;border-radius:8px!important;background:#dfc99c!important;color:#2b1e14!important}
+body #socialPanel .paytable h3{color:#422619!important;font-size:19px!important}
+body #socialPanel .pay-row{padding:5px 0!important}
+body #socialPanel .pay-row b{font-size:18px!important}
+body #socialPanel .pay-foot{font-size:10px!important;line-height:1.4!important}
+body #socialPanel .spitem{border-bottom:1px solid #755533!important;padding:10px 0!important}
+body #socialPanel .career-head,body #socialPanel .career-skill,body #socialPanel .career-road,body #socialPanel .career-training{border-radius:7px!important;border-color:#926f40!important}
+@keyframes uhy-breathe{from{transform:translateY(0)}to{transform:translateY(-3px)}}
+@media (min-width:900px) and (min-height:560px){body .scene .lyr.hero{height:min(var(--hh),76%)!important}body #socialPanel .world-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:899px), (max-height:559px){
+ body .tabs{max-height:min(23dvh,148px)!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;padding:4px!important;overflow-y:visible!important}
+ body .tabs .tab{min-height:37px;font-size:10px!important;gap:2px!important}
+ body #socialDock{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:3px!important}
+ body #socialDock button{min-height:28px!important;padding:4px 3px!important;font-size:10px!important}
+ body .scene{height:clamp(162px,31dvh,280px)!important}
+ body .content .row .grow{min-width:90px}
+ body #socialPanel .spbox{height:calc(100dvh - 12px)!important;max-height:calc(100dvh - 12px)!important}
+ body #socialPanel .uhy-modal-scene{flex-basis:clamp(85px,20dvh,130px)}
+ body #socialPanel #spBody{padding:9px 9px 17px!important}
+ body #socialPanel .world-grid{grid-template-columns:1fr!important}
+ body #socialPanel .world-wide{grid-column:auto!important}
+ body #socialPanel .world-list{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ body #socialPanel .casino-layout{grid-template-columns:1fr!important}
+ body #socialPanel .slot-reel{height:85px!important}
+}
+@media(max-width:510px){
+ body .hud{padding:6px 8px!important}
+ body .hud .wallet{gap:3px}
+ body .hud .chip{font-size:10px!important;padding:0 5px!important}
+ body .who-txt b{font-size:12px}
+ body .scene .lyr.hero{height:72%!important;bottom:-6%!important}
+ body .scene-btns button{padding:5px 7px!important;font-size:10px!important}
+ body .scene-tag{font-size:10px!important;max-width:47%}
+ body .content .btn{font-size:11px!important;padding:5px 8px!important}
+ body #socialPanel .uhy-modal-quick{gap:4px!important;padding:5px!important}
+ body #socialPanel .uhy-modal-quick button{font-size:10px!important;min-width:60px!important;padding:4px!important}
+ body #socialPanel .uhy-modal-caption{max-width:50%!important;right:51px!important;font-size:16px!important}
+ body #socialPanel .world-list{grid-template-columns:1fr!important}
+ body #socialPanel .uhy-raid-boss{flex-wrap:wrap}
+ body #socialPanel .uhy-raid-boss button{margin-left:auto!important}
+ body .uhy-boss-roster{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ body .uhy-boss-portrait{width:42px;height:53px;flex-basis:42px}
+ body .uhy-boss-meta b{font-size:11px}
+}
+@media(max-height:430px) and (orientation:landscape){
+ body .hud{padding:4px 8px!important;gap:3px!important}
+ body .scene{height:clamp(125px,33dvh,220px)!important}
+ body .tabs{max-height:100px!important}
+ body .tabs .tab{min-height:29px!important;padding:2px!important}
+ body #socialPanel .uhy-modal-scene{flex-basis:73px}
+ body #socialPanel .uhy-modal-quick{padding:4px!important}
+ body #socialPanel .uhy-modal-quick button{min-height:26px!important}
+ body #socialPanel #spBody{padding:6px 10px!important}
+ body #socialPanel .world-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(prefers-reduced-motion:reduce){body #socialPanel .uhy-layer-avatar{animation:none!important}}
+/* A single navigation dock when the account module adds its five-button launcher.
+   The original six buttons remain in the DOM as action targets for the launcher. */
+body .tabs:has(#socialDock){display:block!important;min-height:0!important;padding:5px!important;overflow:visible!important;max-height:none!important}
+body .tabs:has(#socialDock)>button.tab{display:none!important}
+body .tabs:has(#socialDock) #socialDock{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:5px!important;min-height:0!important;padding:0!important}
+body .tabs:has(#socialDock) #socialDock button{min-width:0!important;min-height:40px!important;white-space:normal!important;padding:5px 4px!important;font-size:11px!important}
+body #uhyMore:not([hidden]){position:fixed!important;z-index:11000!important;right:max(10px,env(safe-area-inset-right));bottom:calc(64px + env(safe-area-inset-bottom));width:min(520px,calc(100vw - 20px));max-height:min(68dvh,390px);overflow:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding:10px;background:#2d2018;border:2px solid #b18449;border-radius:10px;box-shadow:0 12px 45px #000c}
+body #uhyMore[hidden]{display:none!important}
+body #uhyMore button{min-width:0;min-height:35px;border:1px solid #926b40;border-radius:6px;background:#4b3624;color:#ffe0af;padding:6px 4px;font:700 11px Oswald,Impact,sans-serif;white-space:normal}
+@media(max-width:510px){body #uhyMore:not([hidden]){grid-template-columns:repeat(2,minmax(0,1fr))}body .tabs:has(#socialDock) #socialDock button{font-size:10px!important;min-height:37px!important}}
+/* Landscape gameplay is a true two-column layout rather than a postage-stamp scene above cards. */
+@media(max-height:430px) and (orientation:landscape){
+ body{display:grid!important;grid-template-columns:minmax(0,1.06fr) minmax(0,.94fr)!important;grid-template-rows:auto minmax(0,1fr) auto!important;gap:5px 8px!important;min-height:0!important;padding:0 8px!important;height:100dvh!important}
+ body .hud{grid-column:1/-1!important;grid-row:1!important;margin:5px 0 0!important;padding:3px 8px!important}
+ body .hud .who-txt small{font-size:9px!important}
+ body .hud .bar.xp{height:5px!important}
+ body .scene{grid-column:1!important;grid-row:2!important;align-self:stretch!important;width:100%!important;height:100%!important;min-height:0!important;max-height:none!important}
+ body .scene .lyr.hero{height:80%!important;bottom:-9%!important}
+ body .content{grid-column:2!important;grid-row:2!important;min-height:0!important;padding:1px 2px 5px!important;overflow:auto!important}
+ body .tabs{grid-column:1/-1!important;grid-row:3!important;margin:0 0 4px!important;max-height:52px!important;min-height:0!important;display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;overflow:visible!important;padding:3px!important}
+ body .tabs .tab{min-height:35px!important;max-height:41px!important}
+ body .tabs:has(#socialDock) #socialDock{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+ body .tabs:has(#socialDock) #socialDock button{min-height:38px!important}
+ body #uhyMore:not([hidden]){bottom:59px}
+}
