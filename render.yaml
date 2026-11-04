@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: uhylyant
+    runtime: node
+    buildCommand: npm install --omit=dev
+    startCommand: npm start
+    healthCheckPath: /healthz
