@@ -275,8 +275,8 @@ body{padding:0 14px!important;gap:0!important;overflow:hidden!important}
 .scene .lyr{position:absolute;inset:0;pointer-events:none}
 .scene .lyr svg{width:100%;height:100%;display:block}
 .scene .lyr.bg{z-index:0}
-.scene .lyr.hero{inset:auto;left:var(--hx,1%);bottom:-4%;height:var(--hh,84%);aspect-ratio:200/262;z-index:3;will-change:transform;animation:heroB 3.6s ease-in-out infinite alternate;filter:drop-shadow(5px 6px 0 #0007)}
-.scene .lyr.boss{inset:auto;right:3%;bottom:-4%;height:92%;aspect-ratio:200/262;z-index:2;filter:drop-shadow(-5px 6px 0 #0007)}
+.scene .lyr.hero{inset:auto;left:var(--hx,1%);bottom:0;height:var(--hh,84%);aspect-ratio:200/306;z-index:3;will-change:transform;animation:heroB 3.6s ease-in-out infinite alternate;filter:drop-shadow(5px 6px 0 #0007)}
+.scene .lyr.boss{inset:auto;right:3%;bottom:0;height:92%;aspect-ratio:200/306;z-index:2;filter:drop-shadow(-5px 6px 0 #0007)}
 .scene .lyr.boss svg{transform:scaleX(-1)}
 .scene .lyr.fg{z-index:5}
 #hero.punch{animation:punch .35s!important}
@@ -489,7 +489,19 @@ function hairFront(c,hasHat){
   const fc=(d,x)=>fi(d,hc,2.2,x||'')+`<path d="${d}" fill="url(#uh-h1)" opacity=".42"/>`;
   const shine=(d)=>ln(d,1.4,lite(hc,.45),'opacity=".55"');
   if(hatLow){
-    /* лише скроні та бокові бачки з-під головного убору */
+    if(h===4)return '';
+    if(h===3)o+=fc(`M65 65Q58 96 68 119L76 111Q69 89 73 66Z`)+fc(`M135 65Q142 96 132 119L124 111Q131 89 127 66Z`);
+    /* Маленький чубчик під козирком і бокові пасма зберігають обрану зачіску. */
+    const fringe={
+      0:`M78 47 Q87 42 96 46 L95 51 Q86 48 80 53Z`,
+      1:`M72 47 Q84 41 97 45 L94 52 Q84 48 76 55Z`,
+      2:`M70 46 Q83 39 98 44 L95 53 Q83 48 74 56Z`,
+      3:`M74 47 Q85 41 97 45 L94 52 Q86 48 78 55Z`,
+      5:`M70 48 Q75 40 82 45 Q88 38 95 44 Q103 39 110 46 L108 52 Q99 47 93 52 Q85 48 78 55Z`,
+      6:`M90 48 L93 41 Q100 36 107 42 L109 50 Q100 46 95 52Z`,
+      7:`M72 47 Q84 41 97 45 L94 52 Q84 48 76 55Z`
+    }[h];
+    if(fringe)o+=fc(fringe);
     o+=fc(`M66 52 Q64 62 67 72 L72 70 Q71 62 73 52Z`)+fc(`M134 52 Q136 62 133 72 L128 70 Q129 62 127 52Z`);
     return o;
   }
@@ -601,6 +613,9 @@ function wearBody(B,c,b,sk,ar){
     }
     sleeves=ar.map(a=>sleeve(a,true)+(l==='police'?fl(`M${a.sx2-a.w*.3} 150 h${a.w*.6} v8 h-${a.w*.6}Z`,'#d6b33a','stroke="#1a110b" stroke-width="1"'):'')+(l==='camo'||l==='general'?`<clipPath id="cm${a.sx>100?'r':'l'}"><path d="${a.d}"/></clipPath><g clip-path="url(#cm${a.sx>100?'r':'l'})"><ellipse cx="${a.sx2}" cy="172" rx="9" ry="6" fill="${dark(C,.45)}" opacity=".7"/><ellipse cx="${a.sx2-2}" cy="204" rx="7" ry="6" fill="#b5a870" opacity=".5"/></g>`:''));
   }
+  const seam=uid();
+  body+=`<clipPath id="${seam}"><path d="${td}"/></clipPath><g clip-path="url(#${seam})" fill="none" stroke="${lite(col,.3)}" stroke-width=".8" opacity=".55"><path d="M${100-b.ww+3} 211 Q100 219 ${100+b.ww-3} 211" stroke-dasharray="2 2"/><path d="M${100-b.bw+6} 128 Q${100-b.ww+6} 164 ${100-b.ww+4} 203M${100+b.bw-6} 128 Q${100+b.ww-6} 164 ${100+b.ww-4} 203"/></g>`;
+  if(['jacket','leather','vest'].includes(l))body+=`<path d="M101 140v64" stroke="#c2b9a4" stroke-width="1" stroke-dasharray="1 2"/><rect x="99" y="168" width="4" height="7" rx="1" fill="#d5c8ad" stroke="${INK}" stroke-width=".8"/>`;
   return {body,sleeves};
 }
 
@@ -649,7 +664,7 @@ function person(cfg){
   /* задні шматки */
   if(hasBp)o+=form(`M${100-b.bw-8} 112 Q${100-b.bw-14} 150 ${100-b.ww-8} 200 L${100+b.ww+8} 200 Q${100+b.bw+14} 150 ${100+b.bw+8} 112Z`,dark(A.col,.18),{dx:-4});
   if(isHood)o+=hoodBack(H);
-  if(c.hair===3&&!hasHat)o+=hairBack(c,hasHat);
+  if(c.hair===3&&!isHood)o+=hairBack(c,hasHat);
   if(c.full!==false)o+=wearLegs(L,c,b,sk,true)+wearShoes(F,c,b,sk);
   /* тулуб (шкіра під одягом) */
   const td=torsoD(b);
@@ -687,9 +702,9 @@ function person(cfg){
   o+=hoodBackFix(isHood,H);
   o+=headSvg;
   /* волосся / убори */
-  o+=hairFront(c,hasHat);
-  if(hasHat&&!isHood)o+=hat(H,c,hd2);
-  if(isHood)o+=hoodFront(H);
+  if(hasHat&&!isHood){o+=hat(H,c,hd2);o+=hairFront(c,true)}
+  else if(isHood){o+=hoodFront(H);o+=hairFront(c,true)}
+  else o+=hairFront(c,false);
   /* окуляри / навушники */
   if(A.look==='glasses')o+=`<circle cx="89" cy="62" r="11.4" fill="#bcd8ff" fill-opacity=".22" stroke="${A.col}" stroke-width="3"/><circle cx="118" cy="62" r="11" fill="#bcd8ff" fill-opacity=".22" stroke="${A.col}" stroke-width="3"/>`+ln(`M100.4 61 h6.8M77.6 60 L68 56M129 58 L134 56`,2.4,A.col)+ln(`M83 57 l6 -3`,1.4,'#fff','opacity=".6"');
   if(A.look==='headphones')o+=ln(`M62 64 C58 14 142 14 138 64`,7,A.col)+ln(`M62 64 C58 14 142 14 138 64`,1.2,INK)+fi(`M52 54 h13 q3 0 3 3 v22 q0 3 -3 3 h-13 q-4 0 -4 -4 v-20 q0 -4 4 -4Z`,A.col,2.2)+fi(`M135 54 h13 q4 0 4 4 v20 q0 4 -4 4 h-13 q-3 0 -3 -3 v-22 q0 -3 3 -3Z`,A.col,2.2);
@@ -701,7 +716,7 @@ function hoodBackFix(isHood,H){return ''}
 function svg(cfg,vb,opts){
   opts=opts||{};
   const flt=opts.nofilter?'':' filter="url(#uh-ink)"';
-  return `<svg viewBox="${vb||'0 0 200 300'}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" preserveAspectRatio="xMidYMax meet"><g${flt} stroke-linejoin="round">${person(cfg)}</g></svg>`;
+  return `<svg viewBox="${vb||'0 -8 200 324'}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" preserveAspectRatio="xMidYMax meet"><g${flt} stroke-linejoin="round">${person(cfg)}</g></svg>`;
 }
 
 /* ---------- конфіг для гравця ---------- */
@@ -1398,7 +1413,7 @@ const XP_K=900;
 const XP_DIV=l=>1+XP_K*l/6000;
 const xpGain=(en,l,m)=>Math.round(en*(4+0.2*l)*m);
 const itemPrice=t=>t===0?0:Math.round(100*Math.pow(4,t));
-const ESC=[0.30,0.20,0.10];
+const ESC=[0.18,0.18,0.18];
 const RANKS=[[0,'Безробітний'],[10,'Підробітник'],[40,'Працівник'],[100,'Фахівець'],[250,'Старший фахівець'],[500,'Керівник групи'],[1000,'Менеджер'],[1500,'Начальник відділу'],[2500,'Директор'],[3500,'Топ-менеджер'],[4500,'Власник бізнесу'],[5500,'Магнат'],[6000,'Легенда'],[9000,'Міф'],[14000,'Невмирущий'],[22000,'Бог ТЦК'],[40000,'Поза часом']];
 const rankOf=l=>{let r=RANKS[0][1];RANKS.forEach(x=>{if(l>=x[0])r=x[1]});return r};
 
@@ -1489,7 +1504,7 @@ function load(){
 }
 let saveSyncTimer;
 function save(){window.__vd=1;clearTimeout(saveSyncTimer);saveSyncTimer=setTimeout(()=>{if(typeof netSync==='function')netSync(false)},450);try{const d=JSON.stringify(S);localStorage.setItem(KEY,JSON.stringify({d:S,h:hh(d)}))}catch(e){}}
-const ui={tab:'home',slot:'head',lastSig:'',ov:'',ct:'pre',sk:'',house:'shack'}; // Персональне житло синхронізується з world.housing.current
+const ui={tab:'home',slot:'head',lastSig:'',ov:'',ct:'pre',sk:'',house:'shack',sceneReady:false,captureUntil:0,captureTimer:0}; // Персональне житло синхронізується з world.housing.current
 
 /* ---------- характеристики ---------- */
 function gear0(){const r={st:0,ch:0,en:0};Object.keys(S.eq).forEach(k=>{const it=ITEM[S.eq[k]];if(it){r.st+=it.st;r.ch+=it.ch;r.en+=it.en}});return r}
@@ -1516,7 +1531,7 @@ const RAID=[{n:'Низький',m:.65,c:'green'},{n:'Середній',m:1,c:'am
 function bronState(){const t=now();if(S.bronUntil>t)return'real';if(S.fakeUntil>t)return'fake';return''}
 function riskFor(mod){
   if(S.end==='eu')return 0;
-  if(S.end==='ua'&&S.ua.link>=5)return 0;
+
   let r=.40-gear().st*.004+mod;
   if(S.wantedUntil>now())r+=.15;
   r*=RAID[raid().lvl].m;
@@ -1548,37 +1563,21 @@ function gainXP(x){
 const bribeCost=()=>basePay(tier())*10;
 const CAUGHT_TXT=['З-за рогу виїхав бус. «Громадянине, на хвилинку!»','Тебе зупинили біля магазину. «Документи, будь ласка».','«Просто перевіримо дані», — сказав чоловік у формі.'];
 const TCC_TXT=['Тебе завели в обласний ТЦК. Двері зачинені, але охорона на секунду відволіклась.','Тебе везуть на навчання. Бус став на заправці. Це шанс.','Ти на позиціях. Шансів мало, але вони є.'];
-function caught(fake){
-  S.tcc={stage:0,nextAt:0,busy:false};S.st.caught++;
-  if(fake){S.fakeUntil=0;S.bronUntil=S.bronUntil>now()?S.bronUntil:0}
-  say(fake?'Бронь виявилась липовою. Тебе забрали.':pick(CAUGHT_TXT));
-  save();render();
+async function tccCommand(action){if(ui.tccRequest)return;ui.tccRequest=true;try{if(!await netSync(true))throw Error('Дочекайся збереження');const r=await api('tcc/choice',{action});if(!r?.ok)throw Error(r?.err||'Немає зв’язку');NET.walletRevision=r.walletRevision;adopt(r.save);}catch(e){toast(e.message,'bad')}finally{ui.tccRequest=false}}
+function caught(fake){tccCommand('begin');}
+function startTccArrival(){
+  ui.captureUntil=now()+1900;
+  clearTimeout(ui.captureTimer);
+  ui.captureTimer=setTimeout(()=>{ui.captureUntil=0;ui.captureTimer=0;if(S.started)renderScene()},2100);
+  if(UHY_AUDIO.sounds){for(let i=0;i<6;i++)soundTone(i%2?880:580,.25,.014,'sine',i*.26);}
 }
 function outing(mod){
   const b=bronState();
-  if(b==='real')return true;
+
   if(Math.random()<riskFor(mod)){caught(b==='fake');return false}
   return true;
 }
-function tccTry(){
-  const t=S.tcc;if(!t||t.busy||now()<t.nextAt)return;
-  t.busy=true;render();
-  setTimeout(()=>{
-    if(!S.tcc)return;
-    t.busy=false;
-    if(Math.random()<ESC[t.stage]){
-      S.tcc=null;S.wantedUntil=now()+15*MIN;S.st.escaped++;
-      gainXP(xpNeed(S.level));
-      say(pick(['Ти рвонув у двори й зник у підʼїзді.','Охорона відвернулась на мить, і ти на волі!','Перелізти паркан було важко, але вийшло.']));
-      toast('Втік! Тебе шукатимуть 15 хвилин','good');
-    }else if(t.stage<2){
-      t.stage++;say(pick(['Двері зачинено. Спроба не вдалась.','Тебе наздогнали й повернули в бус.']));
-    }else{
-      t.nextAt=now()+TCC_CD;say('Не вийшло. Наступна спроба за кілька хвилин.');
-    }
-    save();render();
-  },1300);
-}
+function tccTry(){return tccCommand('run')}
 function release(txt){S.tcc=null;S.wantedUntil=now()+5*MIN;say(txt);toast(txt,'good');save();render()}
 
 /* ---------- робота ---------- */
@@ -1705,19 +1704,19 @@ function checkEnding(){
   S.seenEnd=true;save();netSync(true);
   showOv(S.end==='eu'
    ?'<h2>Ти влаштувався</h2><p>Своя справа, свій дім, чужа мова, яку ти вже знаєш. Ніхто не питає документи на кожному розі.</p><button class="btn amber big" data-act="ngplus">Нове життя (+25% до доходів)</button><button class="btn block" data-act="closeOv">Лишитись тут</button>'
-   :'<h2>Критичне підприємство</h2><p>Твоя фірма має бронь, а ти маєш звʼязки. ТЦК більше не торкнеться тебе в цьому місті.</p><button class="btn amber big" data-act="ngplus">Нове життя (+25% до доходів)</button><button class="btn block" data-act="closeOv">Лишитись тут</button>');
+   :'<h2>Критичне підприємство</h2><p>Твоя фірма має бронь, а ти маєш звʼязки. Звʼязки знижують ризик зустрічі. На перевірці все одно потрібно показати дійсну бронь.</p><button class="btn amber big" data-act="ngplus">Нове життя (+25% до доходів)</button><button class="btn block" data-act="closeOv">Лишитись тут</button>');
 }
 function ngplus(){const keep={name:S.name,look:S.look,gold:S.gold,ng:S.ng+1};S=Object.assign(S0(),keep,{started:true});hideOv();ui.tab='home';save();render();say('Нове життя. Ти знову на початку, але з досвідом.')}
 
 /* ---------- аватар (ART) ---------- */
 function avatarInner(look,eq,mood){return UHART.person(UHART.cfgFor(look,eq,mood))}
-function avatarSVG(look,eq,mood,vb,o){return UHART.svg(UHART.cfgFor(look,eq,mood),vb||'0 0 200 300',o)}
+function avatarSVG(look,eq,mood,vb,o){return UHART.svg(UHART.cfgFor(look,eq,mood),vb||'0 -8 200 324',o)}
 const VB={head:'50 14 100 100',body:'22 100 156 130',legs:'54 204 92 98',shoes:'48 268 104 36',acc:'6 60 188 210'};
 const thumb=it=>avatarSVG(S.look,Object.assign({},BASE_EQ,{[it.slot]:it.id}),'ok',VB[it.slot],{nofilter:true});
 
 /* ---------- сцени ---------- */
 function van(x,y,s,lights){
-  return '<g transform="translate('+x+','+y+') scale('+s+')"><rect x="0" y="6" width="64" height="28" rx="5" fill="#4a5a3d"/><path d="M64 14h10l8 10v10H64z" fill="#566a48"/><rect x="69" y="17" width="9" height="8" fill="#9fd0e8" opacity=".85"/><rect x="8" y="12" width="20" height="10" rx="2" fill="#0f141a" opacity=".55"/><text x="38" y="29" font-size="10" font-weight="700" fill="#eef2f4" font-family="Oswald,Arial Narrow,sans-serif">ТЦК</text><circle cx="16" cy="35" r="6" fill="#14181d"/><circle cx="68" cy="35" r="6" fill="#14181d"/>'+(lights?'<rect x="22" y="1" width="8" height="5" fill="#ff4d4d"/><rect x="34" y="1" width="8" height="5" fill="#4d8dff"/>':'')+'</g>';
+  return '<g transform="translate('+x+','+y+') scale('+s+')"><rect x="0" y="6" width="64" height="28" rx="5" fill="#4a5a3d"/><path d="M64 14h10l8 10v10H64z" fill="#566a48"/><rect x="69" y="17" width="9" height="8" fill="#9fd0e8" opacity=".85"/><rect x="8" y="12" width="20" height="10" rx="2" fill="#0f141a" opacity=".55"/><text x="38" y="29" font-size="10" font-weight="700" fill="#eef2f4" font-family="Oswald,Arial Narrow,sans-serif">ТЦК</text><circle cx="16" cy="35" r="6" fill="#14181d"/><circle cx="68" cy="35" r="6" fill="#14181d"/>'+(lights?'<rect class="v27-siren-red" x="22" y="1" width="8" height="5" fill="#ff4d4d"/><rect class="v27-siren-blue" x="34" y="1" width="8" height="5" fill="#4d8dff"/>':'')+'</g>';
 }
 function scene(kind){if(kind==='cell')return cellSVG();return decor(scene0(kind),kind)}
 function scene0(kind){
@@ -1760,7 +1759,7 @@ function scene0(kind){
     [[20,70,120],[96,60,150],[196,80,110],[286,60,134]].forEach((b,i)=>{o+='<rect x="'+b[0]+'" y="'+(150-b[2])+'" width="'+b[1]+'" height="'+b[2]+'" fill="#1f2d4a"/>';for(let r=0;r<Math.floor(b[2]/14);r++)for(let c=0;c<Math.floor(b[1]/14);c++)o+='<rect x="'+(b[0]+5+c*13)+'" y="'+(154-b[2]+r*13)+'" width="8" height="8" fill="'+((i+r+c)%3?'#9ec9ee':'#f2d98a')+'" opacity=".85"/>'});
     o+='<rect y="150" width="360" height="26" fill="#1a2030"/>';
   }
-  return '<svg viewBox="0 0 360 176" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" aria-hidden="true">'+o+'<svg x="135" y="26" width="90" height="135" viewBox="0 0 200 300">'+'<g filter="url(#toonH)">'+avatarInner(S.look,S.eq,S.tcc?'scared':'ok')+'</g></svg></svg>';
+  return '<svg viewBox="0 0 360 176" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" aria-hidden="true">'+o+'<svg x="135" y="26" width="90" height="138" viewBox="0 0 200 306">'+'<g filter="url(#toonH)">'+avatarInner(S.look,S.eq,S.tcc?'scared':'ok')+'</g></svg></svg>';
 }
 function phaseNow(){let hr;try{hr=+new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Kyiv',hour:'numeric',hour12:false}).format(new Date())}catch(e){hr=new Date(Date.now()+7200000).getUTCHours()}if(hr===24)hr=0;return hr>=20||hr<6?'night':hr>=17?'gold':hr<8?'dawn':'day'}
 function locOK(k){return UHART.SCENES[k]&&UHART.LOCS.includes(k)&&S.level>=(UHART.LOC_LVL[k]||1)?k:null}
@@ -1785,19 +1784,26 @@ const BOSSCFG=[
  {skin:1,hc:6,hair:4,face:2,body:2,beard:5,B:{look:'general',col:'#5a7230'},L:{look:'formal',col:'#2c3a1a'},F:{look:'dress',col:'#151515'},H:{look:'cap',col:'#4a5e28'}}
 ];
 function bossDamage(){const ratio=(S.bs.hp??bHP())/bHP();return ratio<=.25?3:ratio<=.5?2:ratio<=.75?1:0}
-function bossSVG(i,damage=0){const c=Object.assign({tat:0,mood:'ok',smoke:false,A:{look:'none',col:'#000'}},BOSSCFG[i%BOSSCFG.length],{damage});return UHART.svg(c,'0 0 200 262')}
+function bossSVG(i,damage=0){const c=Object.assign({tat:0,mood:'ok',smoke:false,A:{look:'none',col:'#000'}},BOSSCFG[i%BOSSCFG.length],{damage});return UHART.svg(c,'0 -8 200 324')}
 function renderScene(){
   const sc=$('#scene');if(!sc)return;sc.dataset.section=ui.tab;
   const kind=sceneKind(),ph=phaseNow(),mood=S.tcc?'scared':'ok',bi=S.bs?S.bs.b:0;
-  const key=[kind,ph,ui.house,JSON.stringify(S.look),JSON.stringify(S.eq),mood,kind==='boss'?bi+':'+bossDamage():''].join('|');
+  const capturing=!!S.tcc&&ui.captureUntil>now();
+  const tccKey=S.tcc?[S.tcc.stage|0,!!S.tcc.busy,S.tcc.nextAt>now()].join(':'):'';
+  const key=[kind,ph,ui.house,JSON.stringify(S.look),JSON.stringify(S.eq),mood,tccKey,capturing,kind==='boss'?bi+':'+bossDamage():''].join('|');
+  sc.classList.toggle('v27-tcc-capture',capturing);
   if(ui.sk!==key||!sc.querySelector('.lyr')){
     ui.sk=key;
     const o=UHART.paint(kind,{phase:ph,house:ui.house||'shack',seed:7});
-    const hero=UHART.svg(UHART.cfgFor(S.look,S.eq,mood),'0 0 200 262');
+    const hero=UHART.svg(UHART.cfgFor(S.look,S.eq,mood),'0 -8 200 324');
+    const sceneButtons=S.tcc
+      ?'<button type="button" class="urgent" data-act="showDocuments">Ваші документи · показати</button><button type="button" class="urgent" data-act="tccTry"'+(S.tcc.busy||S.tcc.nextAt>now()?' disabled':'')+'>'+(S.tcc.busy?'🏃 Тікаєш…':S.tcc.nextAt>now()?'Втекти через <span class="cd" data-until="'+S.tcc.nextAt+'"></span>':'🏃 Спробувати втекти · '+Math.round(ESC[S.tcc.stage] * 100)+'%')+'</button>'
+      :'<button type="button" data-act="editHero">✎ Персонаж</button><button type="button" data-act="locs">📍 Локація</button>';
     sc.dataset.phase=ph;sc.dataset.kind=kind;
-    sc.innerHTML='<div class="lyr bg">'+o.bg+'</div>'+(kind==='boss'?'<div class="lyr boss" id="boss">'+bossSVG(bi,bossDamage())+'</div>':'')+'<div class="lyr hero" id="hero" style="--hx:'+o.hero.x+'%;--hh:'+o.hero.h+'%">'+hero+(o.hero.smoke&&mood!=='scared'?'<i class="smk"></i><i class="smk s2"></i><i class="smk s3"></i>':'')+'</div>'+(o.fg?'<div class="lyr fg">'+o.fg+'</div>':'')+'<div class="grade"></div><div class="grain"></div><div class="bubble" id="bubble"></div><div class="scene-tag">📍 '+o.name+'</div><div class="scene-btns"><button type="button" data-act="editHero">✎ Персонаж</button><button type="button" data-act="locs">📍 Локація</button></div>';
+    sc.innerHTML='<div class="lyr bg">'+o.bg+'</div>'+(kind==='boss'?'<div class="lyr boss" id="boss">'+bossSVG(bi,bossDamage())+'</div>':'')+'<div class="lyr hero" id="hero" style="--hx:'+o.hero.x+'%;--hh:'+o.hero.h+'%">'+hero+(o.hero.smoke&&S.look.smoke!==false&&mood!=='scared'?'<i class="smk"></i><i class="smk s2"></i><i class="smk s3"></i>':'')+'</div>'+(o.fg?'<div class="lyr fg">'+o.fg+'</div>':'')+(capturing?'<svg class="v27-capture-van" viewBox="0 0 84 42" preserveAspectRatio="xMidYMid meet" aria-hidden="true">'+van(1,1,1,true)+'</svg>':'')+'<div class="grade"></div><div class="grain"></div><div class="bubble" id="bubble"></div><div class="scene-tag">📍 '+o.name+'</div><div class="scene-btns">'+sceneButtons+'</div>';
   }
   const bb=$('#bubble');if(bb)bb.textContent=S.say||'';
+  ui.sceneReady=true;
 }
 /* ---------- вигляд ---------- */
 const IC={boss:'<path d="M7 11V6a2 2 0 0 1 4 0v3h5a3 3 0 0 1 3 3v4a4 4 0 0 1-4 4H9a3 3 0 0 1-3-3z"/>',
@@ -1837,7 +1843,7 @@ function tickCd(){document.querySelectorAll('.cd').forEach(e=>{e.textContent=fmt
 function riskCard(mod){
   const r=raid(),rd=RAID[r.lvl],risk=riskFor(mod||0),b=bronState();
   const col=risk>.3?'red':risk>.15?'amber':'green';
-  return '<div class="card"><div class="risk"><div><div class="h">Ризик, що тебе спіймають</div><div class="sub">Облави: <b class="'+(rd.c==='red'?'bad':rd.c==='amber'?'warn':'good')+'">'+rd.n+'</b> · змінюються через <span class="cd" data-until="'+r.until+'"></span></div></div><b class="big '+(col==='red'?'bad':col==='amber'?'warn':'good')+'">'+(b==='real'?'0':Math.round(risk*100))+'%</b></div><div class="meter"><i style="width:'+(b==='real'?0:Math.min(100,risk*100/.7))+'%;background:var(--'+col+')"></i></div>'+(b==='real'?'<div class="hint">Діє бронь, тож тебе не заберуть.</div>':'<div class="hint">Знижують ризик: скритність одягу, бронь, час між облавами.</div>')+'</div>';
+  return '<div class="card"><div class="risk"><div><div class="h">Ризик, що тебе спіймають</div><div class="sub">Облави: <b class="'+(rd.c==='red'?'bad':rd.c==='amber'?'warn':'good')+'">'+rd.n+'</b> · змінюються через <span class="cd" data-until="'+r.until+'"></span></div></div><b class="big '+(col==='red'?'bad':col==='amber'?'warn':'good')+'">'+Math.round(risk*100)+'%</b></div><div class="meter"><i style="width:'+Math.min(100,risk*100/.7)+'%;background:var(--'+col+')"></i></div>'+(b==='real'?'<div class="hint">Бронь дійсна: покажи її під час перевірки, і тебе відпустять.</div>':'<div class="hint">Скритність одягу знижує ризик зустрічі. Бронь звільняє після перевірки.</div>')+'</div>';
 }
 function offerHTML(o,i){
   const j=JOBS[o.ji],t=j.t,pay=Math.round(basePay(t)*o.mult*payMult()),fee=basePay(t)*6;
@@ -1846,36 +1852,32 @@ function offerHTML(o,i){
    +'<div class="row"><button class="btn sm" data-act="accept" data-v="'+i+'">Влаштуватись</button>'+(o.bron?'<button class="btn sm amber" data-act="accept" data-v="'+i+'" data-w="1">З бронею · ₴'+fmt(fee)+'</button>':'')+'</div>'+(o.bron?'<div class="hint">Бронь від роботодавця: гарантій немає.</div>':'')+'</div>';
 }
 function viewTCC(){
-  const t=S.tcc,st=t.stage,cd=Math.max(0,t.nextAt-now());
-  const nm=[['ТЦК','Обласний ТЦК'],['Дорога','Везуть на навчання'],['Позиції','Позиції']];
-  const chips=nm.map((s,i)=>'<span class="stg'+(i===st?' on':i<st?' done':'')+'">'+s[0]+'</span>').join('<i class="stg-line"></i>');
-  return '<section class="paper"><div class="paper-head"><b>Ти під затриманням</b><span>'+nm[st][1]+'</span></div><div class="stg-row">'+chips+'</div><p>'+TCC_TXT[st]+'</p><div class="odds"><b>'+Math.round(ESC[st]*100)+'%</b><span class="sub">шанс втекти зараз</span></div>'
-   +'<button class="btn red big" data-act="tccTry"'+(t.busy||cd>0?' disabled':'')+'>'+(t.busy?'Тікаєш…':cd>0?'Нова спроба через <span class="cd" data-until="'+t.nextAt+'"></span>':'Спробувати втекти')+'</button>'
-   +(st===0?'<button class="btn block" data-act="bribe"'+(S.uah<bribeCost()?' disabled':'')+'>Відкупитись · ₴'+fmt(bribeCost())+'</button>':'')
-   +'<button class="btn gold block" data-act="goldFree"'+(S.gold<GOLD_FREE?' disabled':'')+'>Дострокове звільнення · '+GOLD_FREE+' золота</button><div class="hint">Після втечі тебе шукатимуть: ризик вище ще 15 хвилин.</div></section>';
+ const t=S.tcc,cd=Math.max(0,t.nextAt-now());
+ return '<section class="paper"><div class="paper-head"><b>🚨 '+(t.documents?'Ваші документи':'Тебе затримано')+'</b></div><p>'+(t.documents?'Патруль зупиняє всіх. Покажи дійсну бронь — і тебе відпустять. Без броні можна спробувати втекти.':esc(S.say||'Спроба не вдалася. Дочекайся наступної можливості.'))+'</p><div class="odds"><b>18%</b><span class="sub">шанс втечі · результат визначає сервер</span></div><p class="hint">'+(S.bronUntil>now()?'🛡 Бронь дійсна. Покажи документи.':'Дійсної броні немає.')+'</p>'+(cd?'<p>Наступна спроба через <span class="cd" data-until="'+t.nextAt+'"></span></p>':'')+'<p class="hint">Обидві дії доступні над нижнім меню з будь-якої вкладки.</p></section>';
 }
+
 function viewHome(){
   const t=tier(),fcd=Math.max(0,30000-(now()-S.foodAt));
   const ht={shack:'Обшарпана халупа',room:'Кімната в гуртожитку',flat:'Квартира на районі',loft:'Лофт',lux:'Пентхаус'};
-  let h='<div class="card uhy-home-card"><div class="h">🏠 МОЯ ХАТА</div><div class="row"><div class="grow"><div class="name">'+esc(ht[ui.house]||ht.shack)+'</div><div class="sub">Це твій особистий інтерʼєр. Вся нерухомість зберігається за ігровим акаунтом.</div></div><button class="btn sm amber" data-act="myHouse">Мої хати</button></div></div>';
-  h+='<div class="card"><div class="h">Вдома безпечно</div><div class="sub">Штори зачинені, світло вимкнено. Сюди ніхто не прийде, але гроші самі не зʼявляться.</div></div>';
-  h+='<div class="card"><div class="row"><div class="grow"><div class="name">Приготувати вечерю</div><div class="sub">+20 енергії · ₴'+fmt(foodCost())+'</div></div><button class="btn sm" data-act="food"'+(fcd>0?' disabled':'')+'>'+(fcd>0?'<span class="cd" data-until="'+(S.foodAt+30000)+'"></span>':'Їсти')+'</button></div>'
-    +'<div class="row"><div class="grow"><div class="name">🎡 Щоденне колесо</div><div class="sub">Випадкова серверна нагорода раз на 24 години. Відлік не скидається.</div></div><button class="btn sm amber" data-act="daily">Відкрити колесо</button></div></div>';
-  if(S.job&&JOBS[S.job.ji].remote)h+=jobCard();
-  const pool=JOBS.filter(j=>j.remote&&j.t<=t&&j.t>=Math.max(0,t-1));
-  h+='<div class="card"><div class="h">Робота вдома · без ризику</div>'+pool.map(j=>'<div class="row"><div class="grow"><div class="name">'+esc(j.n)+'</div><div class="sub">₴'+fmt(gigPay(j,.7))+' · 8 енергії</div></div><button class="btn sm amber" data-act="gig" data-v="'+j.i+'" data-w="1">Працювати</button></div>').join('')+'</div>';
+  let h='<section class="card uhy-home-card home-section"><div class="home-house-row"><div><div class="h">🏠 ДІМ</div><div class="name">'+esc(ht[ui.house]||ht.shack)+'</div><div class="sub">Тут безпечно й можна відновити сили.</div></div><button class="btn sm amber" data-act="myHouse">Мої хати</button></div><div class="home-safety">🛡 Вдома безпечно <span>'+(S.end==='eu'?'Ризику ТЦК тут немає.':'На вулиці можуть затримати.')+'</span></div></section>';
+  h+='<section class="card home-section"><div class="h">📅 НА СЬОГОДНІ</div><div class="home-action-row"><div><b>Вечеря</b><small>+20 енергії · ₴'+fmt(foodCost())+'</small></div><button class="btn sm" data-act="food"'+(fcd>0?' disabled':'')+'>'+(fcd>0?'<span class="cd" data-until="'+(S.foodAt+30000)+'"></span>':'Приготувати')+'</button></div>'
+    +'<div class="home-action-row"><div><b>Щоденне колесо</b><small>Серверний бонус раз на 24 години.</small></div><button class="btn sm amber" data-act="daily">Відкрити</button></div></section>';
+  const pool=JOBS.filter(j=>j.remote&&j.t<=t&&j.t>=Math.max(0,t-1)&&!(S.job&&S.job.ji===j.i));
+  h+='<section class="card home-section"><div class="h">💼 РОБОТА ДОМА · БЕЗ РИЗИКУ</div>'+(S.job&&JOBS[S.job.ji].remote?jobCard(true):'')+pool.map(j=>'<div class="home-action-row"><div><b>'+esc(j.n)+'</b><small>₴'+fmt(gigPay(j,.7))+' · 8 енергії</small></div><button class="btn sm amber" data-act="gig" data-v="'+j.i+'" data-w="'+(j.n.includes('Модерація')?'moderation':'texts')+'">Працювати</button></div>').join('')+'</section>';
   return h;
 }
-function jobCard(){
+function jobCard(inline=false){
   const j=JOBS[S.job.ji];
-  return '<div class="card"><div class="h">Твоя робота</div><div class="row"><div class="grow"><div class="name">'+esc(j.n)+'</div><div class="sub">'+esc(S.job.emp)+' · зміна ₴'+fmt(empPay())+' · 12 енергії'+(j.remote?' · вдома':'')+'</div></div><button class="btn amber sm" data-act="shift">Працювати</button></div><button class="btn sm block" data-act="quit">Звільнитись</button></div>';
+  const workMode=j.n.includes('Модерація')?'moderation':j.remote?'texts':'';
+  const row='<div class="home-action-row home-current-job"><div><b>Твоя робота · '+esc(j.n)+'</b><small>'+esc(S.job.emp)+' · зміна ₴'+fmt(empPay())+' · 12 енергії</small></div><span><button class="btn amber sm" data-act="shift"'+(workMode?' data-w="'+workMode+'"':'')+'>Працювати</button> <button class="btn sm" data-act="quit">Звільнитись</button></span></div>';
+  return inline?row:'<div class="card"><div class="h">Твоя робота</div>'+row+'</div>';
 }
 function viewStreet(){
   if(S.end==='eu')return viewEU();
   const t=tier(),pool=JOBS.filter(j=>!j.remote&&j.t<=t&&j.t>=Math.max(0,t-1));
   let h=riskCard(0);
   if(S.job&&!JOBS[S.job.ji].remote)h+=jobCard();
-  h+='<div class="card uhy-action-panel"><div class="h">🚶 Підробітки на вулиці</div><div class="sub">Обери нагороду. Вищий заробіток = більший ризик ТЦК.</div>'+pool.map(j=>'<div class="row uhy-action-row"><div class="grow"><div class="name">'+esc(j.n)+'</div><div class="sub">💵 ₴'+fmt(gigPay(j,1))+' · ⚡ 10 · 🚨 '+(bronState()==='real'?0:Math.round(riskFor(j.r)*100))+'% ризик</div></div><button class="btn amber" data-act="gig" data-v="'+j.i+'">Спробувати</button></div>').join('')+'</div>';
+  h+='<div class="card uhy-action-panel"><div class="h">🚶 Підробітки на вулиці</div><div class="sub">Обери нагороду. Вищий заробіток = більший ризик ТЦК.</div>'+pool.map(j=>'<div class="row uhy-action-row"><div class="grow"><div class="name">'+esc(j.n)+'</div><div class="sub">💵 ₴'+fmt(gigPay(j,1))+' · ⚡ 10 · 🚨 '+Math.round(riskFor(j.r)*100)+'% ризик</div></div><button class="btn amber" data-act="gig" data-v="'+j.i+'">Спробувати</button></div>').join('')+'</div>';
   h+='<div class="card"><div class="h">Постійна робота</div><div class="sub">Платять краще, ніж підробітки, а інколи ще й обіцяють бронь.</div><button class="btn block" data-act="search">Шукати роботу · 8 енергії</button></div>';
   if(S.offers&&S.offers.length)h+=S.offers.map(offerHTML).join('');
   return h;
@@ -1949,7 +1951,7 @@ function showOv(html){$('#dlg').innerHTML=html;$('#overlay').hidden=false}
 function hideOv(){$('#overlay').hidden=true}
 function renameOpen(){
  if(!NET?.id){toast('Увійди в онлайн-акаунт','bad');return}
- showOv('<h2>✎ Змінити нік</h2><p>Нік видно в рейтингу, новинах та друзях. 3–20 букв, цифр або _. Перша зміна безкоштовна, далі раз на 7 діб.</p><label for="v27Nick">Новий нік</label><input id="v27Nick" maxlength="20" autocomplete="off" value="'+esc(S.name)+'"><button class="btn amber big" data-act="renameSave">Зберегти нік</button><button class="btn block" data-act="closeOv">Скасувати</button>');
+ showOv('<h2>✎ Змінити нік</h2><p>Нік видно в рейтингу, новинах та друзях. 3–20 букв, цифр або _. Зміна безкоштовна раз на 7 діб.</p><label for="v27Nick">Новий нік</label><input id="v27Nick" maxlength="20" autocomplete="off" value="'+esc(S.name)+'"><button class="btn amber big" data-act="renameSave">Зберегти нік</button><button class="btn block" data-act="closeOv">Скасувати</button>');
 }
 async function renameSave(){
  const input=$('#v27Nick'),name=(input?.value||'').trim();
@@ -1973,8 +1975,9 @@ function showCreator(first){
   if(ui.ct==='face')body='<label>Шкіра</label>'+sw('skin',UHART.SKIN,c.skin)+'<label>Риси обличчя</label>'+bg('face',UHART.FACE_N,c.face%6);
   if(ui.ct==='hair')body='<label>Зачіска</label>'+bg('hs',UHART.HAIR_N,c.hair)+'<label>Колір волосся</label>'+sw('hc',UHART.HCOL,c.hc);
   if(ui.ct==='beard')body='<label>Борода</label>'+bg('beard',UHART.BEARD_N,c.beard);
-  if(ui.ct==='body')body='<label>Статура</label>'+bg('body',UHART.BODY.map(b=>b.nm),c.body)+'<label>Татуювання · два нові малюнки</label>'+bg('tat',UHART.TAT_N,c.tat)+'<label>Сигарета</label><button type="button" class="btn block" data-act="smokeToggle" aria-pressed="'+(S.look.smoke!==false)+'">'+(S.look.smoke===false?'🚭 Прибрати сигарету':'🚬 Залишити сигарету')+'</button>';
-  showOv('<h2>'+(ui.cfirst?'Ухилянт':'Персонаж')+'</h2>'+(ui.cfirst?'<p>Місто. Бус на кожному розі. Одягайся непомітно, шукай роботу й не вір обіцянкам про бронь. Створи свого героя.</p>':'')+'<div class="prev big">'+UHART.svg(UHART.cfgFor(S.look,S.eq,'ok'),'0 0 200 262')+'</div>'
+  if(ui.ct==='body')body='<label>Статура</label>'+bg('body',UHART.BODY.map(b=>b.nm),c.body)+'<label>Татуювання · два нові малюнки</label>'+bg('tat',UHART.TAT_N,c.tat);
+  showOv('<h2>'+(ui.cfirst?'Ухилянт':'Персонаж')+'</h2>'+(ui.cfirst?'<p>Місто. Бус на кожному розі. Одягайся непомітно, шукай роботу й не вір обіцянкам про бронь. Створи свого героя.</p>':'')+'<div class="prev big">'+UHART.svg(UHART.cfgFor(S.look,S.eq,'ok'),'0 -8 200 324')+'</div>'
+   +'<div class="smoke-setting"><span>Цигарка в образі</span><button type="button" class="btn" data-act="smokeToggle" aria-pressed="'+(S.look.smoke!==false)+'">'+(S.look.smoke===false?'🚭 Вимкнена · увімкнути':'🚬 Увімкнена · прибрати')+'</button></div>'
    +(ui.cfirst?'<label for="nameIn">Імʼя</label><input id="nameIn" maxlength="14" autocomplete="off" value="'+esc(nm||'')+'" placeholder="Як тебе звати?">':'')
    +'<div class="tabsc">'+tabs.map(t=>'<button class="'+(ui.ct===t[0]?'on':'')+'" data-act="ct" data-v="'+t[0]+'">'+t[1]+'</button>').join('')+'</div>'+body
    +'<button class="btn" data-act="locs">📍 Обрати локацію</button>'+(!ui.cfirst?'<button class="btn" data-act="renameOpen">✎ Змінити нік</button>':'')+(ui.cfirst?'<button class="btn amber big" data-act="start">Почати</button><div class="hint">Вигадана сатирична гра. Усі шанси й події умовні.</div>':'<button class="btn amber big" data-act="closeOv">Готово</button>'));
@@ -2012,10 +2015,17 @@ function setMusicSound(kind){
  audioControls();if(ui.ov==='settings')showSettings();
 }
 function cartoonSound(button){
- const action=button.dataset.act||button.dataset.wact||'';
+ const action=button.dataset.act||button.dataset.wact||button.dataset.city||'';
  if(['audioMusic','audioSounds','settings','tab','ct','lk','closeOv'].includes(action))return;
+ const identity=action+':'+(button.dataset.v||button.dataset.w||button.dataset.job||button.dataset.choice||'');let hash=0;for(const ch of identity)hash=(hash*31+ch.charCodeAt(0))>>>0;
  let seq;
- if(/fight|hit|bhit|boss/i.test(action))seq=[[145,.12,.026,'sawtooth',0],[620,.06,.018,'square',.075]];
+ const work=button.dataset.w||button.dataset.job||button.closest('.world-job,.home-action-row')?.textContent||'';
+ if(/moderation|texts|engineer|Модерац|текст/i.test(work))seq=[[160,.025,.012,'square',0],[210,.018,.009,'square',.07],[170,.02,.011,'square',.16],[230,.018,.01,'square',.23]];
+ else if(/courier|highway|delivery|курʼєр|достав/i.test(work))seq=[[440,.08,.016,'sine',0],[660,.14,.016,'sine',.11]];
+ else if(/tea|clean|прибир|чай/i.test(work))seq=[[190,.16,.012,'triangle',0],[240,.2,.011,'triangle',.22]];
+ else if(/foreman|warehouse|build|workshop|repair|склад|будів/i.test(work))seq=[[90,.06,.018,'triangle',0],[110,.05,.016,'triangle',.2],[90,.07,.018,'triangle',.4]];
+ else if(/guard|patrol/i.test(work))seq=[[880,.06,.012,'sine',0],[580,.09,.012,'triangle',.18]];
+ else if(/fight|hit|bhit|boss/i.test(action))seq=[[145,.12,.026,'sawtooth',0],[620,.06,.018,'square',.075]];
  else if(/tcc|escape|rescue|bribe|bransom|bresc/i.test(action))seq=[[760,.08,.018,'square',0],[480,.10,.023,'sawtooth',.09],[700,.08,.017,'square',.19]];
  else if(/work|shift|gig|apply|nightTask|accept|search/i.test(action))seq=[[294,.055,.017,'triangle',0],[392,.055,.018,'triangle',.075],[523,.075,.020,'square',.15]];
  else if(/food|hospital|meal|eat/i.test(action))seq=[[260,.06,.018,'triangle',0],[392,.065,.019,'sine',.08],[523,.08,.018,'triangle',.16]];
@@ -2023,7 +2033,7 @@ function cartoonSound(button){
  else if(/outfit|equip|look|buy|gear|bwp/i.test(action))seq=[[392,.06,.017,'triangle',0],[587,.07,.019,'triangle',.085],[784,.10,.018,'sine',.17]];
  else if(/house|home|collect/i.test(action))seq=[[220,.07,.017,'triangle',0],[330,.08,.018,'sine',.09]];
  else seq=[[440,.045,.012,'square',0],[660,.055,.012,'triangle',.055]];
- seq.forEach(([freq,len,vol,kind,delay])=>soundTone(freq,len,vol,kind,delay));
+ seq.forEach(([freq,len,vol,kind,delay])=>soundTone(freq+(hash%71)-35,len,vol,kind,delay));
 }
 document.addEventListener('click',e=>{if(!UHY_AUDIO.sounds)return;const btn=e.target?.closest?.('button');if(btn&&!btn.disabled)cartoonSound(btn)},true);
 function showSettings(){
@@ -2031,7 +2041,7 @@ function showSettings(){
   showOv('<h2>Налаштування</h2><div class="list"><button class="btn block" data-act="editHero">✎ Персонаж</button><button class="btn block" data-act="locs">📍 Локація</button><button class="btn block" data-act="gfx">Графіка: '+(low?'спрощена (економить батарею)':'висока')+'</button><button class="btn block" data-act="audioMusic">♫ Музика: '+(UHY_AUDIO.music?'увімкнена':'вимкнена')+'</button><button class="btn block" data-act="audioSounds">🔊 Звуки: '+(UHY_AUDIO.sounds?'увімкнені':'вимкнені')+'</button><button class="btn block" data-act="help">Правила гри</button><button class="btn red block" data-act="reset">Скинути гру</button></div><button class="btn big" data-act="closeOv">Закрити</button>');
 }
 function showHelp(){
-  showOv('<h2>Правила</h2><div class="list"><p>Енергія відновлюється сама. Працюй вдома без ризику або виходь на вулицю за кращими грошима.</p><p>Кожен вихід на вулицю ризикований. Якщо тебе затримали, спробуй втекти: <b style="color:var(--ink)">30%</b> в обласному ТЦК, <b style="color:var(--ink)">20%</b> по дорозі на навчання, <b style="color:var(--ink)">10%</b> на позиціях.</p><p>Одяг знижує ризик і підвищує заробіток. Бронь за золото працює справді, а бронь від роботодавця може виявитись липовою.</p><p>Мета: рівень '+MAXLVL+'. Там обереш: Європа чи карʼєра в Україні.</p></div><button class="btn amber big" data-act="closeOv">Зрозуміло</button>');
+  showOv('<h2>Правила</h2><div class="list"><p>Енергія відновлюється сама. Працюй вдома без ризику або виходь на вулицю за кращими грошима.</p><p>Патруль може зупинити кожного. Дійсна бронь звільняє після показу документів. Шанс втекти — 18%. Після невдачі наступна спроба через 3 хвилини.</p><p>Одяг знижує ризик і підвищує заробіток. Бронь за золото працює справді, а бронь від роботодавця може виявитись липовою.</p><p>Мета: рівень '+MAXLVL+'. Там обереш: Європа чи карʼєра в Україні.</p></div><button class="btn amber big" data-act="closeOv">Зрозуміло</button>');
 }
 function showChoose(){
   showOv('<h2>Рівень '+MAXLVL+'</h2><p>Ти на вершині, але гра не закінчується. Обери шлях, а «Нове життя» дасть +25% до всього назавжди.</p><button class="btn amber big" data-act="choose" data-v="eu">Втекти за кордон</button><div class="hint">Європа: нова мова, робота й житло. ТЦК там немає.</div><button class="btn big" data-act="choose" data-v="ua">Лишитись в Україні</button><div class="hint">Карʼєра, бізнес і звʼязки. Ризик лишається, доки не збудуєш захист.</div>');
@@ -2047,6 +2057,7 @@ const ACT={
   renameOpen,renameSave,openSets:()=>{const b=document.querySelector('#socialDock [data-sp="world"]');if(b)b.click();else toast('Підключи онлайн-акаунт','bad')},
   ct:v=>{ui.ct=v;showCreator()},
   lk:(v,a)=>{const k=a.dataset.k,n=+v,L=S.look;if(k==='hc'){L.hc=n;L.hair=n}else L[k]=n;if(S.started){save();ui.sk='';renderScene()}showCreator()},
+  smokeQuick:()=>{S.look.smoke=S.look.smoke===false;save();ui.sk='';render();},
   smokeToggle:()=>{S.look.smoke=S.look.smoke===false;save();if(S.started)renderScene();showCreator()},
   pre:v=>{const p=PRESETS[+v];if(!p)return;Object.assign(S.look,p[1],{hair:p[1].hc});if(S.started){save();ui.sk='';renderScene()}showCreator()},
   locs:showLocs,
@@ -2056,7 +2067,7 @@ const ACT={
   tab:v=>{ui.tab=v;render();$('#content').scrollTop=0},
   myHouse:()=>{const button=document.querySelector('#socialDock [data-sp="housing"]');if(button)button.click();else toast('Підключення нерухомості буде доступне після входу в акаунт','bad')},
   start:()=>{const n=($('#nameIn').value||'').trim();S.name=n||'Ухилянт';S.started=true;S.say='Тихо. Можна подумати, з чого починати.';hideOv();save();render()},
-  food,daily,search,quit,shift:doShift,tccTry,
+  food,daily,search,quit,shift:doShift,tccTry,showDocuments:()=>tccCommand('documents'),
   gig:(v,a)=>doGig(+v,!!a.dataset.w),
   accept:(v,a)=>accept(+v,!!a.dataset.w),
   bribe:()=>{const c=bribeCost();if(S.uah<c){toast('Не вистачає гривень','bad');return}S.uah-=c;release('Відкупився. Не найкращий день, але ти вдома')},
@@ -2100,16 +2111,16 @@ async function bHit(id){const B=S.bs;if(bossHitBusy)return;if(S.tcc){toast('Ти
  const paidWeapon=!BATK.some(x=>x.id===id),copies=paidWeapon?weaponCount(id):Infinity;
  if(paidWeapon&&copies<1){toast('Ця зброя вже зламалася','bad');return}if(S.energy<a.e){toast('Не вистачає енергії','bad');return}
  bossHitBusy=true;try{
+  if(NET.on&&!await window.UHY.sync()){toast('Спочатку дочекайся збереження','bad');return}
   const d=bDmg(a);
-  if(paidWeapon&&NET.on){
-   if(!await window.UHY.sync()){toast('Спочатку дочекайся збереження','bad');return}
-   const result=await api('hit',{dmg:d,b:B.b,weapon:id});
-   if(!result?.ok){toast(result?.err||'Не вдалося підтвердити удар','bad');return}
-   if(result.save?.bs?.weaponCounts)B.weaponCounts=Object.assign({},result.save.bs.weaponCounts);
-  }else if(paidWeapon){B.weaponCounts=B.weaponCounts||{};B.weaponCounts[id]=copies-1}
+  if(paidWeapon){B.weaponCounts=B.weaponCounts||{};B.weaponCounts[id]=copies-1}
   if(!spend(a.e))return;B.cd[id]=now()+BD(3*HOUR);if(!B.fs)B.fs=now();
-  if(NET.on&&!paidWeapon)api('hit',{dmg:d,b:B.b});
-  B.hp=Math.max(0,B.hp-d);gainXP(a.e*2);if(B.hp<=0)bWin();save();render();bFx(d)
+  B.hp=Math.max(0,B.hp-d);gainXP(a.e*2);if(B.hp<=0)bWin();save();render();bFx(d);
+  if(NET.on){
+   if(!await window.UHY.sync()){toast('Удар збережений локально, сервер ще не підтвердив його','bad');return}
+   const result=await api('hit',{});
+   if(!result?.ok)toast(result?.err||'Удар не потрапив до стрічки друзів','bad');
+  }
  }finally{bossHitBusy=false}}
 function bWin(){const B=S.bs,k=B.b+1+B.r*6;gainXP(Math.round(xpNeed(S.level)*3*k));const c=bCost(2*k);gainMoney(c);let m='Перемога над «'+BOSSES[B.b].n+'»! +₴'+fmt(c);
  if(Math.random()<.25+.08*B.b){const t=Math.min(6,B.b+rnd(2)+Math.min(B.r,2)),c2=ITEMS.filter(i=>i.t===t&&!S.inv.includes(i.id));if(c2.length){const it=pick(c2);S.inv.push(it.id);m+=' · Дроп: '+it.name}}
@@ -2134,7 +2145,7 @@ function viewBoss(){bInit();const bt=ui.bt||'f';
  return '<div class="pills">'+[['f','⚔️ Бій'],['s','🤝 Загін'],['e','🎪 Івенти']].map(p=>'<button class="pill'+(bt===p[0]?' on':'')+'" data-act="bt" data-v="'+p[0]+'">'+p[1]+'</button>').join('')+'</div>'+(bt==='f'?bossRoster():'')+{f:bFight,s:bSquad,e:bEvents}[bt]()}
 function bFight(){const B=S.bs,N=BOSSES[B.b];
  let h='<div class="card"><div class="row"><b style="font:700 22px var(--font-display);letter-spacing:.04em;text-transform:uppercase">'+N.n+(B.r?' ★'+B.r:'')+'</b><span class="hint">'+(B.b+1)+'/6 · коло '+(B.r+1)+'</span></div><div class="bar" style="height:16px"><i id="hpb" style="width:'+(100*B.hp/bHP())+'%;background:linear-gradient(var(--red),#a02a1c)"></i></div><div class="row hint"><span id="hpt">'+fmt(B.hp)+' / '+fmt(bHP())+'</span><span>⏱ <b id="btimer"></b></span></div></div>';
- if(S.tcc)return h+'<div class="card"><div class="name">Ти під затриманням</div><div class="sub">Бити боса не можна. Поклич загін на визволення (вкладка «Загін») або втікай на вкладці «Дім».</div></div>';
+ if(S.tcc)return h+'<div class="card"><div class="name">Ти під затриманням</div><div class="sub">Бити боса не можна. Втікай кнопкою просто на сцені — вона доступна і тут. Або поклич загін на визволення у вкладці «Загін».</div></div>';
  return h+'<div class="card"><div class="h">Удари · перезарядка кожного 3 год</div><div class="bxatk">'+bAll().map(a=>{const paid=!BATK.some(x=>x.id===a.id),copies=paid?weaponCount(a.id):Infinity;return '<button class="btn" data-act="bhit" data-v="'+a.id+'" data-cd="'+a.id+'"'+(paid&&copies<1?' disabled':'')+'>'+a.i+' '+a.n+'<span class="kbd">'+(bAll().indexOf(a)+1)+'</span><small>'+(paid?'Залишилось ударів: '+copies:'−'+a.e+'⚡ · '+fmt(bDmg(a)))+'</small></button>'}).join('')+'</div><div class="hint">Кулак, нога і цегла не ламаються. Кожна куплена одиниця зброї вистачає на один удар; після цього вона закінчується. Бій триває 6 годин від першого удару. Удар коштує енергії; одяг і рівень підсилюють урон.</div></div><div class="card"><div class="h">Нагорода</div><div class="sub">Досвід, гривні та '+Math.round(25+8*B.b)+'% на шмотку з магазину одягу'+(B.b>=3?', шанс на золоту булаву':'')+'.</div></div>'}
 function bSquad0(){const B=S.bs;let h='<div class="card"><div class="h">Загін ('+B.sq.length+'/5)</div>'+(B.sq.map(f=>'<div class="row"><span class="bxav" style="background:'+f.c+'">'+f.n[0]+'</span><div class="grow"><div class="name">'+f.n+'</div><div class="sub">рів. '+f.l+' · б’є твого боса, а ти — його</div></div></div>').join('')||'<div class="sub">Поки нікого. Друзі б’ють боса одночасно з тобою.</div>')+'<button class="btn" data-act="binv"'+(B.sq.length>=5?' disabled':'')+'>＋ Запросити друга (демо)</button></div>';
  h+='<div class="card"><div class="h">Визволення з ТЦК</div><div class="sub">Потрібно: загін від 3 друзів, автомобіль, екіпіровка і бронь водієві. Шанс успіху 25%.</div>'+RSQ.map(r=>'<div class="row"><span>'+(B.rs[r[0]]?'✅':'▫️')+' '+r[1]+'</span><button class="btn" data-act="brs" data-v="'+r[0]+'"'+(B.rs[r[0]]?' disabled':'')+'>₴ '+fmt(bCost(r[2]))+'</button></div>').join('')
@@ -2206,7 +2217,7 @@ try{const t=JSON.parse(localStorage.getItem('vt_net')||'null');if(t){NET.id=t.id
 const lsNet=()=>{try{localStorage.setItem('vt_net',JSON.stringify({id:NET.id,key:NET.key}))}catch(e){}};
 const sqN=()=>NET.on?NET.friends.length:S.bs.sq.length;
 async function api(path,body){const c=new AbortController(),to=setTimeout(()=>c.abort(),6000);try{const r=await fetch('/api/'+path,{method:body?'POST':'GET',headers:{'content-type':'application/json','x-id':NET.id||'','x-key':NET.key||''},body:body?JSON.stringify(body):undefined,signal:c.signal});clearTimeout(to);const data=await r.json();if(Number.isFinite(data.walletRevision)&&(path==='save'||path==='me'))NET.walletRevision=data.walletRevision;return data}catch(e){clearTimeout(to);return null}}
-function adopt(sv){S=Object.assign(S0(),sv);S.bs=Object.assign(defBs(),S.bs||{});S.bs.demo=0;S.up=S.up||{};if(S.tcc)S.tcc.busy=false;save();if(S.started&&document.querySelector('#overlay')&&!document.querySelector('#overlay').hidden)hideOv();ui.lastSig='';render()}
+function adopt(sv){const enteredTcc=ui.sceneReady&&!S.tcc&&!!sv?.tcc;S=Object.assign(S0(),sv);S.bs=Object.assign(defBs(),S.bs||{});S.bs.demo=0;S.up=S.up||{};if(S.tcc)S.tcc.busy=false;if(enteredTcc)startTccArrival();save();if(S.started&&document.querySelector('#overlay')&&!document.querySelector('#overlay').hidden)hideOv();ui.lastSig='';render()}
 async function netReg(){if(NET.busy)return;NET.busy=1;const r=await api('register',{name:S.name||'Ухилянт'});NET.busy=0;if(r&&r.ok){NET.id=r.id;NET.key=r.key;lsNet();const k={name:S.name,look:S.look,started:true,say:S.say};S=Object.assign(S0(),k);S.bs=defBs();S.up={};save();toast('Онлайн-акаунт створено. Твій ID: '+r.id,'good');netSync(true);render()}}
 async function syncMyHouse(){
  if(!NET.id||!NET.key)return;
@@ -2216,7 +2227,9 @@ async function syncMyHouse(){
 const awaitingTelegram=()=>!!(window.Telegram?.WebApp?.initData||/[&#?]tgWebApp(?:Data|Platform|Version)=/i.test(location.hash+'&'+location.search));
 async function netInit(){const p=await api('ping');if(!p||!p.ok)return;NET.on=true;
  if(NET.id){const m=await api('me');if(m&&m.ok){if(m.save)adopt(m.save);netPollF();await syncMyHouse()}else if(m&&m.err==='auth'){NET.id=NET.key=null;lsNet()}}
- if(!NET.id&&S.started&&!awaitingTelegram()){await netReg();await syncMyHouse()}render()}
+ if(!NET.id&&S.started&&!awaitingTelegram()){await netReg();await syncMyHouse()}
+ if(NET.id&&S.started){await netSync(true);await api('hit',{})}
+ render()}
 let syncPending=null;
 async function netSync(force){
  if(syncPending){await syncPending;if(!window.__vd)return true;}
@@ -2247,7 +2260,7 @@ Object.assign(ACT,{
  fdel:async v=>{await api('friend/del',{id:v});await netPollF();render()},
  choose:v=>{choose(v);netSync(true)},
  fcopy:()=>{try{navigator.clipboard.writeText(NET.id);toast('ID скопійовано','good')}catch(e){toast('ID: '+NET.id)}}});
-setInterval(netPoll,8000);setInterval(()=>netSync(false),15000);setInterval(()=>{if(NET.on&&!NET.id&&S.started&&!awaitingTelegram())netReg()},4000);
+setInterval(netPoll,8000);setInterval(()=>netSync(false),1000);setInterval(()=>{if(NET.on&&!NET.id&&S.started&&!awaitingTelegram())netReg()},4000);
 document.addEventListener('visibilitychange',()=>{if(document.hidden){window.__vd=1;netSync(false)}});
 window.addEventListener('pagehide',()=>{if(NET.id&&S.started&&window.__vd)fetch('/api/save',{method:'POST',keepalive:true,headers:{'content-type':'application/json','x-id':NET.id,'x-key':NET.key},body:JSON.stringify({save:S,walletRevision:NET.walletRevision})}).catch(()=>{});});
 netInit();
@@ -2284,12 +2297,13 @@ setInterval(save,10000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.started){render()}});
 
 window.UHY={
+ saveState:()=>!NET.on?'Немає зв’язку':syncPending?'Збереження…':window.__vd?'Очікує збереження…':'Синхронізовано',
  adoptServer:r=>{if(Number.isFinite(r.walletRevision))NET.walletRevision=r.walletRevision;if(r.save)adopt(r.save);},
  sync:async()=>{for(let i=0;i<4;i++){if(!await netSync(false))return false;if(!window.__vd)return true;}return false;},
  applyWallet:result=>{if(Number.isFinite(result.walletRevision))NET.walletRevision=result.walletRevision;if(Number.isFinite(result.walletCash)){S.uah=result.walletCash;save();render();}},
  editor:()=>{if(S.started){ui.cfirst=false;showCreator(false)}},
  rename:()=>{if(S.started)renameOpen()},
- previewSet:tier=>{const n=Number(tier);if(!Number.isInteger(n)||n<7||n>13)return '';const eq=Object.fromEntries(['head','body','legs','shoes','acc'].map(k=>[k,k+n]));return UHART.svg(UHART.cfgFor(S.look,eq,'ok'),'0 0 200 262')},
+  previewSet:tier=>{const n=Number(tier);if(!Number.isInteger(n)||n<7||n>13)return '';const eq=Object.fromEntries(['head','body','legs','shoes','acc'].map(k=>[k,k+n]));return UHART.svg(UHART.cfgFor(S.look,eq,'ok'),'0 -8 200 324')},
  locs:()=>{if(S.started)showLocs()},
  applyWheelSave:result=>{
   if(!result || !S.started)return;
@@ -2309,7 +2323,7 @@ window.UHY={
    const route={cityevents:'park',housing:'home',casino:'market',world:'street',career:'office',leaderboard:'roof',friends:'yard',news:'street',account:'home',brigade:'boss',boss:'boss',health:'home',work:'office',weekly:'roof',wheel:'market',profile:'yard'};
    const scene=S.tcc?'tcc'+Math.min(2,S.tcc.stage|0):(route[section]||'home');
    const painter=UHART.paint(scene,{phase:phaseNow(),house:id,seed:7});
-   const av=UHART.svg(UHART.cfgFor(S.look,S.eq,S.tcc?'scared':'ok'),'0 0 200 262');
+  const av=UHART.svg(UHART.cfgFor(S.look,S.eq,S.tcc?'scared':'ok'),'0 -8 200 324');
    return {scene,house:id,name:painter.name,background:painter.bg,foreground:painter.fg||'',avatar:av};
  },
  houseThumb:id=>{if(!['shack','room','flat','loft','lux'].includes(id))return '';return UHART.paint('home',{phase:'day',house:id,seed:7,thumb:true}).bg},

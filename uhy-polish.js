@@ -106,7 +106,7 @@
    window.addEventListener('focus',()=>{stamp='';queue()});
    document.addEventListener('visibilitychange',()=>{if(!document.hidden){stamp='';queue()}});
    setInterval(()=>{if($('#socialPanel')?.style.display==='flex'){stamp='';queue()}},60000);
-   try{const tg=window.Telegram?.WebApp;tg?.ready?.();tg?.expand?.();if(tg?.requestFullscreen)tg.requestFullscreen()}catch(e){}
+   try{const tg=window.Telegram?.WebApp;tg?.ready?.();tg?.expand?.();if(tg?.isVersionAtLeast?.('8.0'))tg.requestFullscreen?.()}catch(e){}
   }
   queue();
  }

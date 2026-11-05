@@ -419,7 +419,7 @@ function validate(p, nx) {
   if (need > E + 10) return bad('надто швидкий прогрес');
 
   return {
-    ok: true, commit() {
+    ok: true, bossDamage: Math.max(0, dD - useF), commit() {
       p.bud = { e: Math.max(0, E - need), t }; p.goldBank = bank; p.goldSpent = spent; p.fdmg = F - useF;
       p.evClaim = Object.assign(p.evClaim || {}, ...claims.map(id => ({ [id]: t })));
     }
@@ -488,12 +488,55 @@ function weekClock(at=Date.now()){
  const day=new Date(date+'T12:00:00Z');const dow=day.getUTCDay();day.setUTCDate(day.getUTCDate()-((dow+6)%7));
  return {id:day.toISOString().slice(0,10),date,active:dow!==0};
 }
-function weeklyScore(p,kind){
- const clock=weekClock();if(!clock.active)return;
- if(p.weekly?.id!==clock.id)p.weekly={id:clock.id,score:0,days:{}};
+const LEAGUE_DIVISIONS=[
+ {id:'street',name:'Дворова',min:1,max:39},
+ {id:'worker',name:'Робітнича',min:40,max:149},
+ {id:'district',name:'Районна',min:150,max:499},
+ {id:'city',name:'Міська',min:500,max:1499},
+ {id:'capital',name:'Столична',min:1500,max:5499},
+ {id:'legend',name:'Легенди',min:5500,max:40000}
+];
+function leagueDivision(level){
+ const n=Math.max(1,Math.floor(num(level,1)));
+ return LEAGUE_DIVISIONS.find(d=>n>=d.min&&n<=d.max)||LEAGUE_DIVISIONS.at(-1);
+}
+function brigadeForPlayer(p){
+ const ref=p.world?.brigade;
+ if(ref&&typeof ref==='object'&&Array.isArray(ref.members))return {team:ref,owner:p};
+ if(typeof ref!=='string'||!ref)return null;
+ const owner=Object.values(DB.players).find(x=>x.world?.brigade?.id===ref);
+ return owner?.world?.brigade&&Array.isArray(owner.world.brigade.members)?{team:owner.world.brigade,owner}:null;
+}
+function weeklyScore(p,kind,at=Date.now()){
+ const clock=weekClock(at);if(!clock.active)return;
+ if(p.weekly?.id!==clock.id)p.weekly={id:clock.id,score:0,days:{},division:leagueDivision(p.save?.level).id};
+ if(!p.weekly.division)p.weekly.division=leagueDivision(p.save?.level).id;
  const day=p.weekly.days[clock.date]||(p.weekly.days[clock.date]={work:0,fight:0});
  const cap=kind==='work'?5:10;if(day[kind]>=cap)return;
- day[kind]++;p.weekly.score+=kind==='work'?20:10;
+ const points=kind==='work'?20:10;
+ day[kind]++;p.weekly.score+=points;
+ const found=brigadeForPlayer(p),thresholds=[300,1000,2500];
+ if(!found||!found.team.members.includes(p.id))return;
+ const team=found.team;
+ if(team.weekly?.id!==clock.id)team.weekly={id:clock.id,score:0,keysGranted:0,contributors:{}};
+ team.weekly.score=Math.max(0,Math.floor(num(team.weekly.score)))+points;
+ team.weekly.contributors=team.weekly.contributors&&typeof team.weekly.contributors==='object'?team.weekly.contributors:{};
+ team.weekly.contributors[p.id]=Math.max(0,Math.floor(num(team.weekly.contributors[p.id])))+points;
+ let granted=Math.max(0,Math.min(thresholds.length,Math.floor(num(team.weekly.keysGranted))));
+ team.keys=Math.max(0,Math.floor(num(team.keys)));
+ while(granted<thresholds.length&&team.weekly.score>=thresholds[granted]){team.keys++;granted++;}
+ team.weekly.keysGranted=granted;
+ dirtyPlayerIds.add(found.owner.id);
+}
+function weeklyBrigades(weekId=weekClock().id){
+ const seen=new Set();
+ return Object.values(DB.players).flatMap(owner=>{
+  const team=owner.world?.brigade;
+  if(!team||typeof team!=='object'||!team.id||team.owner!==owner.id||!Array.isArray(team.members)||seen.has(team.id))return[];
+  seen.add(team.id);
+  const score=team.weekly?.id===weekId?Math.max(0,Math.floor(num(team.weekly.score))):0;
+  return score>0?[{id:team.id,name:String(team.name||'Бригада').slice(0,35),score,members:team.members.length}]:[];
+ }).sort((a,b)=>b.score-a.score||a.id.localeCompare(b.id));
 }
 async function api(req, res, route) {
   await dbReady;
@@ -501,8 +544,25 @@ async function api(req, res, route) {
   if (route === 'ping') return send(res, 200, { ok: 1 });
   if(route==='weekly'){
     const clock=weekClock(),player=auth(req);if(!player)return send(res,401,{ok:false,err:'auth'});
-    const list=Object.values(DB.players).filter(p=>p.weekly?.id===clock.id).sort((a,b)=>b.weekly.score-a.weekly.score||a.id.localeCompare(b.id)).slice(0,50).map((p,i)=>({rank:i+1,name:p.name,id:p.id,score:p.weekly.score}));
-    return send(res,200,{ok:true,...clock,serverNow:Date.now(),score:player.weekly?.id===clock.id?player.weekly.score:0,list:clock.active?list:[]});
+    const own=player.weekly?.id===clock.id?player.weekly:null;
+    const divisionId=own?.division||leagueDivision(player.save?.level).id;
+    const division=LEAGUE_DIVISIONS.find(d=>d.id===divisionId)||leagueDivision(player.save?.level);
+    const divisionRows=Object.values(DB.players).filter(p=>p.weekly?.id===clock.id&&(p.weekly.division||leagueDivision(p.save?.level).id)===division.id)
+      .sort((a,b)=>b.weekly.score-a.weekly.score||a.id.localeCompare(b.id));
+    const publicRow=(p,rank)=>({rank,name:p.name,id:p.id,score:Math.max(0,Math.floor(num(p.weekly?.id===clock.id?p.weekly.score:0))),level:Number(p.save?.level||1),on:Date.now()-(p.seen||0)<90000});
+    const rank=divisionRows.findIndex(p=>p.id===player.id)+1||null;
+    const ownScore=Math.max(0,Math.floor(num(own?.score)));
+    const rival=rank===1?divisionRows[1]:rank?divisionRows[rank-2]:divisionRows[0];
+    const nextRival=rival?{name:rival.name,score:Math.max(0,Math.floor(num(rival.weekly?.score))),leading:rank===1,delta:rank===1?Math.max(0,ownScore-Math.floor(num(rival.weekly?.score))):Math.max(1,Math.floor(num(rival.weekly?.score))-ownScore+1)}:null;
+    const list=divisionRows.slice(0,50).map((p,i)=>publicRow(p,i+1));
+    const friendIds=new Set([player.id,...(Array.isArray(player.friends)?player.friends:[])]);
+    const friendRows=Object.values(DB.players).filter(p=>friendIds.has(p.id)&&(p.id===player.id||!p.weekly||p.weekly.id!==clock.id||((p.weekly.division||leagueDivision(p.save?.level).id)===division.id)))
+      .filter(p=>(p.weekly?.id===clock.id?(p.weekly.division||leagueDivision(p.save?.level).id):leagueDivision(p.save?.level).id)===division.id)
+      .sort((a,b)=>num(b.weekly?.id===clock.id?b.weekly.score:0)-num(a.weekly?.id===clock.id?a.weekly.score:0)||a.id.localeCompare(b.id))
+      .map((p,i)=>({...publicRow(p,i+1),self:p.id===player.id}));
+    const teamRows=weeklyBrigades(clock.id).map((team,i)=>({...team,rank:i+1})),ownTeam=brigadeForPlayer(player)?.team;
+    const brigadeRank=ownTeam?teamRows.findIndex(team=>team.id===ownTeam.id)+1||null:null;
+    return send(res,200,{ok:true,...clock,serverNow:Date.now(),playerId:player.id,score:ownScore,division:{id:division.id,name:division.name,min:division.min,max:division.max},rank,participants:divisionRows.length,list,friends:friendRows,nextRival,brigadeRank,teams:teamRows.slice(0,10)});
   }
   if (route === 'leaderboard') {
     const mode=String(new URL(req.url,'http://localhost').searchParams.get('mode')||'level');
@@ -638,6 +698,24 @@ async function api(req, res, route) {
     p.save.gold-=count*price;p.goldSpent=(p.goldSpent||0)+count*price;
     dirtyPlayerIds.add(p.id);return send(res,200,{ok:true,save:p.save});
   }
+  if(route==='tcc/choice'){
+    if(req.method!=='POST'||!p.save?.started)return send(res,400,{ok:false});
+    const b=await body(req),sv=p.save,t=Date.now();p.tccServerOwned=true;
+    if(b?.action==='begin'){
+      if(!sv.tcc)sv.tcc={stage:0,nextAt:0,busy:false,documents:true};
+      sv.say='Ваші документи! Покажи бронь або спробуй втекти.';
+    }else{
+      if(!sv.tcc)return send(res,409,{ok:false,err:'Перевірки немає'});
+      if(!['documents','run'].includes(b?.action))return send(res,400,{ok:false});
+      if(t<Number(sv.tcc.nextAt||0))return send(res,429,{ok:false,err:'Зачекай до наступної спроби'});
+      const protectedPlayer=b.action==='documents'&&Number(sv.bronUntil)>t;
+      const escaped=b.action==='run'&&crypto.randomInt(100)<18;
+      if(protectedPlayer||escaped){sv.tcc=null;sv.say=protectedPlayer?'Бронь дійсна. Ви вільні.':'Ти відірвався від патруля!';if(p.career?.status==='detained')p.career.status='civilian';if(escaped){sv.wantedUntil=t+15*MIN;sv.st=sv.st||{};sv.st.escaped=(sv.st.escaped||0)+1;}}
+      else{const first=!!sv.tcc.documents;sv.tcc={stage:0,nextAt:t+3*MIN,busy:false,documents:false};sv.say=b.action==='documents'?'Дійсної броні немає. Тебе затримано.':'Втеча не вдалася. Тебе затримано.';if(first){sv.st=sv.st||{};sv.st.caught=(sv.st.caught||0)+1;}p.career=p.career||{};p.career.status='detained';}
+    }
+    p.walletRevision=(p.walletRevision||0)+1;dirtyPlayerIds.add(p.id);
+    return send(res,200,{ok:true,save:sv});
+  }
   if(route==='city-events'){
     if(!p.save?.started)return send(res,409,{ok:false,err:'Спочатку створи персонажа'});
     const clock=weekClock(),day=clock.date;
@@ -651,13 +729,13 @@ async function api(req, res, route) {
         p.save.say='Стартовий термос: +20 енергії.';
       }else if(['radio','courtyard'].includes(action)){
         if(p.cityEvents[action]?.day===day)return send(res,409,{ok:false,err:'Сьогодні вже завершено'});
-        if(!['safe','risk'].includes(input.choice))return send(res,400,{ok:false});
+        if(!['safe','risk','decline'].includes(input.choice))return send(res,400,{ok:false});
         const lucky=input.choice==='risk'&&crypto.randomInt(100)<45;
-        const cash=input.choice==='safe'?80:lucky?180:30;
+        const cash=input.choice==='decline'?0:input.choice==='safe'?80:lucky?180:0;
         p.save.uah+=cash;
         const text=action==='radio'?(lucky?'Ти впіймав рідкісну частоту — сусіди знайшли загублений вантаж!':'Радіомайстерня знову на зв’язку. Район дякує за допомогу.'):(lucky?'Твій імпровізований концерт зібрав увесь двір!':'Теплий чай, гітара та розмови до сутінків.');
-        p.cityEvents[action]={day,text,cash};p.save.say=text+' +'+cash+' ₴';
-        logPlayer(p,'city',text);
+        const outcome=cash===0?'Цього разу історія завершилась без нагороди.':text;p.cityEvents[action]={day,text:outcome,cash,choice:input.choice};p.save.say=outcome+' +'+cash+' ₴';
+        logPlayer(p,'city',outcome);
       }else return send(res,400,{ok:false,err:'Невідома дія'});
       dirtyPlayerIds.add(p.id);
     }
@@ -829,19 +907,19 @@ async function api(req, res, route) {
       {id:'highway',name:'Нічний курʼєр без броні',cash:980,xp:120,risk:60,interviewRisk:20,minDays:2,minXP:100,motion:'courier',desc:'Великий заробіток, 60% шанс затримання'},
       {id:'engineer',name:'Інженер із бронню',cash:620,xp:92,risk:3,interviewRisk:8,minDays:18,minXP:1700,motion:'texts',protected:true,desc:'Стабільна висока зарплата для досвідчених'}
     ];
-    const jobOffers=()=>{const cycle=Math.floor(Date.now()/(20*MIN));return jobPool.filter((j,i)=>j.id===w.employment?.id||j.minDays===0||j.id==='highway'||j.id==='engineer'||((cycle+i*3)%5)<3).map(j=>({...j,effectiveRisk:p.save?.bronUntil>Date.now()?0:j.risk,locked:(w.workDays||[]).length<j.minDays||w.xp<j.minXP}));};
+    const jobOffers=()=>{const cycle=Math.floor(Date.now()/(20*MIN));return jobPool.filter((j,i)=>j.id===w.employment?.id||j.minDays===0||j.id==='highway'||j.id==='engineer'||((cycle+i*3)%5)<3).map(j=>({...j,effectiveRisk:j.risk,locked:(w.workDays||[]).length<j.minDays||w.xp<j.minXP}));};
     const activeSet=()=>V27_SETS.find(set=>set.parts.every(part=>{const m=ID_RE.exec(part);return m&&p.save?.eq?.[m[1]]===part;}));
     const setBonus=()=>activeSet()?.bonus||{};
-    const effectiveRisk=r=>p.save?.bronUntil>Date.now()?0:r;
+    const effectiveRisk=r=>r;
     const caughtScenes=['Бус біля зупинки','Перевірка документів','Патруль біля переходу','Рейд на робочому місці','Контроль біля вокзалу','Засідка на складі'];
     const caughtWorld=source=>{
       const incident=caughtScenes[crypto.randomInt(caughtScenes.length)],sv=p.save||(p.save=starterTelegramSave(p.name));
       if(sv.tcc)return false;
-      sv.tcc={stage:0,nextAt:0,busy:false};sv.st=sv.st||{caught:0,escaped:0,shifts:0,earned:0};sv.st.caught=(Number(sv.st.caught)||0)+1;
-      w.health=Math.max(1,w.health-12);
+      p.tccServerOwned=true;sv.tcc={stage:0,nextAt:0,busy:false,documents:true};sv.say='Ваші документи!';
+      // Document check does not injure the player.
       p.career=p.career||{status:'civilian',trainingAt:0,crateClaimed:false,coins:0};p.career.status='detained';p.career.caughtAt=Date.now();
       w.lastIncident={type:'tcc',at:Date.now(),source,scene:incident};
-      w.message='ТЦК: '+incident+'. Тебе затримали — нагороду не отримано.';
+      w.message='ТЦК: '+incident+'. Ваші документи!';
       logPlayer(p,'tcc','потрапив до ТЦК під час «'+source+'»',0);return true;
     };
     const refreshHunger=()=>{
@@ -850,7 +928,11 @@ async function api(req, res, route) {
       w.hungerAt=at+Math.floor((now-at)/HOUR)*HOUR;
     };
     refreshHunger();
-    const state=()=>{const br=get();return {ok:true,serverNow:Date.now(),world:w,save:p.save,skills:{days:(w.workDays||[]).length,shifts:w.workShifts||0,xp:w.xp||0},houses,gear,bosses,sets:V27_SETS,jobs:jobOffers(),night:{...nightClock(),tasks:nightTasks.map(j=>({...j,effectiveRisk:effectiveRisk(j.risk)})),cooldownMs:Math.max(0,4*MIN-(Date.now()-(w.lastNight||0)))},brigade:br?{...br,members:br.members.map(id=>({id,name:DB.players[id]?.name||id}))}:null}};
+    const state=()=>{const br=get(),clock=weekClock(),stored=br?.weekly?.id===clock.id?br.weekly:null,teamRows=weeklyBrigades(clock.id),teamRank=teamRows.findIndex(team=>team.id===br?.id)+1||null;
+      const teamWeekly={id:clock.id,score:Math.max(0,Math.floor(num(stored?.score))),goal:2500,rank:teamRank,participants:teamRows.length,keysGranted:Math.max(0,Math.floor(num(stored?.keysGranted))),
+        milestones:[300,1000,2500].map((goal,i)=>({goal,claimed:Math.floor(num(stored?.keysGranted))>i})),
+        contributors:Object.entries(stored?.contributors||{}).map(([id,score])=>({id,name:DB.players[id]?.name||id,score:Math.max(0,Math.floor(num(score)))})).sort((a,b)=>b.score-a.score).slice(0,8)};
+      return {ok:true,serverNow:Date.now(),world:w,save:p.save,skills:{days:(w.workDays||[]).length,shifts:w.workShifts||0,xp:w.xp||0},houses,gear,bosses,sets:V27_SETS,jobs:jobOffers(),night:{...nightClock(),tasks:nightTasks.map(j=>({...j,effectiveRisk:effectiveRisk(j.risk)})),cooldownMs:Math.max(0,4*MIN-(Date.now()-(w.lastNight||0)))},brigade:br?{...br,weekly:teamWeekly,members:br.members.map(id=>({id,name:DB.players[id]?.name||id}))}:null}};
     if(req.method==='GET')return send(res,200,state());
     const b=await body(req);if(!b||typeof b.action!=='string')return send(res,400,{ok:false,err:'Некоректна дія'});
     const t=Date.now(), fail=err=>send(res,200,{ok:false,err});
@@ -1013,6 +1095,13 @@ async function api(req, res, route) {
     const nx = b.save, v = validate(p, nx);
     if (!v.ok) { console.log('відхилено', p.id, v.why); return send(res, 200, { ok: false, why: v.why, save: p.save || undefined }); }
     v.commit();
+    // Friend assists may reduce the boss damage in this save, but only damage
+    // earned by this player's validated progress can be forwarded to friends.
+    const verifiedBossDamage = Math.max(0, Math.round(num(v.bossDamage)));
+    if (verifiedBossDamage) {
+      p.pendingBossDamage = Math.min(1e15, num(p.pendingBossDamage) + verifiedBossDamage);
+      p.pendingBossMax = Math.max(num(p.pendingBossMax), verifiedBossDamage);
+    }
     // Server-side penalty for each newly recorded detention; no client-provided loot or amount is trusted.
     const previousCaught = Math.max(0, Math.floor(num(p.save?.st?.caught)));
     const currentCaught = Math.max(0, Math.floor(num(nx.st?.caught)));
@@ -1039,6 +1128,7 @@ async function api(req, res, route) {
     const oldShifts=Math.floor(num(prevSave.st?.shifts));
     const oldBossWins=Math.floor(num(prevSave.bs?.w));
     const prevJob=prevSave.job?.ji;
+    if(p.tccServerOwned){nx.tcc=prevSave.tcc||null;nx.st=nx.st||{};nx.st.caught=prevSave.st?.caught||0;nx.st.escaped=prevSave.st?.escaped||0;}
     nx.gold = Math.min(num(nx.gold), 1e9); p.save = nx; p.lastSave = Date.now(); p.name = cleanName(nx.name);
     if(currentCaught>previousCaught){
       if(p.world)p.world.health=Math.max(1,Math.floor(num(p.world.health,100))-12);
@@ -1089,24 +1179,17 @@ async function api(req, res, route) {
   if (route === 'hit') {                                                   
     const b = await body(req); if (!b) return send(res, 400, { ok: false });
     const sv = p.save, L = sv ? num(sv.level, 1) : 1, sUp = sumUp(sv && sv.up);
-    const tg = Math.max(tierOf(L), ...((sv && sv.inv) || []).map(id => { const m = ID_RE.exec(String(id)); return m ? +m[2] : 0; }));
-    const cap = 700 * bMultMax(L, tg, sUp);
-    const d = Math.floor(num(b.dmg));
+    const d = Math.floor(Math.max(0, num(p.pendingBossDamage)));
+    const maxHit = Math.min(d, Math.floor(Math.max(0, num(p.pendingBossMax, d))));
     const t = Date.now(); p.hits = p.hits.filter(x => t - x < 3 * HOUR);
-    if (d <= 0 || d > cap || p.hits.length >= 30) return send(res, 200, { ok: false, err: 'відхилено' });
-    let usedWeapon=null;
-    if(b.weapon!==undefined&&b.weapon!==null){
-      const id=String(b.weapon),allowed=['bat','bar','chain','mace'],bs=sv?.bs;
-      if(!allowed.includes(id)||!bs||!Array.isArray(bs.wp)||!bs.wp.includes(id))return send(res,200,{ok:false,err:'Цієї зброї немає в інвентарі'});
-      const counts=bs.weaponCounts||(bs.weaponCounts={});
-      const copies=Math.floor(num(counts[id],1));
-      if(copies<1)return send(res,200,{ok:false,err:'Зброя зламалася — у запасі більше немає копій'});
-      counts[id]=copies-1;usedWeapon=id;
-    }
+    if (d <= 0 || p.hits.length >= 30) return send(res, 200, { ok: false, err: d <= 0 ? 'Немає підтвердженого сервером удару' : 'Забагато ударів' });
+    // Never trust client damage or weapon fields. Save validation calculated
+    // this amount from the boss HP delta and has already committed weapon use.
+    p.pendingBossDamage = 0; p.pendingBossMax = 0;
     p.hits.push(t);
     logPlayer(p,'attack','завдав '+d.toLocaleString('uk-UA')+' шкоди босу',25000);
     const previousMax = num(p.maxDamage, 0);
-    if (d > previousMax) { p.maxDamage=d; publishNews({type:'damage',name:p.name,playerId:p.id,value:d,text:`${p.name} встановив рекорд удару: ${d.toLocaleString('uk-UA')} шкоди`}); }
+    if (maxHit > previousMax) { p.maxDamage=maxHit; publishNews({type:'damage',name:p.name,playerId:p.id,value:maxHit,text:`${p.name} встановив рекорд удару: ${maxHit.toLocaleString('uk-UA')} шкоди`}); }
     p.friends.forEach(id => {
       const o = DB.players[id]; if (!o) return;
       o.events.push({ name: p.name, dmg: d, t }); if (o.events.length > 50) o.events.shift();
@@ -1115,7 +1198,7 @@ async function api(req, res, route) {
       dirtyPlayerIds.add(o.id);
     });
     dirtyPlayerIds.add(p.id); 
-    return send(res, 200, usedWeapon?{ok:true,save:sv,weapon:usedWeapon,remaining:sv.bs.weaponCounts[usedWeapon]}:{ ok: true });
+    return send(res, 200, { ok: true, damage: d });
   }
   if (route === 'events') { const list = p.events; p.events = []; dirtyPlayerIds.add(p.id); return send(res, 200, { ok: true, list }); }
   return send(res, 404, { ok: false });
@@ -1378,4 +1461,4 @@ const observer=new MutationObserver(dock);observer.observe($('#tabs'),{childList
 process.on('uncaughtException', e => console.error('uncaught', e));
 
 if (require.main === module) server.listen(PORT, () => console.log('Ухилянт: http://localhost:' + PORT));
-module.exports = { weekClock, weeklyScore, server, durableApi, dbReady, validate, fresh, DB, basePay, xpNeed, tierOf, totalXP, hpOf, FOOD_CD, FOOD_EN, REGEN };
+module.exports = { weekClock, weeklyScore, leagueDivision, server, durableApi, dbReady, validate, fresh, DB, basePay, xpNeed, tierOf, totalXP, hpOf, FOOD_CD, FOOD_EN, REGEN };

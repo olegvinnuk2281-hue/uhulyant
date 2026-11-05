@@ -143,6 +143,7 @@ const WORK_PROPS={
   repair:{title:'Ремонтуємо обладнання',svg:'<g class="v27-tool"><path d="M135 52l85 105" stroke="#9caab8" stroke-width="12" stroke-linecap="round"/><path d="M114 55l31-29 27 28-30 27" fill="#7792aa" stroke="#34212a" stroke-width="6"/></g><circle cx="233" cy="180" r="28" stroke="#d4ac66" stroke-width="10" fill="#404448"/><circle cx="233" cy="180" r="8" fill="#d4ac66"/>'},
   build:{title:'Зводимо стіну',svg:'<g class="v27-brick"><rect x="178" y="133" width="96" height="30" rx="4" fill="#a95e43" stroke="#4a2a22" stroke-width="5"/><rect x="165" y="164" width="116" height="29" rx="3" fill="#b86f49" stroke="#4a2a22" stroke-width="5"/><path d="M214 163v30m-15-60v30" stroke="#4a2a22" stroke-width="4"/></g><path class="v27-tool" d="M125 70l63 73" stroke="#bda075" stroke-width="9" stroke-linecap="round"/><rect x="177" y="134" width="39" height="16" rx="4" fill="#9eabb2"/>'}
 };
+WORK_PROPS.moderation={title:'Модеруємо коментарі',svg:WORK_PROPS.texts.svg};
 function workStage(id,active=false){
   const job=WORK_PROPS[id]||WORK_PROPS.warehouse;
   const avatar=window.UHY?.snapshot?.('work')?.avatar||'';
@@ -151,6 +152,16 @@ function workStage(id,active=false){
     <div class="v27-job-avatar">${avatar}</div><svg class="v27-job-prop" viewBox="0 0 330 230" aria-hidden="true">${job.svg}</svg>
     <span class="v27-job-badge">${e(job.title)} ${active?'· у процесі':'· готово'}</span>
   </div>`;
+}
+let workActionTimer;
+function showWorkAction(id='texts'){
+  let host=document.getElementById('v27-work-action');
+  if(!host){host=document.createElement('div');host.id='v27-work-action';host.setAttribute('role','status');host.setAttribute('aria-live','polite');document.body.append(host)}
+  const job=WORK_PROPS[id]||WORK_PROPS.texts;
+  host.innerHTML=workStage(id,true);
+  host.setAttribute('aria-label',job.title+' за ноутбуком');
+  host.classList.remove('v27-work-show');void host.offsetWidth;host.classList.add('v27-work-show');
+  clearTimeout(workActionTimer);workActionTimer=setTimeout(()=>host.classList.remove('v27-work-show'),1800);
 }
 function caughtScene(incident){
   const art=window.UHY?.snapshot?.('street')||{};
@@ -195,7 +206,7 @@ const offers=(jobs||[]).map(j=>`<div class="world-job v27-job-choice ${w.employm
 const employed=(jobs||[]).find(j=>j.id===w.employment?.id);
 const work=card('💼 Робота · обери свій шлях',`<p class="v27-explain">Натисни на вакансію → влаштуйся → почни зміну. Зарплата нараховується тільки після таймера. <b>Вищий ризик — більша нагорода.</b></p>
 ${w.lastIncident?.type==='tcc'?`<div class="v27-incident" role="alert">🚐 ${e(w.message||'Тебе затримали ТЦК!')} Перейди у вкладку «Вулиця» основної гри для наступних дій.</div>${caughtScene(w.lastIncident)}`:''}
-${w.employment?`<div class="v27-current-work"><h3>🎬 ${e(w.employment.name)}</h3>${workStage(employed?.motion||w.workShift?.motion||'warehouse',!!w.workShift&&Number(w.workShift.endsAt)>Date.now())}<p id="uhyWorkTimer" data-ends="${Number(w.workShift?.endsAt||0)}">${w.workShift?'⏳ Іде зміна…':'Готовий до зміни'}</p><div class="world-actions">${w.workShift?btn('💰 Забрати зарплату','workCollect','id="uhyWorkClaim"'):btn('▶ Почати зміну','shift')}${btn('Звільнитися','quit',`class="secondary" ${w.workShift?'disabled':''}`)}</div></div>`:''}
+${w.employment?`<div class="v27-current-work"><h3>🎬 ${e(w.employment.name)}</h3>${workStage(employed?.motion||w.workShift?.motion||'warehouse',!!w.workShift&&Number(w.workShift.endsAt)>Date.now())}<p id="uhyWorkTimer" data-ends="${Number(w.workShift?.endsAt||0)}">${w.workShift?'⏳ Іде зміна…':'Готовий до зміни'}</p><div class="world-actions">${w.workShift?btn('💰 Забрати зарплату','workCollect','id="uhyWorkClaim"'):btn('▶ Почати зміну','shift',`data-job="${e(w.employment.id)}"`)}${btn('Звільнитися','quit',`class="secondary" ${w.workShift?'disabled':''}`)}</div></div>`:''}
 <div class="world-list v27-jobs">${offers||'<p>Вакансій поки немає</p>'}</div>
 <p class="world-muted">Зміна триває 60–135 секунд за серверним годинником. Можна закрити Telegram і повернутися — час не почнеться заново. Після зміни 5 хвилин відпочинку.</p>`);
 
@@ -213,7 +224,9 @@ if(which==='housing'){
   panel('🏠 Хати · Мій район',info+`<div class="world-grid">${housePanel}${healthCard}${card('✎ Персонаж', '<p>Змінюй шкіру, волосся, бороду, одяг та локацію у редакторі головної сцени.</p>'+btn('Відкрити редактор персонажа','editHero'))}</div>`);return
  }
 const raidKeys=Math.max(0,Number(br?.keys)||0),activeRaid=br?.fight?.hp>0?br.fight.boss:null,raidCosts=[0,2,4];
-const brigade=card('⚔ Бригада та боси',br?`<p><b>${e(br.name)}</b> · код ${e(br.id)} · ${br.members.length}/8</p><p>${br.members.map(m=>e(m.name)).join(', ')}</p><p>🔑 Ключі бригади: <b>${raidKeys}</b> · активний бос: <b>${e(br.fight?.boss||'не обраний')}</b> · HP ${br.fight?.hp??'—'}</p><p class="world-muted">Можна обрати будь-якого боса, якщо вистачає ключів. Ключі витрачаються на початку рейду.</p><div class="world-actions">${bosses.map((x,i)=>{const cost=raidCosts[i],blocked=activeRaid?activeRaid!==x.id:raidKeys<cost;return `<div class="uhy-raid-boss"><div class="uhy-raid-art" aria-hidden="true">${window.UHY?.bossPortrait?.(i===0?0:i===1?2:5,br.fight?.boss===x.id?Math.min(3,Math.floor(4*(1-br.fight.hp/(br.fight.maxHp||x.hp)))):0)||'⚔'}</div><div><b>${e(x.name)}</b><small>${Number(x.hp).toLocaleString('uk-UA')} HP · ${cost} 🔑 для відкриття</small></div>${btn('⚔ Атакувати','fight',`data-boss="${e(x.id)}" ${blocked?'disabled':''}`)}</div>`}).join('')}</div>`:`<input id="spBrigade" placeholder="Назва бригади або код запрошення" maxlength="24"><div class="world-actions">${btn('Створити','create')}${btn('Увійти за кодом','join','class="secondary"')}</div>`);
+const bw=br?.weekly||{score:0,goal:2500,keysGranted:0,milestones:[{goal:300,claimed:false},{goal:1000,claimed:false},{goal:2500,claimed:false}],contributors:[]};
+const brigadeGoals=`<div class="uhy-team-weekly"><b>🎯 Ціль бригади на тиждень: ${Number(bw.score||0).toLocaleString('uk-UA')} / ${Number(bw.goal||2500).toLocaleString('uk-UA')} очок</b><progress max="${Number(bw.goal||2500)}" value="${Math.min(Number(bw.goal||2500),Number(bw.score||0))}"></progress><small>Позиція у рейтингу бригад: ${bw.rank||'—'} / ${bw.participants||0}</small><small>Спільні очки за зміни й удари. На рубежах 300 / 1 000 / 2 500 автоматично видається по ключу.</small>${(bw.contributors||[]).length?'<small>Внесок: '+bw.contributors.slice(0,3).map(m=>e(m.name)+' '+Number(m.score).toLocaleString('uk-UA')).join(' · ')+'</small>':''}</div>`;
+const brigade=card('⚔ Бригада та боси',br?`<p><b>${e(br.name)}</b> · код ${e(br.id)} · ${br.members.length}/8</p><p>${br.members.map(m=>e(m.name)).join(', ')}</p><p>🔑 Ключі бригади: <b>${raidKeys}</b> · активний бос: <b>${e(br.fight?.boss||'не обраний')}</b> · HP ${br.fight?.hp??'—'}</p>${brigadeGoals}<p class="world-muted">Можна обрати будь-якого боса, якщо вистачає ключів. Ключі витрачаються на початку рейду.</p><div class="world-actions">${bosses.map((x,i)=>{const cost=raidCosts[i],blocked=activeRaid?activeRaid!==x.id:raidKeys<cost;return `<div class="uhy-raid-boss"><div class="uhy-raid-art" aria-hidden="true">${window.UHY?.bossPortrait?.(i===0?0:i===1?2:5,br.fight?.boss===x.id?Math.min(3,Math.floor(4*(1-br.fight.hp/(br.fight.maxHp||x.hp)))):0)||'⚔'}</div><div><b>${e(x.name)}</b><small>${Number(x.hp).toLocaleString('uk-UA')} HP · ${cost} 🔑 для відкриття</small></div>${btn('⚔ Атакувати','fight',`data-boss="${e(x.id)}" ${blocked?'disabled':''}`)}</div>`}).join('')}</div>`:`<input id="spBrigade" placeholder="Назва бригади або код запрошення" maxlength="24"><div class="world-actions">${btn('Створити','create')}${btn('Увійти за кодом','join','class="secondary"')}</div>`);
 const daily=card('🎁 Щоденний бонус',`<p>Одна спроба кожні 24 години. Випадкова нагорода: гроші, досвід або рідкісна річ.</p><div class="world-actions">${btn('🎡 Відкрити колесо','daily')}</div>`);
 const outfits=card('🧥 Сім нових комплектів',`<p class="v27-explain">Обери готовий образ. Після покупки весь комплект одягається на твого персонажа та назавжди залишається в інвентарі. Повний комплект дає вказаний ігровий бонус.</p><div class="v27-outfit-list">${(latest.sets||[]).map(x=>{
  const owned=(x.parts||[]).every(id=>(latest.save?.inv||[]).includes(id));
@@ -237,5 +250,5 @@ if(action==='houseEquip'||action==='houseBuy'||action==='houseClaim'){
 }
 render(action.startsWith('house')?'housing':'world')}catch(err){alert(err.message)}finally{busy=false}}
 setInterval(()=>{const el=document.getElementById('uhyWorkTimer');if(!el)return;const ends=Number(el.dataset.ends||0),serverNow=Date.now()+Number(latest?._clockOffset||0);const left=ends-serverNow;el.textContent=ends?(left>0?'⏳ Зміна: '+fmtDuration(left):'✅ Зміна завершена — забери оплату'):'Готовий до роботи';const claim=document.getElementById('uhyWorkClaim');if(claim)claim.disabled=!!(ends&&left>0);},1000);
-window.UHYUI={show,openWheel};
+window.UHYUI={show,openWheel,showWorkAction};
 })();

@@ -107,7 +107,10 @@ const make=(parent,label,action)=>{const b=document.createElement('button');b.te
 primary.forEach(x=>make(dock,x.label,x.action));
 const more=make(dock,'☰ Меню',()=>{menu.hidden=!menu.hidden});
 more.onclick=()=>{menu.hidden=!menu.hidden};
-entries.filter(x=>!primary.includes(x)).forEach(x=>make(menu,x.label,x.action));
+const groups=[['Персонаж і дім',['tab3','housing','account']],['Робота і розвиток',['tab2','career','tab4','tab5']],['Місто і спільнота',['friends','news','leaderboard','city-events','weekly']]];
+const used=new Set(primary.map(x=>x.key));
+for(const [title,keys] of groups){const section=document.createElement('section');section.className='organized-menu';const h=document.createElement('h3');h.textContent=title;section.append(h);for(const key of keys){const item=entries.find(x=>x.key===key);if(item&&!used.has(key)){make(section,item.label,item.action);used.add(key)}}menu.append(section)}
+for(const x of entries.filter(x=>!used.has(x.key)))make(menu,x.label,x.action);
 if(!document.body.dataset.uhyEscapeBound){document.body.dataset.uhyEscapeBound='1';document.addEventListener('keydown',e=>{if(e.key==='Escape'){const m=document.getElementById('uhyMore');if(m)m.hidden=true}})}
 }
 // The original client redraws #tabs on every game update.
@@ -155,7 +158,7 @@ async function init(){
   if(new URLSearchParams(location.search).has('reset')){showGate('reset');return}
   if(isTelegramLaunch()){
     showTelegramStatus('loading','Автоматичний вхід через Telegram…');
-    try{window.Telegram?.WebApp?.ready?.();window.Telegram?.WebApp?.expand?.();window.Telegram?.WebApp?.requestFullscreen?.()}catch(e){}
+    try{const tg=window.Telegram?.WebApp;tg?.ready?.();tg?.expand?.();if(tg?.isVersionAtLeast?.('8.0'))tg.requestFullscreen?.()}catch(e){}
     const data=await waitForTelegramData();
     if(!data){showTelegramStatus('error','Telegram не передав дані для входу. Відкрий гру через кнопку Mini App у @Uhilyant_UAbot, а не звичайним браузерним посиланням.');return}
     const r=await request('telegram/auth',{initData:data},token);

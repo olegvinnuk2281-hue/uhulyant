@@ -1,6 +1,6 @@
 {
   "name": "uhylyant",
-  "version": "1.3.0-v27",
+  "version": "1.5.0-v27",
   "private": true,
   "description": "Ухилянт v27 — ризик, професії, анімації, їжа та комплекти одягу",
   "main": "server.js",

@@ -1,9 +1,8 @@
 /* v27 — friendly rounded UI, large touch targets, Telegram header clearances, work scenes. */
 :root{--v27-header-clearance:0px;--v27-bottom-clearance:0px;--v27-radius:20px;--v27-frame:#9d7748}
 html body{padding-top:max(env(safe-area-inset-top,0px),var(--tg-safe-area-inset-top,0px),var(--v27-header-clearance,0px))!important}
-#audioControls{top:calc(max(env(safe-area-inset-top,0px),var(--v27-header-clearance,0px)) + 7px)!important;left:max(11px,env(safe-area-inset-left,0px))!important;z-index:17000!important;gap:9px!important}
-html.v27-telegram #audioControls{display:none!important}
-#audioControls button{min-width:79px!important;min-height:38px!important;height:auto!important;padding:7px 10px!important;font-size:13px!important;border-radius:14px!important;background:#3d3024!important;box-shadow:0 3px 0 #150d07!important;touch-action:manipulation}
+/* Audio switches live in Settings so they never cover the HUD or the game scene. */
+#audioControls{display:none!important}
 body .card,body .paper,body #socialPanel .world-card,body #socialPanel .uhy-profile-card,body #socialPanel .career-skill,body #socialPanel .career-training,body #socialPanel .career-road{border-radius:var(--v27-radius)!important;box-shadow:0 5px 0 #130b0770,0 9px 21px #0004!important;border:1px solid #a17849!important}
 body .card,body #socialPanel .world-card{padding:clamp(13px,1.8vw,19px)!important;gap:11px!important;background:linear-gradient(155deg,#383029,#28211b)!important}
 body #socialPanel .world-job{border-radius:17px!important;padding:15px!important;gap:10px!important;background:linear-gradient(135deg,#302922,#211b17)!important;box-shadow:inset 0 1px #ffffff19!important}
@@ -14,6 +13,20 @@ body #socialPanel #spBody{padding:18px clamp(12px,2.5vw,25px) calc(90px + env(sa
 body .scene{border-radius:19px!important}
 body .tabs{border-radius:16px!important}
 body .tabs .tab svg{width:clamp(22px,3vw,27px)!important;height:clamp(22px,3vw,27px)!important}
+/* A one-shot arrival beat makes the main capture scene feel like a real event. */
+.scene .v27-capture-van{position:absolute;z-index:8;right:4%;bottom:4%;width:min(42%,220px);aspect-ratio:84/42;height:auto;overflow:visible;pointer-events:none;filter:drop-shadow(3px 5px 3px #0009);animation:v27TccDrive 1.7s cubic-bezier(.16,.76,.2,1) both}
+.scene .v27-capture-van g{transform-box:fill-box;transform-origin:center;animation:v27TccBump .22s ease-in-out 7 alternate}
+.scene .v27-capture-van .v27-siren-red{animation:v27TccSiren .32s steps(1,end) infinite}
+.scene .v27-capture-van .v27-siren-blue{animation:v27TccSiren .32s steps(1,end) infinite reverse}
+.scene.v27-tcc-capture .lyr.hero{transform-origin:50% 100%;animation:v27TccReaction 1.55s ease-in-out both!important}
+@keyframes v27TccDrive{0%{transform:translateX(135%) rotate(1deg)}68%{transform:translateX(-58%) rotate(-1deg)}82%{transform:translateX(-53%) rotate(.7deg)}100%{transform:translateX(-55%) rotate(0)}}
+@keyframes v27TccDriveLandscape{0%{transform:translateX(-300%) rotate(-1deg)}68%{transform:translateX(-102%) rotate(1deg)}82%{transform:translateX(-96%) rotate(-.7deg)}100%{transform:translateX(-100%) rotate(0)}}
+@keyframes v27TccBump{to{transform:translateY(-2px)}}
+@keyframes v27TccSiren{0%,45%{opacity:1;filter:brightness(1.5)}46%,100%{opacity:.3;filter:brightness(.8)}}
+@keyframes v27TccReaction{0%,100%{transform:translate(0,0) rotate(0)}14%{transform:translate(-5px,1px) rotate(-1deg)}29%{transform:translate(4px,-1px) rotate(1deg)}46%{transform:translate(-3px,0) rotate(-.7deg)}62%{transform:translate(2px,0) rotate(.4deg)}78%{transform:translate(-1px,0) rotate(0)}}
+@media(max-width:420px){.scene .v27-capture-van{width:48%;right:2%;bottom:3%}}
+@media(max-height:475px) and (orientation:landscape){.scene .v27-capture-van{width:min(30%,160px);left:50%;right:auto;bottom:2%;animation-name:v27TccDriveLandscape}}
+@media(prefers-reduced-motion:reduce){.scene .v27-capture-van{animation:none!important;transform:translateX(-55%)}.scene .v27-capture-van g,.scene .v27-capture-van .v27-siren-red,.scene .v27-capture-van .v27-siren-blue,.scene.v27-tcc-capture .lyr.hero{animation:none!important}}
 body #socialPanel .world-card h3{font:800 clamp(16px,2vw,21px)/1.23 'Oswald','Arial Narrow',sans-serif!important;letter-spacing:.015em!important;color:#f1c783!important}
 body #socialPanel .world-card p,body #socialPanel .world-job small{font-size:clamp(12px,1.4vw,13.5px)!important;line-height:1.48!important}
 body #socialPanel .world-list{gap:12px!important}
@@ -42,12 +55,12 @@ body #socialPanel .world-actions{gap:10px!important}
 .v27-job-window{position:absolute;width:112px;height:89px;left:6%;top:10%;border:7px solid #463b34;border-radius:12px;background:linear-gradient(#729fb3,#a8c7c3 60%,#e7b679);box-shadow:inset 0 0 15px #1e2929a0}
 .v27-job-window:after{content:'';position:absolute;inset:50% 0 auto;border-top:5px solid #4e3a2d}
 .v27-job-floor{position:absolute;inset:auto 0 0;height:25%;background:repeating-linear-gradient(100deg,#47362b 0 39px,#59412e 40px 44px)}
-.v27-job-avatar{position:absolute;left:12%;bottom:-11%;width:43%;height:125%;z-index:2;transform-origin:50% 94%;animation:v27HeroIdle 2.5s ease-in-out infinite alternate}
+.v27-job-avatar{position:absolute;left:10%;bottom:0;width:37%;height:100%;z-index:2;transform-origin:50% 94%;animation:v27HeroIdle 2.5s ease-in-out infinite alternate}
 .v27-job-avatar svg{width:100%;height:100%;display:block;filter:drop-shadow(3px 5px 3px #1b110b90)}
 .v27-job-prop{position:absolute;inset:0;width:100%;height:100%;z-index:3;overflow:visible;filter:drop-shadow(2px 3px 2px #15110d66)}
 .v27-job-badge{position:absolute;top:9px;right:9px;z-index:5;max-width:65%;background:#291c15df;border:1px solid #c09455;border-radius:999px;padding:7px 10px;color:#f5d6a4;font:800 11px system-ui}
 .v27-active .v27-job-avatar{animation:v27HeroWork .9s ease-in-out infinite alternate}
-.v27-active[data-job-motion=texts] .v27-typing{stroke-dasharray:6 5;animation:v27Text .6s linear infinite}
+.v27-active[data-job-motion=texts] .v27-typing,.v27-active[data-job-motion=moderation] .v27-typing{stroke-dasharray:6 5;animation:v27Text .6s linear infinite}
 .v27-active[data-job-motion=warehouse] .v27-crate{transform-origin:170px 180px;animation:v27Carry 1.4s ease-in-out infinite alternate}
 .v27-active[data-job-motion=courier] .v27-bike{animation:v27Ride 1s ease-in-out infinite alternate}
 .v27-active[data-job-motion=build] .v27-brick{animation:v27Carry 1.8s ease-in-out infinite alternate}
@@ -70,6 +83,9 @@ body #socialPanel .world-actions{gap:10px!important}
 .v27-outfit-desc b{color:#ffe2a2;font-size:15px}
 .v27-outfit-desc small{color:#ccbaa4;line-height:1.4}
 .v27-outfit-desc button{margin-top:auto}
+.uhy-team-weekly{display:flex;flex-direction:column;gap:7px;padding:11px 13px;border:1px solid #94724b;border-radius:14px;background:#211913;color:#f2d29b}
+.uhy-team-weekly progress{width:100%;height:12px;accent-color:#efb347}
+.uhy-team-weekly small{color:#d3bea0;line-height:1.4}
 .v27-food-meter{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-weight:700;color:#edcf94}
 .v27-meter{height:12px;border-radius:999px;background:#241913;flex:1 1 130px;overflow:hidden;border:1px solid #79573c}
 .v27-meter i{height:100%;display:block;background:linear-gradient(90deg,#c66840,#e2be64,#83ae71);border-radius:999px;transition:width .4s}
@@ -78,7 +94,8 @@ body .who-txt{display:block!important;max-width:clamp(95px,20vw,240px)!important
 body .who-txt b{display:inline-block!important;max-width:calc(100% - 35px)!important;vertical-align:middle!important}
 body .who-txt small{display:block!important}
 body #socialPanel .uhy-profile-avatar{bottom:-5%!important;height:100%!important;width:min(34%,235px)!important}
-body .scene .lyr.hero{bottom:0!important;height:min(var(--hh),95%)!important}
+body .scene .lyr.hero{bottom:0!important;width:auto!important;max-width:58%!important;height:min(var(--hh),95%)!important;aspect-ratio:200/306!important}
+body .scene .lyr.boss{bottom:0!important;width:auto!important;max-width:58%!important;height:min(92%,72%)!important;aspect-ratio:200/306!important}
 body #socialPanel .uhy-modal-scene .uhy-layer-avatar{bottom:0!important;height:100%!important}
 @media(max-width:700px){
  body #socialPanel .spbox{border-radius:17px!important}
@@ -96,13 +113,9 @@ body #socialPanel .uhy-modal-scene .uhy-layer-avatar{bottom:0!important;height:1
 @media(max-width:370px){
  .v27-outfit-list{grid-template-columns:minmax(0,1fr)}
  .v27-outfit-hero{height:205px}
- #audioControls button{min-width:74px!important;font-size:11px!important}
  body .who-txt{max-width:95px!important}
 }
 @media(max-height:475px) and (orientation:landscape){
- html body{padding-top:calc(34px + max(env(safe-area-inset-top,0px),var(--tg-safe-area-inset-top,0px)) + var(--v27-tg-top))!important}
- #audioControls{top:calc(2px + var(--v27-tg-top))!important}
- #audioControls button{min-height:29px!important;padding:4px 7px!important}
  body #scene{height:80px!important}
  .v27-job-stage{height:155px}
 }
@@ -159,9 +172,101 @@ body #hud{padding:5px 0!important;gap:4px!important}
 body .hud-top{gap:6px!important}
 body .lvl{min-width:40px!important;height:32px!important;font-size:17px!important}
 body .wallet .chip{min-height:30px!important;padding:4px 8px!important;font-size:12px!important}
-body #scene[data-section=home] .lyr.hero{bottom:0!important;height:100%!important}
+body #scene[data-section=home] .lyr.hero{bottom:0!important;height:100%!important;aspect-ratio:200/306!important}
 #v27-action-flash{top:auto!important;left:50%!important;right:auto!important;bottom:calc(70px + max(env(safe-area-inset-bottom,0px),var(--v27-bottom-clearance,0px)))!important;transform:translate(-50%,-8px) scale(.95)}
 #v27-action-flash.v27-show{animation:v27Flash 1.25s ease-out forwards}
 @keyframes v27Flash{0%{opacity:0;transform:translate(-50%,-10px) scale(.94)}13%,78%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-6px)}}
 @media(max-width:700px){body #scene{height:clamp(164px,22dvh,215px)!important}}
 @media(max-height:475px) and (orientation:landscape){body #scene{height:90px!important}}
+
+/* Keep every avatar inside the scene using the matching full-body 2:3 viewBox. */
+.smoke-setting{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 11px;border:1px solid #80633f;border-radius:12px;background:#211913;color:#edd0a0;font-weight:700}
+.smoke-setting button{min-height:39px!important;white-space:nowrap}
+.scene-btns button.urgent{background:linear-gradient(#df7660,#b44737);border-color:#7c2a22;color:#fff0da}
+.scene-btns button.urgent:disabled{opacity:.76;cursor:default}
+.scene-btns button.urgent:not(:disabled){animation:tccEscapePulse 1.4s ease-in-out infinite alternate}
+@keyframes tccEscapePulse{to{filter:brightness(1.15);transform:translateY(-1px)}}
+@media(prefers-reduced-motion:reduce){.scene-btns button.urgent:not(:disabled){animation:none}}
+
+/* Home is organized into three clear groups, with actions aligned consistently. */
+.home-section{gap:10px!important}
+.home-house-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.home-safety{display:flex;gap:6px;flex-wrap:wrap;align-items:baseline;padding-top:9px;border-top:1px solid #80633f;color:#c6d4a5;font-weight:700}
+.home-safety span{color:#cbb89b;font-weight:500}
+.home-action-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #74604755}
+.home-action-row:last-child{border-bottom:0}
+.home-action-row>div{min-width:0;display:flex;flex-direction:column;gap:3px}
+.home-action-row b{font-size:13px}
+.home-action-row small{color:#c9b493;line-height:1.35}
+.home-current-job>span{display:flex;flex-wrap:wrap;gap:5px}
+.home-section .h{margin-bottom:2px}
+@media(max-width:420px){.home-house-row{align-items:flex-start}.home-house-row>div{min-width:0}.home-current-job{align-items:flex-start;flex-direction:column}.home-current-job>span{width:100%}.home-current-job>span button{flex:1}}
+
+/* Text work and comment moderation briefly show the real avatar at a laptop. */
+#v27-work-action{position:fixed;z-index:17045;left:50%;bottom:calc(70px + max(env(safe-area-inset-bottom,0px),var(--v27-bottom-clearance,0px)));width:min(460px,calc(100vw - 24px));transform:translateX(-50%);pointer-events:none;opacity:0}
+#v27-work-action.v27-work-show{animation:v27WorkAction 1.8s ease-out forwards}
+#v27-work-action .v27-job-stage{height:clamp(150px,25dvh,220px);border-radius:16px;border-color:#d1a45c;box-shadow:0 14px 38px #000a,inset 0 16px 50px #24180e44}
+#v27-work-action .v27-job-badge{font-size:12px}
+@keyframes v27WorkAction{0%{opacity:0;transform:translate(-50%,12px) scale(.94)}12%,80%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,6px) scale(.98)}}
+@media(prefers-reduced-motion:reduce){#v27-work-action.v27-work-show{animation:none!important;opacity:1;transform:translateX(-50%)}}
+/* Unified action area and uncropped full-body artwork, all breakpoints. */
+html body #scene[data-section] .lyr.hero{inset:auto!important;left:6%!important;bottom:30px!important;height:calc(100% - 46px)!important;width:34%!important;max-height:none!important;aspect-ratio:200/324!important;transform:none!important}
+html body #scene[data-section] .lyr.hero>svg{width:100%!important;height:100%!important;overflow:visible!important}
+html body #socialPanel .uhy-layer-avatar{bottom:4px!important;height:94%!important;width:30%!important}
+html body #scene .lyr.boss{bottom:28px!important;height:calc(100% - 40px)!important}
+#compactTools{position:fixed;right:8px;top:calc(max(env(safe-area-inset-top,0px),var(--v27-header-clearance,0px)) + 3px);z-index:17010;display:flex;gap:6px;align-items:center;font:10px system-ui;color:#d4c3a6}
+#compactTools button{border:1px solid #836842;border-radius:8px;background:#29221b;color:#ead9bd;padding:5px 8px;min-height:28px}
+#contextActions{position:fixed;bottom:calc(66px + max(env(safe-area-inset-bottom,0px),var(--v27-bottom-clearance,0px)));left:8px;right:8px;z-index:17020;background:#312219;border:1px solid #be8053;border-radius:12px;padding:6px;display:flex;justify-content:center}
+#contextActions[hidden]{display:none!important}
+#contextActions button{width:min(100%,500px);min-height:40px;border:1px solid #ca8d69;border-radius:8px;background:#984c36;color:white;font:600 14px system-ui}
+.has-context-actions #scene .scene-btns .urgent{visibility:hidden}
+.has-context-actions #content,.has-context-actions #spBody{padding-bottom:70px!important}
+#uhyMore{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important}
+#uhyMore[hidden]{display:none!important}
+.organized-menu{display:flex;flex-direction:column;gap:7px;min-width:0}.organized-menu h3{font:600 12px system-ui;color:#d6b579;margin:0 0 5px}.organized-menu button{width:100%;font-size:12px!important;text-align:left}
+@media(max-width:600px){#uhyMore{grid-template-columns:1fr!important}.organized-menu{display:grid;grid-template-columns:1fr 1fr}.organized-menu h3{grid-column:1/-1}#compactTools #saveIndicator{max-width:70px;font-size:9px}}
+[data-motion] .uhy-arm{animation:none!important}
+[data-motion=walk] .uhy-arm-0{animation:quietArm 1.2s ease-in-out infinite alternate!important}
+[data-motion=walk] .uhy-arm-1{animation:quietArm 1.2s ease-in-out infinite alternate-reverse!important}
+@keyframes quietArm{from{transform:rotate(-2deg)}to{transform:rotate(2deg)}}
+@media(prefers-reduced-motion:reduce){[data-motion] .uhy-arm{animation:none!important}}
+
+body #compactTools{position:absolute!important;top:auto!important;bottom:32px!important;right:8px!important;left:auto!important;z-index:5!important;background:#241b16e8;border-radius:8px;padding:3px}
+
+/* 1.5: one portrait canvas at every viewport; desktop keeps comfortable side margins. */
+html{background:radial-gradient(ellipse at top,#293e45,#101a21 70%)}
+html body{display:flex!important;flex-direction:column!important;width:min(100%,560px)!important;max-width:560px!important;margin:0 auto!important;box-sizing:border-box!important;padding-left:max(8px,env(safe-area-inset-left,0px))!important;padding-right:max(8px,env(safe-area-inset-right,0px))!important;gap:6px!important;overflow:hidden!important;box-shadow:0 0 70px #0006}
+html body #hud{flex:0 0 auto!important;width:100%!important;min-width:0!important;margin:0!important}
+html body #scene{flex:0 0 auto!important;width:100%!important;height:clamp(160px,28dvh,260px)!important;min-height:0!important;margin:0!important;aspect-ratio:auto!important}
+html body #content{flex:1 1 0!important;width:100%!important;min-height:0!important;margin:0!important;overflow:auto!important;overscroll-behavior:contain;padding:4px 0 12px!important}
+html body #tabs #socialDock{left:50%!important;right:auto!important;transform:translateX(-50%)!important;width:min(100%,560px)!important;max-width:560px!important;border-top:1px solid #96734b!important}
+html body #socialPanel,html body .overlay{left:50%!important;right:auto!important;transform:translateX(-50%)!important;width:min(100%,560px)!important;max-width:560px!important;box-sizing:border-box!important}
+html body #socialPanel .spbox{width:100%!important;max-width:100%!important;min-width:0!important;border-radius:16px!important}
+html body #socialPanel #spBody{padding:12px 10px 18px!important;min-width:0;overflow-x:hidden!important}
+html body #socialPanel .world-grid,html body #socialPanel .v27-jobs{grid-template-columns:1fr!important}
+html body #socialPanel .uhy-profile-avatar{bottom:6px!important;height:92%!important;width:35%!important}
+html body #uhyMore{left:50%!important;right:auto!important;transform:translateX(-50%)!important;width:min(calc(100% - 16px),544px)!important;box-sizing:border-box!important;grid-template-columns:1fr!important;max-height:65dvh;overflow:auto}
+.organized-menu{display:grid;grid-template-columns:1fr 1fr}.organized-menu h3{grid-column:1/-1}
+html body #contextActions{left:50%;right:auto;transform:translateX(-50%);width:min(calc(100% - 16px),544px);box-sizing:border-box;gap:6px}
+#contextActions button{flex:1;min-width:0;font-size:12px;padding:7px;line-height:1.3}#contextActions button:disabled{opacity:.55}
+.dialog-actors{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:end;background:radial-gradient(ellipse at bottom,#69624a55,transparent);border-bottom:1px solid #a9895355;padding:8px}
+.dialog-actors>div{display:flex;flex-direction:column;align-items:center;min-width:0;color:#f8d99f;font-size:12px;gap:6px}.dialog-actors svg{display:block;width:100%;height:170px;max-width:125px;filter:drop-shadow(0 4px 4px #0007)}
+#spBody .card:has(.dialog-actors){display:flex;flex-direction:column;gap:9px;margin-bottom:14px}#spBody .card:has(.dialog-actors) p{margin:3px 0;line-height:1.5}#spBody .card:has(.dialog-actors) button{width:100%;text-align:left}
+html body .scene .v27-capture-van .v27-siren-red,html body .scene .v27-capture-van .v27-siren-blue{animation-duration:.8s!important}
+#v27-action-flash[data-effect=tcc] .v27-flash-hero{animation-duration:.8s}
+button{touch-action:manipulation}button:focus-visible{outline:3px solid #88d8f0!important;outline-offset:2px}
+@media(max-height:500px){html body #scene{height:120px!important}html body #hud{font-size:11px!important}.dialog-actors svg{height:125px}}
+@media(prefers-reduced-motion:reduce){html body .scene .v27-capture-van .v27-siren-red,html body .scene .v27-capture-van .v27-siren-blue{animation:none!important}}
+
+/* Purposeful work poses: the torso stays quiet, wrists move toward the keyboard. */
+.v27-active[data-job-motion=texts] .v27-job-avatar,.v27-active[data-job-motion=moderation] .v27-job-avatar{animation:v27HeroIdle 3s ease-in-out infinite alternate}
+.v27-active[data-job-motion=texts] .uhy-arm-0,.v27-active[data-job-motion=moderation] .uhy-arm-0{animation:typingLeft .7s ease-in-out infinite alternate!important}
+.v27-active[data-job-motion=texts] .uhy-arm-1,.v27-active[data-job-motion=moderation] .uhy-arm-1{animation:typingRight .85s ease-in-out infinite alternate!important}
+@keyframes typingLeft{from{transform:rotate(-22deg)}to{transform:rotate(-24deg)}}
+@keyframes typingRight{from{transform:rotate(22deg)}to{transform:rotate(24deg)}}
+@keyframes v27HeroWork{to{transform:translateY(-1.5px) rotate(.4deg)}}
+html body .v27-outfit-hero svg{height:98%!important}
+@media(prefers-reduced-motion:reduce){.v27-active .uhy-arm{animation:none!important}}
+html body #content .paper{background:linear-gradient(145deg,#3a2922,#241c18)!important;color:#f7e5ce!important;box-shadow:0 5px 18px #0005!important}
+html body #content .paper .sub,html body #content .paper .hint{color:#d8c3a7!important}.paper .paper-head{border-color:#9e7750}.paper .odds b{color:#ffb18b}
+.has-context-actions #v27-action-flash,.has-context-actions #v27-work-action{bottom:calc(130px + max(env(safe-area-inset-bottom,0px),var(--v27-bottom-clearance,0px)))!important}

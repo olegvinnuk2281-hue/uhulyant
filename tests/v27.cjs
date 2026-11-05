@@ -62,8 +62,9 @@ test('v27: high-risk 60-percent job catches player, never pays, and persists cap
  assert.equal(res.data.world.workShift??null,null);
  assert.equal(res.data.world.lastIncident.type,'tcc');
  assert.equal(res.data.save.tcc.stage,0);
- assert.equal(res.data.save.st.caught,1);
- assert.equal(a.stored.PLAYER01.save.st.caught,1);
+ assert.equal(res.data.save.tcc.documents,true);
+ assert.equal(res.data.save.st.caught,0);
+ assert.equal(a.stored.PLAYER01.save.st.caught,0);
  assert.equal(a.stored.PLAYER01.save.uah,250);
  assert.equal((await a.call('world',{action:'shift'})).data.ok,false);
 });
@@ -103,4 +104,32 @@ test('v27: server rejects conflicting nickname and prevents disclosure of other 
  const other=structuredClone(a.stored.PLAYER01);other.id='PLAYER02';other.name='Новенький';other.save.name='Новенький';
  a.stored.PLAYER02=other;a.db.players.PLAYER02=structuredClone(other);
  assert.equal((await a.call('player/rename',{name:'Районний'},'PLAYER02')).code,409);
+});
+
+test('documents release protected players; failed escape persists a cooldown',async()=>{
+ const a=fixture('Гравець',500,()=>99);await a.call('me');a.db.players.PLAYER01.save.bronUntil=Date.now()+3600000;
+ assert.equal((await a.call('tcc/choice',{action:'begin'})).data.save.tcc.documents,true);
+ const released=await a.call('tcc/choice',{action:'documents'});assert.equal(released.data.save.tcc,null);assert.equal(a.stored.PLAYER01.save.tcc,null);
+ await a.call('tcc/choice',{action:'begin'});
+ const fail=await a.call('tcc/choice',{action:'run'});assert.equal(fail.data.save.st.caught,1);assert.ok(fail.data.save.tcc.nextAt>Date.now()+170000);
+ assert.equal((await a.call('tcc/choice',{action:'run'})).code,429);
+});
+test('escape boundary is precisely 18 out of 100 server outcomes',async()=>{
+ for(const [roll,success] of [[17,true],[18,false]]){
+  const a=fixture('Гравець',500,()=>roll);await a.call('tcc/choice',{action:'begin'});
+  const r=await a.call('tcc/choice',{action:'run'});assert.equal(r.data.save.tcc===null,success);
+  assert.equal(r.data.save.st.escaped,success?1:0);
+ }
+});
+test('documents without protection detain; database outage cannot commit a release',async()=>{
+ const a=fixture();await a.call('tcc/choice',{action:'begin'});const r=await a.call('tcc/choice',{action:'documents'});assert.equal(r.data.save.tcc.documents,false);
+ const b=fixture('Гравець',500,()=>0);await b.call('tcc/choice',{action:'begin'});b.breakDB(true);
+ assert.equal((await b.call('tcc/choice',{action:'run'})).code,503);assert.ok(b.stored.PLAYER01.save.tcc);
+});
+test('district dialog choices grant 80, 180 or zero exactly once',async()=>{
+ for(const [choice,roll,cash] of [['safe',99,80],['risk',44,180],['risk',45,0],['decline',0,0]]){
+  const a=fixture('Гравець',500,()=>roll);const r=await a.call('city-events',{action:'radio',choice});
+  assert.equal(r.data.events.radio.cash,cash);assert.equal(r.data.save.uah,500+cash);
+  assert.equal((await a.call('city-events',{action:'radio',choice})).code,409);
+ }
 });
