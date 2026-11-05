@@ -270,3 +270,36 @@ html body .v27-outfit-hero svg{height:98%!important}
 html body #content .paper{background:linear-gradient(145deg,#3a2922,#241c18)!important;color:#f7e5ce!important;box-shadow:0 5px 18px #0005!important}
 html body #content .paper .sub,html body #content .paper .hint{color:#d8c3a7!important}.paper .paper-head{border-color:#9e7750}.paper .odds b{color:#ffb18b}
 .has-context-actions #v27-action-flash,.has-context-actions #v27-work-action{bottom:calc(130px + max(env(safe-area-inset-bottom,0px),var(--v27-bottom-clearance,0px)))!important}
+
+/* 1.5.1: one limb action per weapon, rather than shaking the whole illustration. */
+.combat-layer{position:absolute;inset:0;z-index:12;pointer-events:none;overflow:hidden;border-radius:inherit}
+.combat-prop{position:absolute;width:40px;height:38px;overflow:visible;filter:drop-shadow(2px 3px 2px #0006)}
+.combat-impact{position:absolute;color:#ffd58a;font:60px/1 system-ui;transform:translate(-50%,-50%);animation:combatImpact .32s ease-out both;text-shadow:0 0 10px #ffd57b}
+.combat-damage{position:absolute;transform:translate(-50%,-100%);color:#fff0d5;font:800 22px system-ui;text-shadow:0 2px 3px #18100c;animation:combatDamage .45s ease-out both;white-space:nowrap}
+.combat-chip{position:absolute;width:6px;height:4px;background:#c67850;border:1px solid #763b2c}
+html body #scene .lyr.hero.combat-leg .uhy-leg-1,html body #scene .lyr.hero.combat-leg .uhy-foot-1{animation:combatKick .76s cubic-bezier(.2,.65,.2,1) both!important}
+html body #scene .lyr.hero:is(.combat-fist,.combat-bat,.combat-bar,.combat-chain,.combat-mace) .uhy-arm-1{animation:combatPunch .76s ease-in-out both!important}
+html body #scene .lyr.hero.combat-brick .uhy-arm-1{animation:combatThrow .76s ease-in-out both!important}
+@keyframes combatKick{0%,100%{transform:rotate(0)}18%{transform:rotate(16deg)}42%{transform:rotate(-72deg)}60%{transform:rotate(-63deg)}}
+@keyframes combatPunch{0%,100%{transform:rotate(0)}20%{transform:rotate(12deg)}42%,52%{transform:rotate(-78deg)}}
+@keyframes combatThrow{0%,100%{transform:rotate(0)}20%{transform:rotate(52deg)}46%{transform:rotate(-100deg)}70%{transform:rotate(-35deg)}}
+@keyframes combatImpact{from{opacity:1;scale:.5}to{opacity:0;scale:1.5}}
+@keyframes combatDamage{from{opacity:0;translate:0 8px}25%{opacity:1}to{opacity:0;translate:0 -22px}}
+.uhy-boss-portrait,.uhy-raid-art{position:relative;isolation:isolate;overflow:hidden;background:radial-gradient(ellipse at 50% 80%,#95714244,transparent 70%)}
+.uhy-boss-portrait svg,.uhy-raid-art>svg{transform-origin:50% 95%;animation:bossBreathe 3.6s ease-in-out infinite}
+.uhy-boss-tile:nth-child(2n) svg{animation-delay:-1.2s}.uhy-boss-tile:nth-child(3n) svg{animation-delay:-2.3s}
+.uhy-boss-tile.is-current{box-shadow:inset 0 0 0 1px #e7b65f,0 3px 12px #0004!important}
+.uhy-boss-tile:not(.is-locked):hover svg{animation:bossChallenge 1.1s ease-in-out infinite alternate}
+.uhy-boss-portrait .uhy-arm-1,.uhy-raid-art .uhy-arm-1{animation:bossGuard 4s ease-in-out infinite alternate}
+.uhy-boss-tile.is-locked svg{animation-duration:6s;filter:saturate(.45)}
+.uhy-raid-boss{position:relative}
+@keyframes bossBreathe{0%,100%{translate:0 0;rotate:-.35deg}50%{translate:0 -2px;rotate:.35deg}}
+@keyframes bossChallenge{to{translate:0 -3px;rotate:1deg}}
+@keyframes bossGuard{to{transform:rotate(5deg)}}
+@media(prefers-reduced-motion:reduce){.combat-impact,.combat-damage,.uhy-boss-portrait svg,.uhy-raid-art svg,.uhy-boss-portrait .uhy-arm-1,.uhy-raid-art .uhy-arm-1{animation:none!important}html body #scene .lyr.hero[class*=combat-] g{animation:none!important}}
+.motion-paused .uhy-boss-portrait svg,.motion-paused .uhy-raid-art svg{animation-play-state:paused}
+html body .uhy-boss-portrait svg{inset:2% 0!important;width:100%!important;height:96%!important}
+html body .uhy-boss-portrait{height:86px!important;flex-basis:58px!important;width:58px!important;border-radius:10px!important}
+html body #scene[data-kind=boss] .scene-btns{top:5px!important;right:5px!important;display:flex!important;flex-direction:row!important;gap:4px!important}
+html body #scene[data-kind=boss] .scene-btns button{font-size:10px!important;min-height:26px!important;padding:4px 6px!important}
+html body #scene[data-kind=boss] #compactTools{display:none!important}

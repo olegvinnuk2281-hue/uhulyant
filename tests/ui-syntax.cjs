@@ -10,7 +10,7 @@ test('inline and external browser scripts compile',()=>{
  const scripts=[...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)].filter(m=>!/\bsrc\s*=/.test(m[1]));
  assert.ok(scripts.length>0,'expected inline game scripts');
  scripts.forEach((match,index)=>new vm.Script(match[2],{filename:`uhylyant.html:inline-${index+1}`}));
- for(const name of ['uhylyant-ui.js','uhylyant-account.js','uhy-polish.js','weekly.js','v27-action.js','motion.js']){
+ for(const name of ['uhylyant-ui.js','uhylyant-account.js','uhy-polish.js','weekly.js','v27-action.js','motion.js','combat.js','city-events.js']){
   new vm.Script(fs.readFileSync(path.join(root,name),'utf8'),{filename:name});
  }
 });

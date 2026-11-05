@@ -17,7 +17,7 @@ function queue(){if(!queued){queued=true;requestAnimationFrame(scan)}}
 const observer=new MutationObserver(queue);
 observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['data-kind','data-section']});scan();
 document.addEventListener('click',e=>{
- const button=e.target.closest('button');if(!button||button.disabled)return;
+ const button=e.target.closest('button');if(!button||button.disabled||button.dataset.act==='bhit'||button.dataset.wact==='fight')return;
  const action=button.dataset.wact||button.dataset.act||'';
  const mode=/fight|bhit|hit/i.test(action)?'fight':/shift|gig|workCollect|apply|search/.test(action)?'work':/spin|daily/.test(action)?'play':/tccTry|escape|bribe|rescue/.test(action)?'walk':/equip|buy|look|food/.test(action)?'wave':null;
  if(!mode)return;

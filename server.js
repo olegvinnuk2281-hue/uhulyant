@@ -1284,7 +1284,7 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(200,{'content-type':name.endsWith('.svg')?'image/svg+xml; charset=utf-8':'image/webp','cache-control':'public, max-age=3600','x-content-type-options':'nosniff'});res.end(data)
       });
     }
-    if (u.pathname === '/uhy-polish.css' || u.pathname === '/uhy-polish.js' || u.pathname === '/uhy-live.css' || u.pathname === '/weekly.js' || u.pathname === '/motion.js' || u.pathname === '/city-events.js' || u.pathname === '/v27.css' || u.pathname === '/v27-action.js') {
+    if (u.pathname === '/uhy-polish.css' || u.pathname === '/uhy-polish.js' || u.pathname === '/uhy-live.css' || u.pathname === '/weekly.js' || u.pathname === '/motion.js' || u.pathname === '/city-events.js' || u.pathname === '/v27.css' || u.pathname === '/v27-action.js' || u.pathname === '/combat.js') {
       const f=path.join(__dirname,u.pathname.slice(1));
       return fs.readFile(f,(err,data)=>{if(err){res.writeHead(404);return res.end('Not found')}
         res.writeHead(200,{'content-type':u.pathname.endsWith('.css')?'text/css; charset=utf-8':'application/javascript; charset=utf-8','cache-control':'no-cache','x-content-type-options':'nosniff'});res.end(data)});
@@ -1434,7 +1434,7 @@ async function show(which){stopNews();active=which;panel.classList.remove('uhy-v
 const observer=new MutationObserver(dock);observer.observe($('#tabs'),{childList:true});dock();
 })();
 </script>`;
-      const extras = '<script src="/uhylyant-ui.js"></script><script src="/uhylyant-account.js"></script><link rel="stylesheet" href="/uhy-live.css"><script src="/weekly.js"></script><script src="/motion.js"></script><script src="/city-events.js"></script><link rel="stylesheet" href="/v27.css"><script src="/v27-action.js"></script>';
+      const extras = '<script src="/uhylyant-ui.js"></script><script src="/uhylyant-account.js"></script><link rel="stylesheet" href="/uhy-live.css"><script src="/weekly.js"></script><script src="/motion.js"></script><script src="/city-events.js"></script><link rel="stylesheet" href="/v27.css"><script src="/v27-action.js"></script><script src="/combat.js"></script>';
       // Patch the original client's detention handler in-memory; source HTML and old saves remain compatible.
       const oldCatch = `S.tcc={stage:0,nextAt:0,busy:false};S.st.caught++;`;
       const newCatch = `S.tcc={stage:0,nextAt:0,busy:false};S.st.caught++;

@@ -29,7 +29,7 @@
   renameSave:['outfit','✎','Новий нік'],look:['outfit','✨','Новий вигляд'],create:['outfit','🛠','Створюємо бригаду'],join:['walk','🤝','До бригади'],
   bclaim:['wheel','🎁','Забираємо нагороду'],bgive:['work','🤝','Допомагаємо'],binv:['walk','🤝','Запрошуємо друга'],brs:['outfit','🛡️','Готуємо викуп'],bme:['food','⚡','Енергія']
  };
- const SKIP=new Set(['tab','bt','ct','lk','pre','setloc','locs','settings','editHero','renameOpen','editLoc','gfx','help','audioMusic','audioSounds','closeOv','back','minus','plus','fcopy','fadd','facc','fdel','rename','openSets']);
+ const SKIP=new Set(['bhit','fight','tab','bt','ct','lk','pre','setloc','locs','settings','editHero','renameOpen','editLoc','gfx','help','audioMusic','audioSounds','closeOv','back','minus','plus','fcopy','fadd','facc','fdel','rename','openSets']);
  const infer=a=>/tcc|caught|escape|rescue|bransom|bresc|bribe/i.test(a)?['tcc','🚐','Подія ТЦК']:/fight|bhit|hit|boss/i.test(a)?['fight','👊','Атака']:/work|gig|shift|job|apply|nightTask/i.test(a)?['work','💼','Робоча дія']:/food|meal|dinner|eat|hospital/i.test(a)?['food','🍲','Піклуємось про героя']:/casino|spin|wheel|daily/i.test(a)?['casino','✨','Граємо']:/outfit|wear|equip|buy|gear|bwp/i.test(a)?['outfit','🧥','Оновлення спорядження']:['walk','✨','Дія'];
  let t;
  function flash(a,button){

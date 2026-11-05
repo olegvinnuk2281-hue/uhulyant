@@ -624,18 +624,22 @@ function wearLegs(L,c,b,sk,full){
   const lx=100-hw*.45,rx=100+hw*.45;
   const wd=hw*.9;
   const mk=(x,s)=>limb(x,216,x+s*1.5,258,x+s*1,288,wd,wd*.84,wd*.64);
+  const leg=(art,x,i)=>`<g class="uhy-leg-${i}" style="transform-origin:${x}px 216px">${art}</g>`;
   let o='';
   if(l==='shorts'){
     const sd=(x,s)=>limb(x,238,x+s*1,262,x+s*1,286,wd*.6,wd*.5,wd*.44);
-    o+=form(sd(lx,-1),sk,{dx:-3})+form(sd(rx,1),sk,{dx:-3});
+    o+=leg(form(sd(lx,-1),sk,{dx:-3}),lx,0)+leg(form(sd(rx,1),sk,{dx:-3}),rx,1);
     const sh=(x,s)=>limb(x,216,x+s*1.5,236,x+s*1.6,250,wd+1,wd,wd*.95);
-    o+=form(sh(lx,-1),col,{dx:-4})+form(sh(rx,1),col,{dx:-4});
+    o+=leg(form(sh(lx,-1),col,{dx:-4}),lx,0)+leg(form(sh(rx,1),col,{dx:-4}),rx,1);
   }else{
-    o+=form(mk(lx,-1),col,{dx:-4})+form(mk(rx,1),col,{dx:-4});
-    if(l==='track')o+=ln(`M${lx-wd*.36} 222 L${lx-wd*.3} 286M${rx+wd*.36} 222 L${rx+wd*.3} 286`,3,'#eae6d8');
-    if(l==='jeans')o+=ln(`M${lx+1} 226 L${lx+2} 284M${rx-1} 226 L${rx} 284`,1.1,lite(col,.4),'stroke-dasharray="3 2.4"');
-    if(l==='work'){o+=fi(`M${lx-9} 244 h14 v12 h-14Z`,dark(col,.18),1.4)+fi(`M${rx-5} 244 h14 v12 h-14Z`,dark(col,.18),1.4);}
-    if(l==='formal')o+=ln(`M${lx} 222 L${lx+1} 286M${rx} 222 L${rx} 286`,1.2,lite(col,.4),'opacity=".5"');
+    o+=leg(form(mk(lx,-1),col,{dx:-4}),lx,0)+leg(form(mk(rx,1),col,{dx:-4}),rx,1);
+    for(const [x,i] of [[lx,0],[rx,1]]){let detail='';
+      if(l==='track')detail=ln(`M${x+(i?1:-1)*wd*.3} 222v64`,2,'#eae6d8');
+      if(l==='jeans')detail=ln(`M${x} 226v58`,1.1,lite(col,.4),'stroke-dasharray="3 2.4"');
+      if(l==='work')detail=fi(`M${x-7} 244h14v12h-14Z`,dark(col,.18),1.4);
+      if(l==='formal')detail=ln(`M${x} 222v64`,1.2,lite(col,.4),'opacity=".5"');
+      o+=leg(detail,x,i);
+    }
   }
   return o;
 }
@@ -648,7 +652,7 @@ function wearShoes(F,c,b,sk){
     if(l==='dress')return form(`M${x-11} 286 L${x+10} 286 Q${x+12} 291 ${x+20} 294 Q${x+22} 300 ${x+16} 300 L${x-14} 300 Q${x-16} 294 ${x-11} 286Z`,col,{dx:-3,w:2.2})+ln(`M${x-12} 298 L${x+20} 298`,1.2,'#e7d7b0','opacity=".4"');
     return form(`M${x-11} 284 L${x+10} 284 Q${x+13} 292 ${x+21} 294 Q${x+25} 300 ${x+19} 301 L${x-15} 301 Q${x-18} 294 ${x-11} 284Z`,col,{dx:-3,w:2.2})+fl(`M${x-16} 297 L${x+21} 297 L${x+22} 302 L${x-17} 302Z`,'#eee6d4','stroke="#1a110b" stroke-width="1.4"')+ln(`M${x-5} 290 l8 -2M${x-4} 294 l9 -2`,1.2,INK,'opacity=".6"');
   };
-  return sh(lx-2,-1)+sh(rx+2,1);
+  return `<g class="uhy-foot-0" style="transform-origin:${lx}px 216px">${sh(lx-2,-1)}</g><g class="uhy-foot-1" style="transform-origin:${rx}px 216px">${sh(rx+2,1)}</g>`;
 }
 
 /* ---------- ГОЛОВНА ЗБІРКА ---------- */
@@ -1991,32 +1995,58 @@ function showLocs(){
 const UHY_AUDIO={ctx:null,music:true,sounds:true,timer:null,step:0};
 try{const pref=JSON.parse(localStorage.getItem('uhy_audio')||'null');if(pref){UHY_AUDIO.music=pref.music!==false;UHY_AUDIO.sounds=pref.sounds!==false}}catch{}
 function audioControls(){let bar=document.getElementById('audioControls');if(!bar){bar=document.createElement('div');bar.id='audioControls';document.body.append(bar)}bar.innerHTML=['sounds','music'].map(k=>'<button type="button" aria-label="'+(k==='music'?'Музика':'Звуки')+'" aria-pressed="'+UHY_AUDIO[k]+'" data-audio="'+k+'">'+(k==='music'?'♫':'🔊')+' '+(UHY_AUDIO[k]?'Увімк.':'Вимк.')+'</button>').join('');bar.querySelectorAll('button').forEach(b=>b.onclick=()=>setMusicSound(b.dataset.audio));}
-function startAudio(){if(!UHY_AUDIO.ctx){const T=window.AudioContext||window.webkitAudioContext;if(T)UHY_AUDIO.ctx=new T()}UHY_AUDIO.ctx?.resume().catch(()=>{});if(UHY_AUDIO.music&&!UHY_AUDIO.timer)UHY_AUDIO.timer=setInterval(audioMusicStep,480);}
+function startAudio(){if(!UHY_AUDIO.ctx){const T=window.AudioContext||window.webkitAudioContext;if(T)UHY_AUDIO.ctx=new T()}UHY_AUDIO.ctx?.resume().catch(()=>{});if(UHY_AUDIO.music&&!UHY_AUDIO.timer)UHY_AUDIO.timer=setInterval(audioMusicStep,357);}
 document.addEventListener('pointerdown',startAudio,{once:true});document.addEventListener('keydown',startAudio,{once:true});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){clearInterval(UHY_AUDIO.timer);UHY_AUDIO.timer=null;UHY_AUDIO.ctx?.suspend()}else if(UHY_AUDIO.ctx)startAudio()});
 setTimeout(audioControls,0);
-function soundTone(freq,len=.10,vol=.025,kind='triangle',delay=0){
+function soundTone(freq,len=.10,vol=.025,kind='triangle',delay=0,bus='effects'){
  try{if(!UHY_AUDIO.ctx){const T=window.AudioContext||window.webkitAudioContext;if(!T)return;UHY_AUDIO.ctx=new T();}
  const ac=UHY_AUDIO.ctx,t=ac.currentTime+Math.max(.012,Number(delay)||0),o=ac.createOscillator(),g=ac.createGain();
- o.type=kind;o.frequency.setValueAtTime(freq,t);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+len);o.connect(g).connect(ac.destination);o.start(t);o.stop(t+len+.02);
+ o.type=kind;o.frequency.setValueAtTime(freq,t);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+len);o.connect(g).connect(audioBus(bus));o.start(t);o.stop(t+len+.02);
  }catch(e){}
 }
-function audioMusicStep(){
- if(!UHY_AUDIO.music)return;
- const notes=[220,262,330,294,220,247,330,392,330,294,262,196,220,262,294,247];
- soundTone(notes[UHY_AUDIO.step++%notes.length],.28,.013);
+function audioBus(kind){
+ const ac=UHY_AUDIO.ctx;if(!UHY_AUDIO.mix){const compressor=ac.createDynamicsCompressor();compressor.threshold.value=-18;compressor.ratio.value=4;compressor.connect(ac.destination);UHY_AUDIO.mix={};for(const k of ['music','effects']){const g=ac.createGain();g.gain.value=(k==='music'?UHY_AUDIO.music:UHY_AUDIO.sounds)?1:0;g.connect(compressor);UHY_AUDIO.mix[k]=g;}}return UHY_AUDIO.mix[kind];
 }
+function soundNoise(duration=.12,cutoff=900,volume=.08,delay=0){
+ if(!UHY_AUDIO.sounds||!UHY_AUDIO.ctx||document.hidden)return;
+ const ac=UHY_AUDIO.ctx,t=ac.currentTime+delay,buffer=ac.createBuffer(1,Math.ceil(ac.sampleRate*duration),ac.sampleRate),data=buffer.getChannelData(0);
+ for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*(1-i/data.length);
+ const src=ac.createBufferSource(),filter=ac.createBiquadFilter(),gain=ac.createGain();src.buffer=buffer;filter.type='lowpass';filter.frequency.value=cutoff;gain.gain.setValueAtTime(volume,t);gain.gain.exponentialRampToValueAtTime(.0001,t+duration);src.connect(filter).connect(gain).connect(audioBus('effects'));src.start(t);src.stop(t+duration);
+}
+function combatSound(type,phase){
+ if(!UHY_AUDIO.sounds||document.hidden)return;startAudio();
+ if(phase==='swing'){soundNoise(.16,1800,.025);return}
+ const presets={fist:[85,600,.13],leg:[65,750,.19],brick:[115,2600,.18],bat:[150,1200,.14],bar:[320,2800,.12],chain:[460,3600,.2],mace:[95,1900,.24]};
+ const [hz,cut,len]=presets[type]||presets.fist;
+ soundNoise(len,cut,.095);soundTone(hz,len,.06,'sine');soundTone(hz*.55,.18,.025,'triangle',.025);
+ if(['brick','bar','chain','mace'].includes(type))for(let i=0;i<3;i++){soundTone((type==='brick'?510:920)*(1+i*.41),.08+i*.03,.012,'sine',.035+i*.055);soundNoise(.045,cut,.018,.06+i*.06)}
+}
+function audioMusicStep(){
+ if(!UHY_AUDIO.music||document.hidden)return;
+ // Original 6/8 courtyard sketch: plucked strings, soft bass, breathing room.
+ const step=UHY_AUDIO.step++,beat=step%6,bar=Math.floor(step/6)%8;
+ const tense=!!S.tcc||ui.tab==='boss',street=ui.tab==='street';
+ const roots=tense?[146.83,146.83,155.56,130.81]:[146.83,130.81,174.61,110];
+ const root=roots[Math.floor(bar/2)%4];
+ if(beat===0){soundTone(root/2,1.3,.012,'sine',0,'music');[1,1.5,2].forEach((ratio,i)=>soundTone(root*ratio,.85,.004,'triangle',i*.035,'music'));}
+ const melody=[0,2,4,3,2,0,1,2,4,5,4,2,3,2,1,0],scale=[1,1.125,1.2,1.3333,1.5,1.6667];
+ if([0,2,3,5].includes(beat)&&!(bar===7&&beat>2)){const n=melody[(bar*4+[0,2,3,5].indexOf(beat))%melody.length];const freq=146.83*2*scale[n];soundTone(freq,tense?.28:.65,.009,'triangle',0,'music');soundTone(freq*2,.2,.0018,'sine',.01,'music');}
+ if(street&&beat===3)soundTone(root,.22,.004,'triangle',0,'music');
+}
+
 function setMusicSound(kind){
  if(kind==='music'){
  UHY_AUDIO.music=!UHY_AUDIO.music;
  if(UHY_AUDIO.music){startAudio();audioMusicStep()}else{clearInterval(UHY_AUDIO.timer);UHY_AUDIO.timer=null}
  }else{UHY_AUDIO.sounds=!UHY_AUDIO.sounds;if(UHY_AUDIO.sounds)soundTone(523,.09,.024,'sine')}
  try{localStorage.setItem('uhy_audio',JSON.stringify({music:UHY_AUDIO.music,sounds:UHY_AUDIO.sounds}))}catch{}
+ if(UHY_AUDIO.ctx){for(const k of ['music','effects'])audioBus(k).gain.setTargetAtTime((k==='music'?UHY_AUDIO.music:UHY_AUDIO.sounds)?1:0,UHY_AUDIO.ctx.currentTime,.025);}
  audioControls();if(ui.ov==='settings')showSettings();
 }
 function cartoonSound(button){
  const action=button.dataset.act||button.dataset.wact||button.dataset.city||'';
- if(['audioMusic','audioSounds','settings','tab','ct','lk','closeOv'].includes(action))return;
+ if(['bhit','fight','audioMusic','audioSounds','settings','tab','ct','lk','closeOv'].includes(action))return;
  const identity=action+':'+(button.dataset.v||button.dataset.w||button.dataset.job||button.dataset.choice||'');let hash=0;for(const ch of identity)hash=(hash*31+ch.charCodeAt(0))>>>0;
  let seq;
  const work=button.dataset.w||button.dataset.job||button.closest('.world-job,.home-action-row')?.textContent||'';
@@ -2032,7 +2062,7 @@ function cartoonSound(button){
  else if(/spin|wheel|daily|claim/i.test(action))seq=[[660,.05,.016,'square',0],[880,.06,.019,'square',.065],[1175,.09,.020,'triangle',.14]];
  else if(/outfit|equip|look|buy|gear|bwp/i.test(action))seq=[[392,.06,.017,'triangle',0],[587,.07,.019,'triangle',.085],[784,.10,.018,'sine',.17]];
  else if(/house|home|collect/i.test(action))seq=[[220,.07,.017,'triangle',0],[330,.08,.018,'sine',.09]];
- else seq=[[440,.045,.012,'square',0],[660,.055,.012,'triangle',.055]];
+ else seq=[[392,.045,.008,'sine',0],[587,.055,.007,'triangle',.055]];
  seq.forEach(([freq,len,vol,kind,delay])=>soundTone(freq+(hash%71)-35,len,vol,kind,delay));
 }
 document.addEventListener('click',e=>{if(!UHY_AUDIO.sounds)return;const btn=e.target?.closest?.('button');if(btn&&!btn.disabled)cartoonSound(btn)},true);
@@ -2103,19 +2133,18 @@ const bMult=()=>{const g=gear();return(1+.015*(g.st+g.ch+g.en))*(1+.02*Math.min(
 const bDmg=a=>Math.round(a.d*bMult());
 /* ---- рівень: рубльові цінники в ₴ від рівня гравця ---- */
 const bCost=k=>Math.round(basePay(tier())*k);
-function bFx(d){const h=$('#hero'),bo=$('#boss'),sc=$('#scene');if(!h||!bo)return;h.classList.add('punch');
- setTimeout(()=>{bo.classList.add('hurt');sc.classList.add('shk');setTimeout(()=>sc.classList.remove('shk'),260);
- const e=document.createElement('div');e.className='dmg';e.textContent='−'+fmt(d);e.style.left=(52+Math.random()*18)+'%';e.style.top=(14+Math.random()*24)+'%';sc.appendChild(e);setTimeout(()=>e.remove(),1000)},170)}
+async function bFx(d,id,target){const bo=$('#boss');if(bo&&target!==S.bs.b)bo.innerHTML=bossSVG(target,3);try{await window.UHYCombat?.play({type:id,damage:d,scene:$('#scene')});}finally{ui.sk='';renderScene();}}
+
 let bossHitBusy=false;
 async function bHit(id){const B=S.bs;if(bossHitBusy)return;if(S.tcc){toast('Ти під затриманням','bad');return}bInit();const a=bAll().find(x=>x.id===id);if(!a||(B.cd[id]||0)>now())return;
  const paidWeapon=!BATK.some(x=>x.id===id),copies=paidWeapon?weaponCount(id):Infinity;
  if(paidWeapon&&copies<1){toast('Ця зброя вже зламалася','bad');return}if(S.energy<a.e){toast('Не вистачає енергії','bad');return}
  bossHitBusy=true;try{
   if(NET.on&&!await window.UHY.sync()){toast('Спочатку дочекайся збереження','bad');return}
-  const d=bDmg(a);
+  const d=bDmg(a),target=B.b;
   if(paidWeapon){B.weaponCounts=B.weaponCounts||{};B.weaponCounts[id]=copies-1}
   if(!spend(a.e))return;B.cd[id]=now()+BD(3*HOUR);if(!B.fs)B.fs=now();
-  B.hp=Math.max(0,B.hp-d);gainXP(a.e*2);if(B.hp<=0)bWin();save();render();bFx(d);
+  B.hp=Math.max(0,B.hp-d);gainXP(a.e*2);if(B.hp<=0)bWin();save();render();await bFx(d,id,target);
   if(NET.on){
    if(!await window.UHY.sync()){toast('Удар збережений локально, сервер ще не підтвердив його','bad');return}
    const result=await api('hit',{});
@@ -2327,6 +2356,7 @@ window.UHY={
    return {scene,house:id,name:painter.name,background:painter.bg,foreground:painter.fg||'',avatar:av};
  },
  houseThumb:id=>{if(!['shack','room','flat','loft','lux'].includes(id))return '';return UHART.paint('home',{phase:'day',house:id,seed:7,thumb:true}).bg},
+ playCombatSound:combatSound,
  bossPortrait:(index,damage=0)=>bossSVG(Math.max(0,Math.min(5,Number(index)||0)),Math.max(0,Math.min(3,Number(damage)||0))),
  syncHouse:syncMyHouse
 };
