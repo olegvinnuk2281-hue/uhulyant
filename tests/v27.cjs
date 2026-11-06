@@ -3,21 +3,77 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm'),crypto=require('node:crypto');
 const path=require('node:path'),{Readable}=require('node:stream');
-function fixture(name='Гравець', cash=1600, randomInt=null, broken=false){
+function fixture(name='Гравець', cash=1600, randomInt=null, broken=false, at=null, persisted=null){
  const fresh={level:1,xp:0,uah:cash,gold:0,ng:0,started:true,name,inv:['head0','body0','legs0','shoes0','acc0'],eq:Object.fromEntries(['head','body','legs','shoes','acc'].map(k=>[k,k+'0'])),up:{},st:{earned:0,escaped:0,caught:0},bs:{me:0,wp:[],r:0,b:0,w:0},dailyAt:0,end:null,seenEnd:false};
  const player={id:'PLAYER01',name,keyHash:crypto.createHash('sha256').update('secret').digest('hex'),save:fresh,economyV26:true,world:{cash,xp:0,items:[],equipped:{},lastWork:0,workDays:[],hunger:85,hungerAt:Date.now()},friends:[],reqOut:[],reqIn:[],events:[],hits:[],welcomeRC4:true,goldBank:30,goldSpent:0,bud:{e:250,t:Date.now()},evClaim:{},fdmg:0};
- const stored={PLAYER01:player},writes=[];let outage=broken;
+ const stored=persisted?structuredClone(persisted):{PLAYER01:player},writes=[];let outage=broken;
  const client={from(){return {select(){return {range:async()=>({data:Object.entries(stored).map(([id,data])=>({id,data:structuredClone(data)}))})}},upsert:async rows=>{if(outage)return {error:{message:'simulated outage'}};for(const row of Array.isArray(rows)?rows:[rows]){stored[row.id]=structuredClone(row.data);writes.push(row.id)}return {error:null}}}}};
  const module={exports:{}};
  const context={module,exports:module.exports,__dirname:path.resolve(__dirname,'..'),Buffer,URL,console,structuredClone,setTimeout,clearTimeout,setInterval:()=>({unref(){}}),process:{env:{SUPABASE_URL:'mock',SUPABASE_KEY:'mock'},on(){}},require:n=>n==='@supabase/supabase-js'?{createClient:()=>client}:n==='crypto'&&randomInt!==null?{...crypto,randomInt}:require(n)};
+ if(at!==null)context.Date=class extends Date{constructor(...args){super(...(args.length?args:[at]))}static now(){return at}};
  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../server.js'),'utf8'),context);
  async function call(route,data,id='PLAYER01'){
   const req=Readable.from(data?[JSON.stringify(data)]:[]);req.url='/api/'+route;req.method=data?'POST':'GET';req.headers={'x-id':id,'x-key':'secret'};req.socket={remoteAddress:'test'};
   const res={writeHead(code){this.code=code},end(s){this.data=JSON.parse(s)}};
   await module.exports.durableApi(req,res,route);return res;
  }
- return {call,stored,writes,db:module.exports.DB,breakDB:v=>outage=v};
+ return {call,stored,writes,db:module.exports.DB,helpers:module.exports,breakDB:v=>outage=v};
 }
+
+test('district: daily cap, weekly cap, Sunday closure and Monday reset follow Kyiv time',()=>{
+ const {helpers:h}=fixture(),p={save:{uah:0}},mon=Date.parse('2026-11-02T10:00:00Z');
+ for(let day=0;day<3;day++){
+  for(let i=0;i<3;i++)assert.equal(h.districtPart(p,mon+day*864e5),true);
+  assert.equal(h.districtPart(p,mon+day*864e5),false);
+  assert.equal(h.districtInstall(p,{week:'2026-11-02',stage:day},mon+day*864e5),null);
+ }
+ assert.equal(p.save.uah,300);assert.equal(p.districtBadges.length,1);
+ assert.equal(h.districtPart(p,mon+3*864e5),false);
+ assert.equal(h.districtState(p,Date.parse('2026-11-07T21:59:59Z')).active,true);
+ const sunday=Date.parse('2026-11-07T22:00:00Z');assert.equal(h.districtState(p,sunday).active,false);
+ assert.equal(h.districtPart(p,sunday),false);assert.ok(h.districtInstall(p,{week:'2026-11-02',stage:3},sunday));
+ const next=mon+7*864e5;assert.equal(h.districtState(p,next).stage,0);assert.equal(h.districtPart(p,next),true);assert.equal(p.district.parts,1);assert.equal(p.districtBadges.length,1);
+});
+
+test('district: event reward is durable and duplicate/restarted requests cannot pay again',async()=>{
+ const at=Date.parse('2026-11-06T10:00:00Z'),a=fixture('Гравець',1600,null,false,at);await a.call('me');
+ const p=a.db.players.PLAYER01;for(let i=0;i<3;i++)a.helpers.districtPart(p,at);
+ const request={action:'install',week:'2026-11-02',stage:0};
+ const r=await a.call('city-events',request);assert.equal(r.data.ok,true);assert.equal(r.data.district.stage,1);assert.equal(a.stored.PLAYER01.save.uah,1700);
+ assert.equal((await a.call('city-events',request)).code,409);
+ const restarted=fixture('Гравець',0,null,false,at,a.stored);
+ assert.equal((await restarted.call('city-events',request)).code,409);
+ assert.equal(restarted.stored.PLAYER01.save.uah,1700);
+});
+
+test('district: outage rolls back installation and a retry pays exactly once',async()=>{
+ const at=Date.parse('2026-11-06T10:00:00Z'),a=fixture('Гравець',1600,null,false,at);await a.call('me');
+ const p=a.db.players.PLAYER01;for(let i=0;i<3;i++)a.helpers.districtPart(p,at);
+ // Persist the earned materials before simulating the failed installation.
+ await a.call('city-events');a.breakDB(true);
+ const request={action:'install',week:'2026-11-02',stage:0};
+ assert.equal((await a.call('city-events',request)).code,503);
+ assert.equal(a.db.players.PLAYER01.district.stage,0);assert.equal(a.db.players.PLAYER01.district.parts,3);assert.equal(a.stored.PLAYER01.save.uah,1600);
+ a.breakDB(false);assert.equal((await a.call('city-events',request)).data.ok,true);assert.equal(a.stored.PLAYER01.save.uah,1700);
+});
+
+test('district: dialogs award parts once, declining does not, and stale week cannot install',async()=>{
+ const at=Date.parse('2026-11-06T10:00:00Z'),a=fixture('Гравець',1600,null,false,at);
+ assert.equal((await a.call('city-events',{action:'radio',choice:'safe'})).data.district.parts,1);
+ assert.equal((await a.call('city-events',{action:'radio',choice:'safe'})).code,409);
+ assert.equal((await a.call('city-events',{action:'courtyard',choice:'decline'})).data.district.parts,1);
+ assert.equal((await a.call('city-events',{action:'install',week:'2026-10-26',stage:0})).code,409);
+ assert.equal(a.stored.PLAYER01.district.parts,1);
+ const sunday=fixture('Гравець',1600,null,false,Date.parse('2026-11-08T10:00:00Z'));
+ const r=await sunday.call('city-events',{action:'radio',choice:'safe'});assert.equal(r.data.district.active,false);assert.equal(r.data.district.parts,0);
+});
+
+test('district: collecting a finished shift awards one durable part, never for a replay',async()=>{
+ const at=Date.parse('2026-11-06T10:00:00Z'),a=fixture('Гравець',1600,()=>99,false,at);await a.call('world');
+ a.db.players.PLAYER01.world.workShift={startedAt:at-120000,endsAt:at-1,cash:80,xp:20,loot:false};
+ const r=await a.call('world',{action:'workCollect'});assert.equal(r.data.ok,true);assert.equal(a.stored.PLAYER01.district.parts,1);
+ assert.equal((await a.call('world',{action:'workCollect'})).data.ok,false);assert.equal(a.stored.PLAYER01.district.parts,1);
+});
 test('v27: expensive outfit is charged once and held in both inventory and appearance',async()=>{
  const a=fixture('Гравець',1800),before=(await a.call('world')).data;
  assert.equal(before.sets.length,7);
