@@ -1,8 +1,8 @@
 {
   "name": "uhylyant",
-  "version": "1.5.1-v27",
+  "version": "1.5.2-v27",
   "private": true,
-  "description": "РЈС…РёР»СЏРЅС‚ v27 вЂ” СЂРёР·РёРє, РїСЂРѕС„РµСЃС–С—, Р°РЅС–РјР°С†С–С—, С—Р¶Р° С‚Р° РєРѕРјРїР»РµРєС‚Рё РѕРґСЏРіСѓ",
+  "description": "Ухилянт — життя району, робота та пригоди",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

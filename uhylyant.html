@@ -1865,7 +1865,7 @@ function viewHome(){
   const ht={shack:'Обшарпана халупа',room:'Кімната в гуртожитку',flat:'Квартира на районі',loft:'Лофт',lux:'Пентхаус'};
   let h='<section class="card uhy-home-card home-section"><div class="home-house-row"><div><div class="h">🏠 ДІМ</div><div class="name">'+esc(ht[ui.house]||ht.shack)+'</div><div class="sub">Тут безпечно й можна відновити сили.</div></div><button class="btn sm amber" data-act="myHouse">Мої хати</button></div><div class="home-safety">🛡 Вдома безпечно <span>'+(S.end==='eu'?'Ризику ТЦК тут немає.':'На вулиці можуть затримати.')+'</span></div></section>';
   h+='<section class="card home-section"><div class="h">📅 НА СЬОГОДНІ</div><div class="home-action-row"><div><b>Вечеря</b><small>+20 енергії · ₴'+fmt(foodCost())+'</small></div><button class="btn sm" data-act="food"'+(fcd>0?' disabled':'')+'>'+(fcd>0?'<span class="cd" data-until="'+(S.foodAt+30000)+'"></span>':'Приготувати')+'</button></div>'
-    +'<div class="home-action-row"><div><b>Щоденне колесо</b><small>Серверний бонус раз на 24 години.</small></div><button class="btn sm amber" data-act="daily">Відкрити</button></div></section>';
+    +'<div class="home-action-row"><div><b>Щоденне колесо</b><small>Серверний бонус раз на 24 години.</small></div><button class="btn sm amber" data-act="daily">Відкрити</button></div><div class="home-action-row"><div><b>Події району</b><small>Історії сусідів і спільні справи.</small></div><button class="btn sm" data-act="cityEvents">У двір</button></div></section>';
   const pool=JOBS.filter(j=>j.remote&&j.t<=t&&j.t>=Math.max(0,t-1)&&!(S.job&&S.job.ji===j.i));
   h+='<section class="card home-section"><div class="h">💼 РОБОТА ДОМА · БЕЗ РИЗИКУ</div>'+(S.job&&JOBS[S.job.ji].remote?jobCard(true):'')+pool.map(j=>'<div class="home-action-row"><div><b>'+esc(j.n)+'</b><small>₴'+fmt(gigPay(j,.7))+' · 8 енергії</small></div><button class="btn sm amber" data-act="gig" data-v="'+j.i+'" data-w="'+(j.n.includes('Модерація')?'moderation':'texts')+'">Працювати</button></div>').join('')+'</section>';
   return h;
@@ -1991,11 +1991,11 @@ function showLocs(){
   const ph=phaseNow(),cur=S.look.loc||'yard';
   showOv('<h2>Локація</h2><p>Показується на всіх екранах, окрім затримання, боїв і фіналів. Нові відкриваються з рівнем.</p><div class="locg">'+UHART.LOCS.map(k=>{const need=UHART.LOC_LVL[k]||1,ok=S.level>=need,o=UHART.paint(k,{phase:ph,house:ui.house,thumb:1});return '<button class="loc'+(cur===k?' on':'')+(ok?'':' lock')+'" data-act="setloc" data-v="'+k+'">'+o.bg+'<span>'+o.name+(ok?'':' · 🔒 рів. '+need)+'</span></button>'}).join('')+'</div><button class="btn big" data-act="'+(S.started?'closeOv':'back')+'">Готово</button>');
 }
-// Original four-note ambient motif generated in Web Audio. Nothing plays until enabled.
-const UHY_AUDIO={ctx:null,music:true,sounds:true,timer:null,step:0};
-try{const pref=JSON.parse(localStorage.getItem('uhy_audio')||'null');if(pref){UHY_AUDIO.music=pref.music!==false;UHY_AUDIO.sounds=pref.sounds!==false}}catch{}
+// Original courtyard arrangement. Audio starts after a gesture and sleeps offscreen.
+const UHY_AUDIO={ctx:null,music:true,sounds:true,musicVolume:.65,effectsVolume:.8,timer:null,step:0};
+try{const pref=JSON.parse(localStorage.getItem('uhy_audio')||'null');if(pref){UHY_AUDIO.music=pref.music!==false;UHY_AUDIO.sounds=pref.sounds!==false;for(const k of ['musicVolume','effectsVolume'])if(Number.isFinite(pref[k]))UHY_AUDIO[k]=Math.max(0,Math.min(1,pref[k]));}}catch{}
 function audioControls(){let bar=document.getElementById('audioControls');if(!bar){bar=document.createElement('div');bar.id='audioControls';document.body.append(bar)}bar.innerHTML=['sounds','music'].map(k=>'<button type="button" aria-label="'+(k==='music'?'Музика':'Звуки')+'" aria-pressed="'+UHY_AUDIO[k]+'" data-audio="'+k+'">'+(k==='music'?'♫':'🔊')+' '+(UHY_AUDIO[k]?'Увімк.':'Вимк.')+'</button>').join('');bar.querySelectorAll('button').forEach(b=>b.onclick=()=>setMusicSound(b.dataset.audio));}
-function startAudio(){if(!UHY_AUDIO.ctx){const T=window.AudioContext||window.webkitAudioContext;if(T)UHY_AUDIO.ctx=new T()}UHY_AUDIO.ctx?.resume().catch(()=>{});if(UHY_AUDIO.music&&!UHY_AUDIO.timer)UHY_AUDIO.timer=setInterval(audioMusicStep,357);}
+function startAudio(){if(document.hidden)return;if(!UHY_AUDIO.ctx){const T=window.AudioContext||window.webkitAudioContext;if(T)UHY_AUDIO.ctx=new T()}UHY_AUDIO.ctx?.resume().catch(()=>{});if(UHY_AUDIO.ctx&&UHY_AUDIO.music&&!UHY_AUDIO.timer)UHY_AUDIO.timer=setInterval(audioMusicStep,385);}
 document.addEventListener('pointerdown',startAudio,{once:true});document.addEventListener('keydown',startAudio,{once:true});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){clearInterval(UHY_AUDIO.timer);UHY_AUDIO.timer=null;UHY_AUDIO.ctx?.suspend()}else if(UHY_AUDIO.ctx)startAudio()});
 setTimeout(audioControls,0);
@@ -2006,13 +2006,28 @@ function soundTone(freq,len=.10,vol=.025,kind='triangle',delay=0,bus='effects'){
  }catch(e){}
 }
 function audioBus(kind){
- const ac=UHY_AUDIO.ctx;if(!UHY_AUDIO.mix){const compressor=ac.createDynamicsCompressor();compressor.threshold.value=-18;compressor.ratio.value=4;compressor.connect(ac.destination);UHY_AUDIO.mix={};for(const k of ['music','effects']){const g=ac.createGain();g.gain.value=(k==='music'?UHY_AUDIO.music:UHY_AUDIO.sounds)?1:0;g.connect(compressor);UHY_AUDIO.mix[k]=g;}}return UHY_AUDIO.mix[kind];
+ const ac=UHY_AUDIO.ctx;if(!UHY_AUDIO.mix){const compressor=ac.createDynamicsCompressor();compressor.threshold.value=-16;compressor.ratio.value=3;compressor.connect(ac.destination);UHY_AUDIO.mix={};for(const k of ['music','effects']){const g=ac.createGain();g.gain.value=(k==='music'?UHY_AUDIO.music:UHY_AUDIO.sounds)?(UHY_AUDIO[k+'Volume']??.7):0;g.connect(compressor);UHY_AUDIO.mix[k]=g;}}return UHY_AUDIO.mix[kind];
 }
-function soundNoise(duration=.12,cutoff=900,volume=.08,delay=0){
- if(!UHY_AUDIO.sounds||!UHY_AUDIO.ctx||document.hidden)return;
+function soundNoise(duration=.12,cutoff=900,volume=.08,delay=0,bus='effects'){
+ if(!(bus==='music'?UHY_AUDIO.music:UHY_AUDIO.sounds)||!UHY_AUDIO.ctx||document.hidden)return;
  const ac=UHY_AUDIO.ctx,t=ac.currentTime+delay,buffer=ac.createBuffer(1,Math.ceil(ac.sampleRate*duration),ac.sampleRate),data=buffer.getChannelData(0);
  for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*(1-i/data.length);
- const src=ac.createBufferSource(),filter=ac.createBiquadFilter(),gain=ac.createGain();src.buffer=buffer;filter.type='lowpass';filter.frequency.value=cutoff;gain.gain.setValueAtTime(volume,t);gain.gain.exponentialRampToValueAtTime(.0001,t+duration);src.connect(filter).connect(gain).connect(audioBus('effects'));src.start(t);src.stop(t+duration);
+ const src=ac.createBufferSource(),filter=ac.createBiquadFilter(),gain=ac.createGain();src.buffer=buffer;filter.type='lowpass';filter.frequency.value=cutoff;gain.gain.setValueAtTime(volume,t);gain.gain.exponentialRampToValueAtTime(.0001,t+duration);src.connect(filter).connect(gain).connect(audioBus(bus));src.start(t);src.stop(t+duration);
+}
+function soundPluck(midi,volume=.13,delay=0,bass=false){
+ if(!UHY_AUDIO.ctx)return;
+ const ac=UHY_AUDIO.ctx,key=midi+':'+bass,cache=UHY_AUDIO.strings||(UHY_AUDIO.strings=new Map());
+ if(!cache.has(key)){
+  // Karplus–Strong: an excited string loses bright harmonics as it decays.
+  const hz=440*Math.pow(2,(midi-69)/12),period=Math.max(2,Math.round(ac.sampleRate/hz-.5)),length=Math.ceil(ac.sampleRate*(bass?2.4:1.9));
+  const buffer=ac.createBuffer(1,length,ac.sampleRate),data=buffer.getChannelData(0),ring=new Float32Array(period);let seed=7919+midi*197;
+  for(let i=0;i<period;i++){seed=(seed*16807)%2147483647;ring[i]=(seed/1073741824-1)*.65;}
+  let previous=0,peak=.001;
+  for(let i=0;i<length;i++){const j=i%period,v=ring[j];ring[j]=(v+ring[(j+1)%period])*.498;previous=previous*.35+v*.65;data[i]=previous*Math.min(1,i/80)*Math.min(1,(length-i)/500);peak=Math.max(peak,Math.abs(data[i]));}
+  for(let i=0;i<length;i++)data[i]/=peak;
+  if(cache.size>72)cache.clear();cache.set(key,buffer);
+ }
+ const src=ac.createBufferSource(),g=ac.createGain(),filter=ac.createBiquadFilter();src.buffer=cache.get(key);filter.type='lowpass';filter.frequency.value=bass?700:2600;g.gain.value=volume;src.connect(filter).connect(g).connect(audioBus('music'));src.start(ac.currentTime+delay);
 }
 function combatSound(type,phase){
  if(!UHY_AUDIO.sounds||document.hidden)return;startAudio();
@@ -2024,51 +2039,56 @@ function combatSound(type,phase){
 }
 function audioMusicStep(){
  if(!UHY_AUDIO.music||document.hidden)return;
- // Original 6/8 courtyard sketch: plucked strings, soft bass, breathing room.
- const step=UHY_AUDIO.step++,beat=step%6,bar=Math.floor(step/6)%8;
- const tense=!!S.tcc||ui.tab==='boss',street=ui.tab==='street';
- const roots=tense?[146.83,146.83,155.56,130.81]:[146.83,130.81,174.61,110];
- const root=roots[Math.floor(bar/2)%4];
- if(beat===0){soundTone(root/2,1.3,.012,'sine',0,'music');[1,1.5,2].forEach((ratio,i)=>soundTone(root*ratio,.85,.004,'triangle',i*.035,'music'));}
- const melody=[0,2,4,3,2,0,1,2,4,5,4,2,3,2,1,0],scale=[1,1.125,1.2,1.3333,1.5,1.6667];
- if([0,2,3,5].includes(beat)&&!(bar===7&&beat>2)){const n=melody[(bar*4+[0,2,3,5].indexOf(beat))%melody.length];const freq=146.83*2*scale[n];soundTone(freq,tense?.28:.65,.009,'triangle',0,'music');soundTone(freq*2,.2,.0018,'sine',.01,'music');}
- if(street&&beat===3)soundTone(root,.22,.004,'triangle',0,'music');
+ const step=UHY_AUDIO.step++,beat=step%8,bar=Math.floor(step/8)%16,tense=!!S.tcc||ui.tab==='boss';
+ const chords=[[50,57,62,65,69],[46,53,58,62,65],[48,55,60,64,67],[45,52,57,61,64]];
+ const chord=chords[Math.floor(bar/2)%4],finger=[0,2,3,1,0,2,4,3][beat];
+ if(beat===0||beat===4)soundPluck(chord[0]-12,.22,0,true);
+ if(beat!==3&&!(bar%4===3&&beat===7))soundPluck(chord[finger],tense?.075:.115,.014+(beat%2)*.018);
+ if(beat===0&&bar%2===0)chord.slice(1,4).forEach((note,i)=>soundPluck(note,.035,.025+i*.022));
+ const phrases=[[69,0,67,65,0,64,62,0],[65,0,62,0,60,62,65,0],[67,0,64,0,62,64,67,0],[64,0,61,0,57,0,61,0]];
+ const note=phrases[Math.floor(bar/2)%4][beat];
+ if(note&&bar%2===1&&!tense)soundPluck(note+(bar>=8?12:0),bar>=8?.055:.09,.035);
+ // Brushed percussion stays quiet; no square-wave beeps in the music bus.
+ if(beat===2||beat===6)soundNoise(.12,1500,tense?.012:.009,.02,'music');
+ if(tense&&beat%2===0)soundTone(58,.16,.02,'sine',0,'music');
 }
+
+function saveAudioPrefs(){try{localStorage.setItem('uhy_audio',JSON.stringify({music:UHY_AUDIO.music,sounds:UHY_AUDIO.sounds,musicVolume:UHY_AUDIO.musicVolume,effectsVolume:UHY_AUDIO.effectsVolume}))}catch{}}
+document.addEventListener('input',e=>{const k=e.target.dataset?.audioVolume;if(!['music','effects'].includes(k))return;const value=Math.max(0,Math.min(1,Number(e.target.value)/100));UHY_AUDIO[k+'Volume']=value;startAudio();audioBus(k).gain.setTargetAtTime((k==='music'?UHY_AUDIO.music:UHY_AUDIO.sounds)?value:0,UHY_AUDIO.ctx.currentTime,.04);const output=e.target.closest('label')?.querySelector('output');if(output)output.textContent=Math.round(value*100)+'%';saveAudioPrefs();});
 
 function setMusicSound(kind){
  if(kind==='music'){
  UHY_AUDIO.music=!UHY_AUDIO.music;
  if(UHY_AUDIO.music){startAudio();audioMusicStep()}else{clearInterval(UHY_AUDIO.timer);UHY_AUDIO.timer=null}
  }else{UHY_AUDIO.sounds=!UHY_AUDIO.sounds;if(UHY_AUDIO.sounds)soundTone(523,.09,.024,'sine')}
- try{localStorage.setItem('uhy_audio',JSON.stringify({music:UHY_AUDIO.music,sounds:UHY_AUDIO.sounds}))}catch{}
- if(UHY_AUDIO.ctx){for(const k of ['music','effects'])audioBus(k).gain.setTargetAtTime((k==='music'?UHY_AUDIO.music:UHY_AUDIO.sounds)?1:0,UHY_AUDIO.ctx.currentTime,.025);}
- audioControls();if(ui.ov==='settings')showSettings();
+ saveAudioPrefs();
+ if(UHY_AUDIO.ctx){for(const k of ['music','effects'])audioBus(k).gain.setTargetAtTime((k==='music'?UHY_AUDIO.music:UHY_AUDIO.sounds)?UHY_AUDIO[k+'Volume']:0,UHY_AUDIO.ctx.currentTime,.025);}
+ audioControls();if(!$('#overlay').hidden&&$('#dlg [data-act="audioMusic"]'))showSettings();
 }
 function cartoonSound(button){
  const action=button.dataset.act||button.dataset.wact||button.dataset.city||'';
- if(['bhit','fight','audioMusic','audioSounds','settings','tab','ct','lk','closeOv'].includes(action))return;
- const identity=action+':'+(button.dataset.v||button.dataset.w||button.dataset.job||button.dataset.choice||'');let hash=0;for(const ch of identity)hash=(hash*31+ch.charCodeAt(0))>>>0;
- let seq;
+ if(['bhit','fight','audioMusic','audioSounds','settings','tab','ct','lk','closeOv'].includes(action)||document.hidden)return;
+ startAudio();
  const work=button.dataset.w||button.dataset.job||button.closest('.world-job,.home-action-row')?.textContent||'';
- if(/moderation|texts|engineer|Модерац|текст/i.test(work))seq=[[160,.025,.012,'square',0],[210,.018,.009,'square',.07],[170,.02,.011,'square',.16],[230,.018,.01,'square',.23]];
- else if(/courier|highway|delivery|курʼєр|достав/i.test(work))seq=[[440,.08,.016,'sine',0],[660,.14,.016,'sine',.11]];
- else if(/tea|clean|прибир|чай/i.test(work))seq=[[190,.16,.012,'triangle',0],[240,.2,.011,'triangle',.22]];
- else if(/foreman|warehouse|build|workshop|repair|склад|будів/i.test(work))seq=[[90,.06,.018,'triangle',0],[110,.05,.016,'triangle',.2],[90,.07,.018,'triangle',.4]];
- else if(/guard|patrol/i.test(work))seq=[[880,.06,.012,'sine',0],[580,.09,.012,'triangle',.18]];
- else if(/fight|hit|bhit|boss/i.test(action))seq=[[145,.12,.026,'sawtooth',0],[620,.06,.018,'square',.075]];
- else if(/tcc|escape|rescue|bribe|bransom|bresc/i.test(action))seq=[[760,.08,.018,'square',0],[480,.10,.023,'sawtooth',.09],[700,.08,.017,'square',.19]];
- else if(/work|shift|gig|apply|nightTask|accept|search/i.test(action))seq=[[294,.055,.017,'triangle',0],[392,.055,.018,'triangle',.075],[523,.075,.020,'square',.15]];
- else if(/food|hospital|meal|eat/i.test(action))seq=[[260,.06,.018,'triangle',0],[392,.065,.019,'sine',.08],[523,.08,.018,'triangle',.16]];
- else if(/spin|wheel|daily|claim/i.test(action))seq=[[660,.05,.016,'square',0],[880,.06,.019,'square',.065],[1175,.09,.020,'triangle',.14]];
- else if(/outfit|equip|look|buy|gear|bwp/i.test(action))seq=[[392,.06,.017,'triangle',0],[587,.07,.019,'triangle',.085],[784,.10,.018,'sine',.17]];
- else if(/house|home|collect/i.test(action))seq=[[220,.07,.017,'triangle',0],[330,.08,.018,'sine',.09]];
- else seq=[[392,.045,.008,'sine',0],[587,.055,.007,'triangle',.055]];
- seq.forEach(([freq,len,vol,kind,delay])=>soundTone(freq+(hash%71)-35,len,vol,kind,delay));
+ const tap=(delay=0,hz=145)=>{soundNoise(.035,1800,.035,delay);soundTone(hz,.045,.018,'sine',delay);};
+ if(/moderation|texts|engineer|Модерац|текст/i.test(work)){[0,.065,.145,.2,.32].forEach((t,i)=>{soundNoise(.018,2300,.035,t);soundTone(190+i%2*35,.024,.012,'sine',t);});return;}
+ if(/courier|highway|delivery|курʼєр|достав/i.test(work)){[0,.19,.39].forEach(t=>{soundNoise(.09,850,.05,t);soundTone(95,.08,.024,'sine',t);});return;}
+ if(/tea|clean|прибир|чай/i.test(work)){soundNoise(.5,2200,.035);soundNoise(.3,1400,.025,.32);tap(.65,310);return;}
+ if(/foreman|warehouse|build|workshop|repair|склад|будів/i.test(work)||action==='install'){[0,.24,.48].forEach((t,i)=>{soundNoise(.07,1200,.05,t);soundTone(140+i*18,.12,.035,'sine',t);});return;}
+ if(/guard|patrol/i.test(work)){soundNoise(.24,1900,.025);tap(.27,240);return;}
+ if(/tcc|escape|rescue|bribe|bransom|bresc/i.test(action)){soundNoise(.22,1300,.04);tap(.18,90);return;}
+ if(/food|hospital|meal|eat|kit/i.test(action)){soundNoise(.24,2400,.025);soundTone(740,.12,.012,'sine',.12);tap(.24,310);return;}
+ if(/spin|wheel/i.test(action)){[0,.06,.14,.25].forEach(t=>tap(t,220));return;}
+ if(/claim|collect|daily/i.test(action)){[0,.08,.16].forEach((t,i)=>{soundTone(1250+i*335,.17,.016,'sine',t);soundNoise(.025,3800,.018,t);});return;}
+ if(/outfit|equip|look|buy|gear|bwp/i.test(action)){soundNoise(.16,2300,.03);tap(.13,185);return;}
+ if(/work|shift|gig|apply|search|nightTask/i.test(action)){tap(0,120);tap(.16,150);return;}
+ // Navigation feedback is a short tactile click, without a melody on every button.
+ tap(0,210);
 }
 document.addEventListener('click',e=>{if(!UHY_AUDIO.sounds)return;const btn=e.target?.closest?.('button');if(btn&&!btn.disabled)cartoonSound(btn)},true);
 function showSettings(){
   let low=false;try{low=localStorage.getItem('uhy_gfx')==='low'}catch(e){}
-  showOv('<h2>Налаштування</h2><div class="list"><button class="btn block" data-act="editHero">✎ Персонаж</button><button class="btn block" data-act="locs">📍 Локація</button><button class="btn block" data-act="gfx">Графіка: '+(low?'спрощена (економить батарею)':'висока')+'</button><button class="btn block" data-act="audioMusic">♫ Музика: '+(UHY_AUDIO.music?'увімкнена':'вимкнена')+'</button><button class="btn block" data-act="audioSounds">🔊 Звуки: '+(UHY_AUDIO.sounds?'увімкнені':'вимкнені')+'</button><button class="btn block" data-act="help">Правила гри</button><button class="btn red block" data-act="reset">Скинути гру</button></div><button class="btn big" data-act="closeOv">Закрити</button>');
+  showOv('<h2>Налаштування</h2><div class="list"><button class="btn block" data-act="editHero">✎ Персонаж</button><button class="btn block" data-act="locs">📍 Локація</button><button class="btn block" data-act="gfx">Графіка: '+(low?'спрощена (економить батарею)':'висока')+'</button><button class="btn block" data-act="audioMusic">♫ Музика: '+(UHY_AUDIO.music?'увімкнена':'вимкнена')+'</button><button class="btn block" data-act="audioSounds">🔊 Звуки: '+(UHY_AUDIO.sounds?'увімкнені':'вимкнені')+'</button>'+['music','effects'].map(k=>'<label class="audio-volume"><span>'+(k==='music'?'Гучність музики':'Гучність дій')+'<output>'+Math.round(UHY_AUDIO[k+'Volume']*100)+'%</output></span><input type="range" min="0" max="100" value="'+Math.round(UHY_AUDIO[k+'Volume']*100)+'" data-audio-volume="'+k+'" aria-label="'+(k==='music'?'Гучність музики':'Гучність дій')+'"></label>').join('')+'<button class="btn block" data-act="help">Правила гри</button><button class="btn red block" data-act="reset">Скинути гру</button></div><button class="btn big" data-act="closeOv">Закрити</button>');
 }
 function showHelp(){
   showOv('<h2>Правила</h2><div class="list"><p>Енергія відновлюється сама. Працюй вдома без ризику або виходь на вулицю за кращими грошима.</p><p>Патруль може зупинити кожного. Дійсна бронь звільняє після показу документів. Шанс втекти — 18%. Після невдачі наступна спроба через 3 хвилини.</p><p>Одяг знижує ризик і підвищує заробіток. Бронь за золото працює справді, а бронь від роботодавця може виявитись липовою.</p><p>Мета: рівень '+MAXLVL+'. Там обереш: Європа чи карʼєра в Україні.</p></div><button class="btn amber big" data-act="closeOv">Зрозуміло</button>');
@@ -2083,6 +2103,7 @@ function showCountry(){
 const ACT={
   audioMusic:()=>setMusicSound('music'),
   audioSounds:()=>setMusicSound('sounds'),
+  cityEvents:()=>window.UHYCity?.open(),
   editHero:()=>{ui.cfirst=false;showCreator(false)},
   renameOpen,renameSave,openSets:()=>{const b=document.querySelector('#socialDock [data-sp="world"]');if(b)b.click();else toast('Підключи онлайн-акаунт','bad')},
   ct:v=>{ui.ct=v;showCreator()},

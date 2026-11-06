@@ -42,7 +42,7 @@
   el.innerHTML=(hero?'<span class="v27-flash-hero" aria-hidden="true">'+hero+'</span>':'')+'<span class="v27-effect-symbol">'+icon+'</span><b>'+label+'</b><span class="v27-effect-particles">✧ ✦ ✧</span>';
   el.classList.remove('v27-show');void el.offsetWidth;el.classList.add('v27-show');clearTimeout(t);t=setTimeout(()=>el.classList.remove('v27-show'),1250);
  }
- document.addEventListener('click',e=>{const b=e.target.closest?.('button[data-act],button[data-wact]');if(!b||b.disabled)return;const key=b.dataset.wact||b.dataset.act;if(key&&!SKIP.has(key))flash(key,b)},true);
+ document.addEventListener('click',e=>{const b=e.target.closest?.('button[data-act],button[data-wact]');if(!b||b.disabled)return;const key=b.dataset.wact||b.dataset.act;if(key&&MAP[key]&&!SKIP.has(key))flash(key,b)},true);
 })();
 
 (()=>{if(!document.createElement)return;let signature='';const bar=document.createElement('div');bar.id='contextActions';bar.hidden=true;document.body.append(bar);

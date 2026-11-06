@@ -19,7 +19,7 @@ async function play({type='fist',damage=0,scene,raid=false}={}){
  const duration=reduced?180:760,impact=reduced?0:type==='brick'?410:320;
  const animate=(el,frames,options)=>{if(el&&!reduced)animations.push(el.animate(frames,options))};
  hero?.classList.add('combat-'+type);
- if(!reduced){window.UHY?.playCombatSound(type,'swing');const travel=type==='brick'?'-4px 0':`${Math.max(12,tx-sx-(hr?.width||80)*.25)}px 0`;animate(hero,[{translate:'0 0'},{translate:travel,offset:.38,easing:'ease-out'},{translate:travel,offset:.59},{translate:'0 0'}],{duration,easing:'linear'});}
+ if(!reduced){window.UHY?.playCombatSound(type,'swing');const travel=type==='brick'?'-4px 0':`${Math.max(12,tx-sx-(hr?.width||80)*.25)}px 0`;animate(hero,[{translate:'0 0',rotate:'0deg'},{translate:'-3px 1px',rotate:'-2deg',offset:.15},{translate:travel,rotate:type==='leg'?'-5deg':'3deg',offset:.42,easing:'ease-out'},{translate:travel,rotate:'1deg',offset:.59},{translate:'0 0',rotate:'0deg'}],{duration,easing:'cubic-bezier(.25,.65,.35,1)'});}
 
  if(props[type]){const prop=document.createElementNS('http://www.w3.org/2000/svg','svg');prop.setAttribute('viewBox','0 0 50 46');prop.classList.add('combat-prop');prop.innerHTML=props[type];prop.style.left=sx+'px';prop.style.top=sy+'px';layer.append(prop);
   if(reduced){prop.style.left=(tx-20)+'px';prop.style.top=(ty-20)+'px';}
@@ -27,7 +27,8 @@ async function play({type='fist',damage=0,scene,raid=false}={}){
   else animate(prop,[{transform:'translate(-20px,-20px) rotate(-70deg)',opacity:0},{transform:'translate(0,-30px) rotate(-45deg)',opacity:1,offset:.2},{transform:`translate(${tx-sx-20}px,${ty-sy-20}px) rotate(45deg)`,opacity:1,offset:.44},{transform:'translate(-20px,-20px)',opacity:0}],{duration,fill:'forwards'});
  }
  return new Promise(resolve=>{
-  timers.push(setTimeout(()=>{if(!scene.isConnected)return;window.UHY?.playCombatSound(type,'impact');
+  timers.push(setTimeout(()=>{if(!scene.isConnected||!layer.isConnected||document.hidden)return;window.UHY?.playCombatSound(type,'impact');
+   if(type==='brick'){const prop=layer.querySelector('.combat-prop');if(prop)prop.style.visibility='hidden';}
    const burst=document.createElement('span');burst.className='combat-impact';burst.style.left=tx+'px';burst.style.top=ty+'px';burst.textContent=type==='brick'?'✦':'✧';layer.append(burst);
    const label=document.createElement('span');label.className='combat-damage';label.style.left=tx+'px';label.style.top=(ty-20)+'px';label.textContent=damage?'−'+Math.round(damage).toLocaleString('uk-UA'):'Влучання';layer.append(label);
    animate(boss,[{translate:'0 0',rotate:'0deg'},{translate:'7px 0',rotate:'3deg',offset:.25},{translate:'-2px 0',rotate:'-1deg',offset:.65},{translate:'0 0',rotate:'0deg'}],{duration:310,easing:'ease-out'});

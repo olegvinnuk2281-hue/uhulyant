@@ -488,6 +488,32 @@ function weekClock(at=Date.now()){
  const day=new Date(date+'T12:00:00Z');const dow=day.getUTCDay();day.setUTCDate(day.getUTCDate()-((dow+6)%7));
  return {id:day.toISOString().slice(0,10),date,active:dow!==0};
 }
+// Event inventory lives outside the client save; only completed server actions award parts.
+function districtProgress(p,clock){
+ return p.district?.id===clock.id?p.district:{id:clock.id,parts:0,stage:0,earned:0,days:{}};
+}
+function districtPart(p,at=Date.now()){
+ const clock=weekClock(at);if(!clock.active)return false;
+ const d=districtProgress(p,clock);
+ if(d.stage>=3||(d.days[clock.date]||0)>=3||d.earned>=9)return false;
+ d.days[clock.date]=(d.days[clock.date]||0)+1;d.parts++;d.earned++;p.district=d;return true;
+}
+function districtState(p,at=Date.now()){
+ const clock=weekClock(at),d=districtProgress(p,clock);
+ const community=Object.values(DB.players).reduce((n,x)=>n+(x.district?.id===clock.id?Number(x.district.stage)||0:0),0);
+ return {active:clock.active,id:clock.id,parts:d.parts,stage:d.stage,earned:d.earned,today:d.days[clock.date]||0,community,goal:30};
+}
+function districtInstall(p,input,at=Date.now()){
+ const clock=weekClock(at),d=districtProgress(p,clock);
+ if(!clock.active)return 'Подія завершилася. Новий двір відкриється в понеділок.';
+ if(d.stage>=3)return 'Світло вже відновлено. Дякуємо за допомогу!';
+ if(input.week!==clock.id||input.stage!==d.stage)return 'Етап уже змінився. Відкрий подію ще раз.';
+ if(d.parts<3)return 'Потрібні 3 деталі. Отримуй їх за зміни та діалоги.';
+ d.parts-=3;d.stage++;p.district=d;p.save.uah+=100;
+ p.save.say=['Проводку полагоджено','Акумулятор заряджено','У дворі знову є світло!'][d.stage-1]+' · +100 ₴';
+ if(d.stage===3){p.districtBadges=Array.isArray(p.districtBadges)?p.districtBadges:[];if(!p.districtBadges.includes(clock.id))p.districtBadges.push(clock.id);p.districtBadges=p.districtBadges.slice(-52);}
+ return null;
+}
 const LEAGUE_DIVISIONS=[
  {id:'street',name:'Дворова',min:1,max:39},
  {id:'worker',name:'Робітнича',min:40,max:149},
@@ -727,6 +753,9 @@ async function api(req, res, route) {
         if(p.save.energy>=50)return send(res,409,{ok:false,err:'Спочатку витрать енергію'});
         p.starterKit=0;p.save.energy=Math.min(50,Math.max(0,Number(p.save.energy)||0)+20);
         p.save.say='Стартовий термос: +20 енергії.';
+      }else if(action==='install'){
+        const error=districtInstall(p,input);if(error)return send(res,409,{ok:false,err:error});
+        logPlayer(p,'city',p.save.say);
       }else if(['radio','courtyard'].includes(action)){
         if(p.cityEvents[action]?.day===day)return send(res,409,{ok:false,err:'Сьогодні вже завершено'});
         if(!['safe','risk','decline'].includes(input.choice))return send(res,400,{ok:false});
@@ -736,10 +765,11 @@ async function api(req, res, route) {
         const text=action==='radio'?(lucky?'Ти впіймав рідкісну частоту — сусіди знайшли загублений вантаж!':'Радіомайстерня знову на зв’язку. Район дякує за допомогу.'):(lucky?'Твій імпровізований концерт зібрав увесь двір!':'Теплий чай, гітара та розмови до сутінків.');
         const outcome=cash===0?'Цього разу історія завершилась без нагороди.':text;p.cityEvents[action]={day,text:outcome,cash,choice:input.choice};p.save.say=outcome+' +'+cash+' ₴';
         logPlayer(p,'city',outcome);
+        if(input.choice!=='decline'&&districtPart(p))p.save.say+=' · +1 деталь для двору';
       }else return send(res,400,{ok:false,err:'Невідома дія'});
       dirtyPlayerIds.add(p.id);
     }
-    return send(res,200,{ok:true,day,kit:p.starterKit||0,events:p.cityEvents,save:p.save});
+    return send(res,200,{ok:true,day,kit:p.starterKit||0,events:p.cityEvents,district:districtState(p),save:p.save});
   }
   if(route==='daily-wheel'){
     if(req.method==='GET')return send(res,200,wheelState(p));
@@ -973,6 +1003,7 @@ async function api(req, res, route) {
       w.workDays=w.workDays.slice(-365);
       const found=sh.loot&&gear[sh.drop];if(found&&!w.items.includes(sh.drop))w.items.push(sh.drop);
       w.message='Зміна завершена: +'+amount+' ₴, +'+xp+' XP'+(found?', знахідка: '+gear[sh.drop].name:'');
+      if(districtPart(p,t))w.message+=' · +1 деталь для події «Світло у дворі»';
       w.workShift=null;w.lastWork=t;
     } else if(b.action==='nightTask'){
       if(p.save?.tcc)return fail('Спочатку звільнись із ТЦК');
@@ -1274,7 +1305,7 @@ async function durableApi(req,res,route){
 const server = http.createServer(async (req, res) => {
   try {
     const u = new URL(req.url, 'http://x');
-    if (u.pathname === '/healthz') { res.writeHead(200); return res.end('ok'); }
+    if (u.pathname === '/healthz') { res.writeHead(dbLoaded?200:503,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}); return res.end(JSON.stringify({ok:dbLoaded,version:'1.5.2-v27'})); }
     if (u.pathname.startsWith('/api/')) return await durableApi(req, res, u.pathname.slice(5));
     if (u.pathname.startsWith('/assets/')) {
       const name = u.pathname.slice('/assets/'.length);
@@ -1461,4 +1492,4 @@ const observer=new MutationObserver(dock);observer.observe($('#tabs'),{childList
 process.on('uncaughtException', e => console.error('uncaught', e));
 
 if (require.main === module) server.listen(PORT, () => console.log('Ухилянт: http://localhost:' + PORT));
-module.exports = { weekClock, weeklyScore, leagueDivision, server, durableApi, dbReady, validate, fresh, DB, basePay, xpNeed, tierOf, totalXP, hpOf, FOOD_CD, FOOD_EN, REGEN };
+module.exports = { districtPart, districtState, districtInstall, weekClock, weeklyScore, leagueDivision, server, durableApi, dbReady, validate, fresh, DB, basePay, xpNeed, tierOf, totalXP, hpOf, FOOD_CD, FOOD_EN, REGEN };

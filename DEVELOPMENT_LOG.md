@@ -38,3 +38,7 @@
 ## Next concrete task
 
 Verify the live TCC capture/escape scene and final header clearance inside real iOS/Android Telegram clients; test cooldown and server state after reconnecting.
+
+
+## 2026-11-06 — 1.5.2
+Оригинальный щипковый музыкальный движок и громкость по каналам, тактильные эффекты работ, перенос веса в бою, связанное событие двора с серверными материалами и защитой повторных наград. Сохранены изменения владельца в uhy-polish.css и render.yaml. Проверки: 45 тестов, 7 размеров экрана, 7 боевых эффектов и аудиорендер без клиппинга. Следующий шаг: QA на физических Telegram Android/iOS и пользовательская оценка музыкального тембра.
