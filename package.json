@@ -1,6 +1,6 @@
 {
   "name": "uhylyant",
-  "version": "1.5.2-v27",
+  "version": "1.5.3-v27",
   "private": true,
   "description": "Ухилянт — життя району, робота та пригоди",
   "main": "server.js",

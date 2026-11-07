@@ -70,7 +70,8 @@ test('responsive home, capture escape, full avatar, and work props stay connecte
  assert.match(html,/hat\(H,c,hd2\);o\+=hairFront\(c,true\)/,'hair should be painted over the lower edge of headwear');
  assert.match(html,/data-act="smokeToggle"/,'character editor should include a cigarette toggle');
  assert.match(ui,/WORK_PROPS\.moderation=\{title:'Модеруємо коментарі',svg:WORK_PROPS\.texts\.svg\}/,'comment moderation should use its own laptop scene');
- assert.match(action,/\['gig','shift'\]\.includes\(a\)&&\(\['texts','moderation'\]\.includes\(button\?\.dataset\.w\)/,'remote text and moderation actions should trigger the animated laptop');
+ assert.match(ui,/class="work-laptop"/,'remote work should include a laptop in the unified work scene');
+ assert.doesNotMatch(action,/function flash\(/,'navigation must not create floating miniature scenes');
  assert.doesNotMatch(css,/var\(--v27-tg-top\)/,'short landscape layout must not depend on an unset Telegram offset');
 });
 
@@ -85,13 +86,18 @@ test('Telegram safe-area fallback follows orientation and live content insets',(
   return{values,events,window};
  }
  const legacy=setup({content:{top:0,bottom:0,left:0,right:0}});
- assert.equal(legacy.values['--v27-header-clearance'],'92px','old Telegram clients should reserve the compact app header and status area');
- assert.equal(legacy.values['--v27-bottom-clearance'],'20px','old clients should preserve the device bottom safe area');
+ assert.equal(legacy.values['--v27-header-clearance'],'calc(max(env(safe-area-inset-top, 0px), 24px) + 52px)','device inset and Telegram controls must be added');
+ assert.equal(legacy.values['--v27-bottom-clearance'],'calc(max(env(safe-area-inset-bottom, 0px), 20px) + 0px)');
  legacy.window.innerWidth=844;legacy.window.innerHeight=390;legacy.events.viewportChanged();
- assert.equal(legacy.values['--v27-header-clearance'],'58px','short landscape should use the compact header plus the device status inset');
+ assert.equal(legacy.values['--v27-header-clearance'],'calc(max(env(safe-area-inset-top, 0px), 24px) + 36px)');
  const fullscreen=setup({safeTop:24,safeBottom:20,version8:true,content:{top:0,bottom:0,left:0,right:0}});
- assert.equal(fullscreen.values['--v27-header-clearance'],'0px','Telegram content safe area should replace the legacy header fallback');
- assert.equal(fullscreen.values['--v27-bottom-clearance'],'0px','fullscreen content inset should not add a second bottom offset');
+ assert.equal(fullscreen.values['--v27-header-clearance'],'calc(max(env(safe-area-inset-top, 0px), 24px) + 52px)','zero SDK values must not put content underneath controls');
+ assert.equal(fullscreen.values['--v27-bottom-clearance'],'calc(max(env(safe-area-inset-bottom, 0px), 20px) + 0px)');
+ const iphone=setup({safeTop:59,safeBottom:34,version8:true,content:{top:58,bottom:8,left:0,right:0}});
+ assert.equal(iphone.values['--v27-header-clearance'],'calc(max(env(safe-area-inset-top, 0px), 59px) + 58px)');
+ assert.equal(iphone.values['--v27-bottom-clearance'],'calc(max(env(safe-area-inset-bottom, 0px), 34px) + 8px)');
+ iphone.window.Telegram.WebApp.contentSafeAreaInset.top=70;iphone.events.contentSafeAreaChanged();
+ assert.equal(iphone.values['--v27-header-clearance'],'calc(max(env(safe-area-inset-top, 0px), 59px) + 70px)');
 });
 
 test('fullscreen is requested only when Telegram Bot API 8.0 is supported',()=>{

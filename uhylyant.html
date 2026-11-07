@@ -1545,8 +1545,8 @@ function riskFor(mod){
 
 /* ---------- повідомлення ---------- */
 let toastT=0;
-function toast(m,k){const el=$('#toast');el.textContent=m;el.className='toast show '+(k||'');clearTimeout(toastT);toastT=setTimeout(()=>{el.className='toast'},2000)}
-function say(m){S.say=m;const b=$('#bubble');if(b)b.textContent=m}
+function toast(m,k){const el=$('#toast');if(!el)return;el.replaceChildren();const title=document.createElement('strong'),message=document.createElement('p'),close=document.createElement('button');title.textContent=k==='bad'?'Не вдалося виконати':'Результат дії';message.textContent=String(m);close.type='button';close.textContent='Зрозуміло';close.onclick=()=>{clearTimeout(toastT);el.className='toast'};el.append(title,message,close);el.setAttribute('role','status');el.setAttribute('aria-live','polite');el.className='toast show '+(k||'');clearTimeout(toastT);toastT=setTimeout(()=>{el.className='toast'},Math.min(12000,Math.max(5500,String(m).length*65)))}
+function say(m){S.say=m;const b=$('#bubble');if(b)b.textContent=m;toast(m)}
 const pick=a=>a[rnd(a.length)];
 
 /* ---------- рівні, гроші ---------- */
@@ -1567,7 +1567,7 @@ function gainXP(x){
 const bribeCost=()=>basePay(tier())*10;
 const CAUGHT_TXT=['З-за рогу виїхав бус. «Громадянине, на хвилинку!»','Тебе зупинили біля магазину. «Документи, будь ласка».','«Просто перевіримо дані», — сказав чоловік у формі.'];
 const TCC_TXT=['Тебе завели в обласний ТЦК. Двері зачинені, але охорона на секунду відволіклась.','Тебе везуть на навчання. Бус став на заправці. Це шанс.','Ти на позиціях. Шансів мало, але вони є.'];
-async function tccCommand(action){if(ui.tccRequest)return;ui.tccRequest=true;try{if(!await netSync(true))throw Error('Дочекайся збереження');const r=await api('tcc/choice',{action});if(!r?.ok)throw Error(r?.err||'Немає зв’язку');NET.walletRevision=r.walletRevision;adopt(r.save);}catch(e){toast(e.message,'bad')}finally{ui.tccRequest=false}}
+async function tccCommand(action){if(ui.tccRequest)return;ui.tccRequest=true;try{if(!await netSync(true))throw Error('Дочекайся збереження');const r=await api('tcc/choice',{action});if(!r?.ok)throw Error(r?.err||'Немає зв’язку');NET.walletRevision=r.walletRevision;adopt(r.save);if(r.save?.say)toast(r.save.say,action!=='begin'&&r.save.tcc?'bad':'good');}catch(e){toast(e.message,'bad')}finally{ui.tccRequest=false}}
 function caught(fake){tccCommand('begin');}
 function startTccArrival(){
   ui.captureUntil=now()+1900;
@@ -1596,6 +1596,7 @@ function doGig(ji,remote){
   say(j.remote?'Відпрацював удома: +₴'+fmt(pay):pick(['Зміна відпрацьована.','День пройшов спокійно.','Гроші на руки: ','Повернувся без пригод. '])+(j.remote?'':'+₴'+fmt(pay)));
   gainXP(xpGain(en,S.level,j.remote?.8:1));
   save();render();
+  if(j.remote)window.UHYUI?.showWorkAction?.(j.n.includes('Модерація')?'moderation':'texts');
 }
 function empPay(){const j=JOBS[S.job.ji];return Math.round(basePay(j.t)*S.job.mult*payMult())}
 function doShift(){
@@ -1607,6 +1608,7 @@ function doShift(){
   say('Зміна на «'+S.job.emp+'»: +₴'+fmt(pay));
   gainXP(xpGain(12,S.level,1.3));
   save();render();
+  if(j.remote)window.UHYUI?.showWorkAction?.(j.n.includes('Модерація')?'moderation':'texts');
 }
 function search(){
   if(S.tcc)return;
@@ -1618,6 +1620,7 @@ function search(){
   say('Знайшов кілька оголошень.');save();render();
 }
 function accept(i,withBron){
+  if(window.UHYUI?.workLocked?.()){toast('Спочатку заверши зміну й забери зарплату','bad');return}
   const o=S.offers&&S.offers[i];if(!o)return;
   const fee=basePay(JOBS[o.ji].t)*6;
   if(withBron){
@@ -1628,7 +1631,7 @@ function accept(i,withBron){
   }else say('Тебе взяли на роботу.');
   S.job={ji:o.ji,emp:o.emp,mult:o.mult};S.offers=null;save();render();
 }
-function quit(){S.job=null;say('Ти звільнився.');save();render()}
+function quit(){if(window.UHYUI?.workLocked?.()){toast('Спочатку заверши зміну й забери зарплату','bad');return}S.job=null;say('Ти звільнився.');save();render()}
 
 /* ---------- дім ---------- */
 const foodCost=()=>Math.round(basePay(tier())*.3);
@@ -2347,6 +2350,7 @@ setInterval(save,10000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.started){render()}});
 
 window.UHY={
+ notify:toast,
  saveState:()=>!NET.on?'Немає зв’язку':syncPending?'Збереження…':window.__vd?'Очікує збереження…':'Синхронізовано',
  adoptServer:r=>{if(Number.isFinite(r.walletRevision))NET.walletRevision=r.walletRevision;if(r.save)adopt(r.save);},
  sync:async()=>{for(let i=0;i<4;i++){if(!await netSync(false))return false;if(!window.__vd)return true;}return false;},

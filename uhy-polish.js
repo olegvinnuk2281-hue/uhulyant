@@ -31,11 +31,11 @@
   const box=$('#socialPanel .spbox'),body=$('#spBody');if(!box||!body)return null;
   let art=box.querySelector('.uhy-modal-scene');
   if(!art){
+   stamp='';
    art=document.createElement('div');art.className='uhy-modal-scene';
    art.setAttribute('role','img');art.setAttribute('aria-label','Рисована локація з твоїм персонажем');
    art.innerHTML='<div class="uhy-layer-bg"></div><div class="uhy-layer-avatar"></div><div class="uhy-layer-fg"></div><div class="uhy-modal-caption"></div>';
-   const close=box.querySelector('#spClose');
-   if(close)close.after(art);else box.prepend(art);
+   body.prepend(art);
   }
   if(!box.querySelector('.uhy-modal-quick')){
    const quick=document.createElement('div');quick.className='uhy-modal-quick';
@@ -64,6 +64,8 @@
   if(!panel||!body||panel.style.display==='none')return;
   const art=ensureArt();if(!art||!window.UHY?.snapshot)return;
   active=detect();
+  if(art.parentElement!==body)body.prepend(art);
+  art.hidden=active==='world'&&!!body.querySelector('.work-rig');
   // Only change layout for casino; other screens remain untouched.
   panel.classList.toggle('uhy-casino-mode',active==='casino');
   if(active==='casino')tidyCasinoPaytable();
@@ -112,4 +114,19 @@
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
  setTimeout(install,200);setTimeout(install,1000);
+})();
+/* Focused street sections keep the active shift separate from optional systems. */
+(()=>{
+ const body=document.getElementById('spBody');if(!body)return;
+ let selected='work',queued=false;
+ const groups=[['work','Робота'],['supplies','Спорядження'],['life','Побут']];
+ function organize(){queued=false;const grid=body.querySelector('.world-grid');if(!grid||!body.querySelector('.work-vacancies')||grid.dataset.organized)return;
+ grid.dataset.organized='1';const cards=[...grid.children];
+ const nav=document.createElement('div');nav.className='street-sections';nav.setAttribute('role','group');nav.setAttribute('aria-label','Розділи вулиці');
+ const classify=card=>card.querySelector('.work-vacancies')?'work':/Інвентар|Зовнішність|набори|комплекти|спорядження/i.test(card.querySelector('h3')?.textContent||'')?'supplies':'life';
+ function select(key){selected=key;cards.forEach(card=>card.hidden=classify(card)!==key);nav.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.section===key)));}
+ for(const [key,label] of groups){const b=document.createElement('button');b.type='button';b.textContent=label;b.dataset.section=key;b.onclick=()=>select(key);nav.append(b)}
+ grid.before(nav);select(selected);
+ }
+ new MutationObserver(()=>{if(!queued){queued=true;requestAnimationFrame(organize)}}).observe(body,{childList:true});organize();
 })();

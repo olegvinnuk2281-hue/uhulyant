@@ -261,6 +261,7 @@ function validate(p, nx) {
   nx.look = cleanLook(nx.look);
   nx.name = cleanName(nx.name);
   if(p.save?.started && nx.name!==cleanName(p.save.name||p.name))return bad('Змінити нік можна лише в профілі');
+  if(p.world?.workShift&&JSON.stringify(nx.job??null)!==JSON.stringify(pv.job??null))return bad('Спочатку заверши зміну й забери зарплату');
   nx.say = String(nx.say || '').slice(0, 300);
 
   const L = num(nx.level, 0), xp = num(nx.xp, -1), ng = num(nx.ng, 0), uah = num(nx.uah, -1), gold = num(nx.gold, -1);
@@ -969,6 +970,8 @@ async function api(req, res, route) {
     if(b.action==='daily'){
       return fail('Колесо перенесено до /api/daily-wheel — відкрий анімацію та прокрути його');
     } else if(b.action==='apply'){
+      if(w.workShift)return fail('Спочатку заверши поточну зміну й забери зарплату');
+      if(p.save?.tcc)return fail('Спочатку покажи документи або звільнись із ТЦК');
       const j=jobOffers().find(x=>x.id===b.job);if(!j)return fail('Ця вакансія вже закрита. Оновіть список');if(j.locked)return fail('Недостатньо досвіду або відпрацьованих днів');
       const reason=['Погана репутація персонажа','Не підійшов зовнішній вигляд','Велика конкуренція','Роботодавець змінив вимоги'];
       if(crypto.randomInt(100)<j.interviewRisk){w.message='Відмова: '+reason[crypto.randomInt(reason.length)];}
@@ -1305,7 +1308,7 @@ async function durableApi(req,res,route){
 const server = http.createServer(async (req, res) => {
   try {
     const u = new URL(req.url, 'http://x');
-    if (u.pathname === '/healthz') { res.writeHead(dbLoaded?200:503,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}); return res.end(JSON.stringify({ok:dbLoaded,version:'1.5.2-v27'})); }
+    if (u.pathname === '/healthz') { res.writeHead(dbLoaded?200:503,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}); return res.end(JSON.stringify({ok:dbLoaded,version:'1.5.3-v27'})); }
     if (u.pathname.startsWith('/api/')) return await durableApi(req, res, u.pathname.slice(5));
     if (u.pathname.startsWith('/assets/')) {
       const name = u.pathname.slice('/assets/'.length);

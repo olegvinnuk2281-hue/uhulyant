@@ -74,6 +74,28 @@ test('district: collecting a finished shift awards one durable part, never for a
  const r=await a.call('world',{action:'workCollect'});assert.equal(r.data.ok,true);assert.equal(a.stored.PLAYER01.district.parts,1);
  assert.equal((await a.call('world',{action:'workCollect'})).data.ok,false);assert.equal(a.stored.PLAYER01.district.parts,1);
 });
+
+test('active and unclaimed work locks all job changes across restart',async()=>{
+ const at=Date.parse('2026-11-07T10:00:00Z'),a=fixture('Гравець',1600,max=>max-1,false,at);await a.call('world');
+ a.db.players.PLAYER01.world.employment={id:'texts',name:'Тексти'};
+ const shift=await a.call('world',{action:'shift'});assert.equal(shift.data.ok,true);const pay=shift.data.world.workShift.cash;
+ for(const action of ['apply','quit'])assert.equal((await a.call('world',{action,job:'tea'})).data.ok,false);
+ assert.equal(a.db.players.PLAYER01.world.employment.id,'texts');
+ const restarted=fixture('Гравець',0,max=>max-1,false,at+180000,a.stored);
+ assert.equal((await restarted.call('world',{action:'apply',job:'tea'})).data.ok,false,'finished but unclaimed shift must still be paid first');
+ const me=(await restarted.call('me')).data;
+ const forged=structuredClone(me.save);forged.job={ji:1,emp:'Other',mult:1};
+ assert.equal((await restarted.call('save',{save:forged,walletRevision:me.walletRevision})).data.ok,false);
+ assert.equal((await restarted.call('world',{action:'workCollect'})).data.ok,true);
+ assert.equal((await restarted.call('world',{action:'apply',job:'tea'})).data.ok,true);
+ assert.equal(restarted.stored.PLAYER01.world.employment.id,'tea');
+ assert.equal(restarted.stored.PLAYER01.save.uah,1600+pay);
+});
+
+test('detained characters cannot attend job interviews',async()=>{
+ const a=fixture();await a.call('world');a.db.players.PLAYER01.save.tcc={stage:0,documents:true,nextAt:0};
+ assert.equal((await a.call('world',{action:'apply',job:'tea'})).data.ok,false);
+});
 test('v27: expensive outfit is charged once and held in both inventory and appearance',async()=>{
  const a=fixture('Гравець',1800),before=(await a.call('world')).data;
  assert.equal(before.sets.length,7);
